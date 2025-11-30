@@ -9,7 +9,7 @@
 [Image of software architecture diagram]
 )
 
-## 🔄 The Resolution Workflow
+## The Resolution Workflow
 
 The core of City Fix is a strictly typed state machine that governs the lifecycle of every issue report. Transitions are guarded by server-side Role-Based Access Control (RBAC).
 
@@ -22,23 +22,23 @@ The core of City Fix is a strictly typed state machine that governs the lifecycl
 
 ---
 
-## 📱 Key Features by Role
+## Key Features by Role
 
-### 👤 Citizen (Reporting & Transparency)
+### Citizen (Reporting & Transparency)
 * **Evidence-Based Reporting:** Capture up to 5 high-res photos or 20s compressed video clips (handled via Cloud Functions).
 * **Draft Mode:** Local `AsyncStorage` caching allows reports to be saved and edited offline before submission.
 * **Live Tracking:** Real-time push notifications trigger as the ticket moves through the resolution pipeline.
 
-### 📡 Dispatcher (Control Room)
+### Dispatcher (Control Room)
 * **Geospatial Deduplication:** Intelligent "Duplicate-Merge Assistant" detects reports within a configurable radius/time window to prevent redundant work orders.
 * **SLA Management:** Visual countdowns on deadlines with automatic flagging of overdue tickets.
 * **Zone Management:** Polygon-based filtering to assign issues to specific regional teams.
 
-### 👷 Field Engineer (On-Site)
+### Field Engineer (On-Site)
 * **Evidence Gates:** The system strictly enforces the upload of "After" media. A ticket cannot be marked `Resolved` without proof of fix.
 * **Proximity Routing:** Integrated greedy nearest-neighbor logic to sort daily job queues by distance.
 
-### 🕵️ Quality Auditor (Governance)
+### Quality Auditor (Governance)
 * **Side-by-Side Verification:** Specialized UI comparing "Before" and "After" media on a single screen.
 * **Rejection Taxonomy:** Structured feedback loops when reopening a job (e.g., "Fix Incomplete") to inform engineer training.
 
