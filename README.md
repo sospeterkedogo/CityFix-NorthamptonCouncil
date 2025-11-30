@@ -4,6 +4,63 @@
 
 **City Fix** is a secure, role-based mobile and web solution designed for Northampton Council to streamline the lifecycle of civic maintenance. It replaces fragmented reporting channels with a unified, geospatial workflow engine connecting Citizens, Dispatchers, Field Engineers, and Quality Auditors.
 
+```mermaid
+graph TD
+    subgraph "Clients (React Native/Expo)"
+        Cit[Citizen App]
+        Disp[Dispatcher Web Console]
+        Eng[Field Engineer App]
+        QA[Quality Auditor App]
+    end
+
+    subgraph "Edge & Auth"
+        Auth[Firebase Auth]
+        CC[Custom Claims\n(Admin, Engineer, Auditor)]
+    end
+
+    subgraph "Backend (Firebase Serverless)"
+        API[Cloud Functions\n(Triggers & REST)]
+        Store[(Firestore DB\nNoSQL Documents)]
+        Bucket[(Cloud Storage\nMedia Buckets)]
+    end
+
+    subgraph "External Services"
+        Maps[Map Provider API]
+        Notif[Push Notification Svc]
+    end
+
+    %% Auth Flows
+    Cit -.->|Auth| Auth
+    Disp -.->|Auth| Auth
+    Eng -.->|Auth| Auth
+    QA -.->|Auth| Auth
+    Auth -->|Validates| CC
+
+    %% Citizen Flow
+    Cit -->|1. Post Draft/Issue| Store
+    Cit -->|Upload Media| Bucket
+    Bucket -->|Trigger| API
+    API -->|Resize/Compress| Bucket
+
+    %% Dispatcher Flow
+    Disp -->|2. Deduplicate & Assign| Store
+    Store -->|Geospatial Query| Maps
+
+    %% Engineer Flow
+    Store -->|3. Route Data| Eng
+    Eng -->|Upload Proof (Gate)| Bucket
+    Eng -->|Mark Resolved| Store
+
+    %% QA Flow
+    QA -->|4. Compare Media| Bucket
+    QA -->|Verify/Reject| Store
+
+    %% Notifications
+    Store -.->|On Status Change| API
+    API -.->|Send Alert| Notif
+    Notif -.->|Update| Cit
+```
+
 ## The Resolution Workflow
 
 The core of City Fix is a strictly typed state machine that governs the lifecycle of every issue report. Transitions are guarded by server-side Role-Based Access Control (RBAC).
