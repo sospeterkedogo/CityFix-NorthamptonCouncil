@@ -15,13 +15,13 @@ graph TD
 
     subgraph "Edge & Auth"
         Auth[Firebase Auth]
-        CC[Custom Claims\n(Admin, Engineer, Auditor)]
+        CC["Custom Claims (Admin, Engineer, Auditor)"]
     end
 
     subgraph "Backend (Firebase Serverless)"
-        API[Cloud Functions\n(Triggers & REST)]
-        Store[(Firestore DB\nNoSQL Documents)]
-        Bucket[(Cloud Storage\nMedia Buckets)]
+        API["Cloud Functions (Triggers & REST)"]
+        Store[("Firestore DB (NoSQL Documents)")]
+        Bucket[("Cloud Storage (Media Buckets)")]
     end
 
     subgraph "External Services"
@@ -48,7 +48,7 @@ graph TD
 
     %% Engineer Flow
     Store -->|3. Route Data| Eng
-    Eng -->|Upload Proof (Gate)| Bucket
+    Eng -->|Upload Proof Gate| Bucket
     Eng -->|Mark Resolved| Store
 
     %% QA Flow
