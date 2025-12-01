@@ -1,4 +1,10 @@
 {
-  "name": "city-fix",
-  "slug": "city-fix"
+  "expo": {
+    "name": "city-fix",
+    "slug": "city-fix",
+    "scheme": "city-fix",
+    "plugins": [
+      "expo-router"
+    ]
+  }
 }
