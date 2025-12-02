@@ -1,4 +1,4 @@
-import { View, Text, Button } from 'react-native';
+import { View, Text, Button, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS, STYLES } from '../src/constants/theme';
 
@@ -6,15 +6,27 @@ export default function LoginScreen() {
   const router = useRouter();
 
   return (
-    <View style={[STYLES.container, { justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 20 }}>
-        City Fix Login
+    <View style={[STYLES.container, { justifyContent: 'center', alignItems: 'center', gap: 20 }]}>
+      <Text style={{ fontSize: 32, fontWeight: 'bold', color: COLORS.primary }}>
+        CityFix <Text style={{ color: COLORS.action }}>Northampton</Text>
       </Text>
-      <Button 
-        title="Login as Citizen" 
-        color={COLORS.action}
-        onPress={() => router.replace('/(citizen)/dashboard')} 
-      />
+
+      {/* Citizen Entry */}
+      <TouchableOpacity 
+        style={{ backgroundColor: COLORS.primary, padding: 15, borderRadius: 8, width: 250, alignItems: 'center' }}
+        onPress={() => router.replace('/(citizen)/dashboard')}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>Login as Citizen</Text>
+      </TouchableOpacity>
+
+      {/* Dispatcher Entry */}
+      <TouchableOpacity 
+        style={{ backgroundColor: 'white', borderWidth: 2, borderColor: COLORS.primary, padding: 15, borderRadius: 8, width: 250, alignItems: 'center' }}
+        onPress={() => router.replace('/(dispatcher)')}
+      >
+        <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Login as Dispatcher</Text>
+      </TouchableOpacity>
+
     </View>
   );
 }
