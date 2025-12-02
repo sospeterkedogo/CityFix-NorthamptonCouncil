@@ -8,7 +8,7 @@ export const TicketService = {
   /**
    * Submits a new ticket to Firestore
    */
-  submitTicket: async (userId, title, description, category, lat, lng) => {
+  submitTicket: async (userId, title, description, category, lat, lng, photos = []) => {
     try {
       // 1. Use the Factory Function to enforce structure
       const ticketData = createTicket(userId, title, description, category, lat, lng);
@@ -16,7 +16,10 @@ export const TicketService = {
       // 2. Set status to SUBMITTED
       ticketData.status = TICKET_STATUS.SUBMITTED;
 
-      // 3. Write to Firestore
+      // 3. Add photo URLs if any
+      ticketData.photos = photos;
+
+      // 4. Write to Firestore
       const docRef = await addDoc(collection(db, TICKET_COLLECTION), ticketData);
       
       console.log('✅ Ticket created with ID:', docRef.id);
@@ -34,8 +37,8 @@ export const TicketService = {
     try {
       const querySnapshot = await getDocs(collection(db, TICKET_COLLECTION));
       return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        id: doc.id
       }));
     } catch (error) {
       console.error('Error fetching tickets:', error);

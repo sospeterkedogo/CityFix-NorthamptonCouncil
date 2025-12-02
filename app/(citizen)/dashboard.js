@@ -98,7 +98,7 @@ export default function Dashboard() {
         <FlatList
           data={tickets}
           renderItem={renderTicketItem}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => item.id || String(index)}
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
