@@ -5,6 +5,7 @@ export const COLORS = {
   success: '#27AE60',    // Emerald Green (Resolved)
   warning: '#F1C40F',    // Amber (In Progress)
   error: '#E74C3C',      // Rose Red (Critical)
+  pending: '#F39C12',    // Orange (Pending)
   background: '#F8F9FA', // Off-white (Surface)
   card: '#FFFFFF',       // Pure White (Cards)
   text: {
