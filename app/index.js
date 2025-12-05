@@ -27,6 +27,28 @@ export default function LoginScreen() {
         <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Login as Dispatcher</Text>
       </TouchableOpacity>
 
+      {/* Engineer Entry */}
+      <TouchableOpacity 
+        style={{ 
+          backgroundColor: '#E67E22', // Orange for construction
+          padding: 15, borderRadius: 8, width: 250, alignItems: 'center' 
+        }}
+        onPress={() => router.replace('/(engineer)/dashboard')}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>Login as Engineer</Text>
+      </TouchableOpacity>
+
+      {/* QA Entry */}
+      <TouchableOpacity 
+        style={{ 
+          backgroundColor: '#8E44AD', // Purple for Governance
+          padding: 15, borderRadius: 8, width: 250, alignItems: 'center' 
+        }}
+        onPress={() => router.replace('/(qa)/dashboard')}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>Login as QA Auditor</Text>
+      </TouchableOpacity>
+
     </View>
   );
 }
