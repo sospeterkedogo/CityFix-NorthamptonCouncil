@@ -1,4 +1,3 @@
-// src/utils/geo.js
 
 // Convert degrees to radians
 const toRad = (value) => (value * Math.PI) / 180;
