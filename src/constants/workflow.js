@@ -5,25 +5,25 @@ import { TICKET_STATUS } from './models';
  * Defines allowed next states for every current state.
  */
 export const ALLOWED_TRANSITIONS = {
-  [TICKET_STATUS.DRAFT]:       [TICKET_STATUS.SUBMITTED],
-  
+  [TICKET_STATUS.DRAFT]: [TICKET_STATUS.SUBMITTED],
+
   // Dispatcher can Assign or put Under Review
-  [TICKET_STATUS.SUBMITTED]:   [TICKET_STATUS.ASSIGNED, 'under_review'],
-  
+  [TICKET_STATUS.SUBMITTED]: [TICKET_STATUS.ASSIGNED, 'under_review'],
+
   // Engineer can start work
-  [TICKET_STATUS.ASSIGNED]:    [TICKET_STATUS.IN_PROGRESS],
-  
+  [TICKET_STATUS.ASSIGNED]: [TICKET_STATUS.IN_PROGRESS],
+
   // Engineer can Resolve (after evidence)
   [TICKET_STATUS.IN_PROGRESS]: [TICKET_STATUS.RESOLVED],
-  
+
   // QA/Dispatcher can Verify or Reopen
-  [TICKET_STATUS.RESOLVED]:    [TICKET_STATUS.VERIFIED, 'reopened'],
-  
+  [TICKET_STATUS.RESOLVED]: [TICKET_STATUS.VERIFIED, 'reopened'],
+
   // Loop back if reopened
-  'reopened':                  [TICKET_STATUS.ASSIGNED],
-  
+  'reopened': [TICKET_STATUS.ASSIGNED],
+
   // Terminal State (End of the line)
-  [TICKET_STATUS.VERIFIED]:    [], 
+  [TICKET_STATUS.VERIFIED]: [],
 };
 
 /**
@@ -39,5 +39,5 @@ export const canTransitionTo = (currentStatus, nextStatus) => {
  * (This answers your specific request about blocking the dispatcher)
  */
 export const canAssign = (status) => {
-  return [TICKET_STATUS.SUBMITTED, 'reopened', 'under_review'].includes(status);
+  return [TICKET_STATUS.SUBMITTED, 'reopened', 'under_review', TICKET_STATUS.ASSIGNED].includes(status);
 };

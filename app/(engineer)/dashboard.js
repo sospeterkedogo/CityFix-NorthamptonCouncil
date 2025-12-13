@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  View, Text, FlatList, TouchableOpacity, StyleSheet, Switch, ActivityIndicator, Alert, Platform 
+import {
+  View, Text, FlatList, TouchableOpacity, StyleSheet, Switch, ActivityIndicator, Alert, Platform, Linking
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
 import { TicketService } from '../../src/services/ticketService';
 import { UserService } from '../../src/services/userService';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
@@ -14,6 +15,7 @@ const ENGINEER_ID = 'eng-1';
 const ENGINEER_NAME = 'Bob "The Builder" Smith';
 
 export default function EngineerDashboard() {
+  const { user } = useAuth();
   const router = useRouter();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,30 +34,30 @@ export default function EngineerDashboard() {
     // 1. Load Profile (Status)
     const profile = await UserService.getEngineerProfile(ENGINEER_ID);
     setIsAvailable(profile.status === 'Available');
-  
+
     // 2. Get My Location
     let loc = await Location.getCurrentPositionAsync({});
     const myLat = loc.coords.latitude;
     const myLng = loc.coords.longitude;
     setMyLocation({ lat: myLat, lng: myLng });
 
-      // 3. Load Assigned Jobs
+    // 3. Load Assigned Jobs
     const data = await TicketService.getEngineerJobs(ENGINEER_ID);
     // Filter out resolved jobs (optional, depends on workflow)
     const activeJobs = data.filter(job => job.status !== 'resolved');
-        
-        // 4. Calculate Distances & Sort
+
+    // 4. Calculate Distances & Sort
     const jobsWithDistance = activeJobs.map(job => {
-        const dist = getDistanceKm(myLat, myLng, job.location.latitude, job.location.longitude);
-        return { ...job, distanceKm: dist };
+      const dist = getDistanceKm(myLat, myLng, job.location.latitude, job.location.longitude);
+      return { ...job, distanceKm: dist };
     });
 
     // Sort: Nearest First
     const sortedJobs = jobsWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
-    
+
     setJobs(sortedJobs);
     setLoading(false);
-    
+
   };
 
   const toggleStatus = async (value) => {
@@ -64,8 +66,13 @@ export default function EngineerDashboard() {
     await UserService.updateStatus(ENGINEER_ID, newStatus, ENGINEER_NAME);
   };
 
+  const openExternalMap = (lat, lng) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    Linking.openURL(url);
+  };
+
   const renderJobCard = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.card}
       onPress={() => router.push({
         pathname: '/(engineer)/resolve',
@@ -76,40 +83,52 @@ export default function EngineerDashboard() {
         <View style={styles.priorityBadge}>
           <Text style={styles.priorityText}>{item.priority?.toUpperCase() || 'NORMAL'}</Text>
         </View>
-        <Text style={styles.distance}>2.4 km away</Text> 
-        {/* Distance is hardcoded for now until we add Geolocation calc */}
       </View>
 
       <Text style={styles.jobTitle}>{item.title}</Text>
       <Text style={styles.jobDesc} numberOfLines={2}>{item.description}</Text>
-      
+
       <View style={styles.footer}>
         <Text style={styles.address}>
-           📍 {item.location?.latitude.toFixed(4)}, {item.location?.longitude.toFixed(4)}
+          📍 {item.location?.latitude.toFixed(4)}, {item.location?.longitude.toFixed(4)}
         </Text>
-        <TouchableOpacity style={styles.navButton}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => openExternalMap(item.location.latitude, item.location.longitude)}
+        >
           <Text style={styles.navText}>NAVIGATE ➔</Text>
         </TouchableOpacity>
       </View>
       <Text style={styles.distance}>
-        {item.distanceKm < 1 
-            ? `${(item.distanceKm * 1000).toFixed(0)}m away` 
-            : `${item.distanceKm.toFixed(1)}km away`}
-        </Text>
+        {item.distanceKm < 1
+          ? `${(item.distanceKm * 1000).toFixed(0)}m away`
+          : `${item.distanceKm.toFixed(1)}km away`}
+      </Text>
     </TouchableOpacity>
-    
+
   );
 
   return (
     <View style={STYLES.container}>
-      
+      {/* HEADER */}
+      <View style={styles.headerContainer}>
+        <View>
+          <Text style={styles.headerTitle}>Engineer Dashboard</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/profile')}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || 'E'}</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
       {/* --- STATUS HEADER --- */}
       <View style={[
-        styles.statusHeader, 
+        styles.statusHeader,
         { backgroundColor: isAvailable ? COLORS.success : COLORS.error }
       ]}>
         <View>
-          <Text style={styles.welcomeText}>Welcome, Bob</Text>
+          <Text style={styles.welcomeText}>Welcome, {user?.email?.split('@')[0] || 'Engineer'}</Text>
           <Text style={styles.statusText}>
             CURRENT STATUS: {isAvailable ? 'AVAILABLE' : 'BUSY / DO NOT DISTURB'}
           </Text>
@@ -127,10 +146,10 @@ export default function EngineerDashboard() {
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
       ) : (
-        <FlatList 
+        <FlatList
           data={jobs}
           renderItem={renderJobCard}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => item.id || String(index)}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>No active jobs.</Text>
@@ -144,6 +163,10 @@ export default function EngineerDashboard() {
 }
 
 const styles = StyleSheet.create({
+  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary },
+  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'white', ...STYLES.shadow },
+  avatarText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
   statusHeader: {
     padding: SPACING.l,
     borderRadius: 12,

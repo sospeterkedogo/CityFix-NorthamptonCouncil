@@ -27,7 +27,7 @@ export default function EngineersList() {
         <Text style={styles.email}>{item.email || 'No email'}</Text>
       </View>
       <View style={[
-        styles.badge, 
+        styles.badge,
         { backgroundColor: item.status === 'Available' ? COLORS.success : COLORS.error }
       ]}>
         <Text style={styles.badgeText}>{item.status || 'OFFLINE'}</Text>
@@ -38,15 +38,15 @@ export default function EngineersList() {
   return (
     <View style={STYLES.container}>
       <Text style={styles.header}>Field Force Status</Text>
-      
+
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} />
       ) : (
         <View style={styles.table}>
-          <FlatList 
+          <FlatList
             data={engineers}
             renderItem={renderRow}
-            keyExtractor={item => item.id}
+            keyExtractor={(item, index) => item.id || String(index)}
             ListEmptyComponent={<Text>No engineers found.</Text>}
           />
         </View>

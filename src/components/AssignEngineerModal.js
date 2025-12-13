@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  View, Text, Modal, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator 
+import {
+  View, Text, Modal, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator
 } from 'react-native';
 import { COLORS, SPACING, STYLES } from '../constants/theme';
 
@@ -24,8 +24,8 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
   };
 
   const renderEngineer = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.engineerRow} 
+    <TouchableOpacity
+      style={styles.engineerRow}
       onPress={() => handleSelect(item.id)}
       disabled={loading}
     >
@@ -35,7 +35,7 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
       <View style={{ flex: 1 }}>
         <Text style={styles.name}>{item.name}</Text>
         <Text style={[
-          styles.status, 
+          styles.status,
           { color: item.status === 'Available' ? COLORS.success : COLORS.text.secondary }
         ]}>
           {item.status}
@@ -49,7 +49,7 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.modalContainer}>
-          
+
           <View style={styles.header}>
             <Text style={styles.title}>Assign Field Engineer</Text>
             <TouchableOpacity onPress={onClose}>
@@ -65,7 +65,7 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
           ) : (
             <FlatList
               data={MOCK_ENGINEERS}
-              keyExtractor={item => item.id}
+              keyExtractor={(item, index) => item.id || String(index)}
               renderItem={renderEngineer}
               contentContainerStyle={{ padding: SPACING.m }}
             />

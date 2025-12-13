@@ -8,14 +8,14 @@ export const UserService = {
   updateStatus: async (userId, status, name = "Engineer") => {
     try {
       const userRef = doc(db, 'users', userId);
-      
+
       // We use setDoc with merge: true so if the user doesn't exist, it creates them
       await setDoc(userRef, {
         name: name,
         status: status,
         lastActive: Date.now()
       }, { merge: true });
-      
+
       return { success: true };
     } catch (error) {
       console.error("Error updating status:", error);
@@ -47,7 +47,7 @@ export const UserService = {
     try {
       const q = query(collection(db, 'users'), where('role', '==', 'engineer'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     } catch (error) {
       console.error("Error fetching engineers:", error);
       return [];

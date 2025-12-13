@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, Image, Platform 
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, Image, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,11 +8,13 @@ import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { MediaService } from '../../src/services/mediaService';
 import LocationPickerModal from '../../src/components/LocationPickerModal';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function ReportIssueScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false); // Local state for upload progress
+  const { user } = useAuth();
 
   // Form State
   const [title, setTitle] = useState('');
@@ -20,7 +22,7 @@ export default function ReportIssueScreen() {
   const [category, setCategory] = useState('pothole');
   const [location, setLocation] = useState(null);
   const [showMap, setShowMap] = useState(false);
-  
+
   // Media State
   const [media, setMedia] = useState([]); // Array of local URIs
 
@@ -105,27 +107,25 @@ export default function ReportIssueScreen() {
     try {
       // --- THE UPLOAD LOOP ---
       let uploadedUrls = [];
-      
+
       if (media.length > 0) {
         setUploading(true); // Show user we are uploading
         console.log("Starting Upload for", media.length, "files...");
-        
+
         // Upload all files in parallel
-        const uploadPromises = media.map(file => 
+        const uploadPromises = media.map(file =>
           MediaService.uploadFile(file.uri, "reports")
         );
-        
+
         uploadedUrls = await Promise.all(uploadPromises);
         console.log("Uploads complete:", uploadedUrls);
         setUploading(false);
       }
       // ---------------------------
 
-      const FAKE_USER_ID = "citizen-001";
-      
       // Pass the URLs to the Ticket Service
       const result = await TicketService.submitTicket(
-        FAKE_USER_ID, title, desc, category, 
+        user.id, title, desc, category,
         location.latitude, location.longitude,
         uploadedUrls // <--- Sending the URLs now
       );
@@ -134,7 +134,7 @@ export default function ReportIssueScreen() {
 
       if (result.success) {
         if (Platform.OS === 'web') {
-           if(confirm("Report Submitted!")) router.back();
+          if (confirm("Report Submitted!")) router.back();
         } else {
           Alert.alert("Success", "Report submitted!", [{ text: "OK", onPress: () => router.back() }]);
         }
@@ -153,14 +153,14 @@ export default function ReportIssueScreen() {
   return (
     <ScrollView contentContainerStyle={STYLES.container}>
       <Text style={styles.header}>Report an Issue</Text>
-      
+
       {/* ... Title, Category Inputs ... */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Issue Title</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g. Deep Pothole" 
-          value={title} onChangeText={setTitle} 
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Deep Pothole"
+          value={title} onChangeText={setTitle}
         />
       </View>
 
@@ -168,7 +168,7 @@ export default function ReportIssueScreen() {
         <Text style={styles.label}>Category</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {['pothole', 'street_light', 'rubbish'].map((cat) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={cat}
               style={[styles.catButton, category === cat && styles.catButtonActive]}
               onPress={() => setCategory(cat)}
@@ -195,11 +195,11 @@ export default function ReportIssueScreen() {
       {/* --- MEDIA PICKER UI --- */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Evidence (Photos/Video)</Text>
-        
+
         <View style={styles.mediaContainer}>
           {media.map((item, index) => (
             <View key={index} style={styles.thumbnailWrapper}>
-              
+
               {/* --- FIX FOR THUMBNAILS --- */}
               {item.type === 'video' ? (
                 // Render a placeholder for videos
@@ -211,8 +211,8 @@ export default function ReportIssueScreen() {
                 // Render the image for photos
                 <Image source={{ uri: item.uri }} style={styles.thumbnail} />
               )}
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.removeBtn}
                 onPress={() => setMedia(media.filter((_, i) => i !== index))}
               >
@@ -220,7 +220,7 @@ export default function ReportIssueScreen() {
               </TouchableOpacity>
             </View>
           ))}
-          
+
           {media.length < 3 && (
             <TouchableOpacity style={styles.addMediaBtn} onPress={handleAddMedia}>
               <Text style={{ fontSize: 24, color: COLORS.text.secondary }}>+</Text>
@@ -232,15 +232,15 @@ export default function ReportIssueScreen() {
       {/* Description */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Description</Text>
-        <TextInput 
-          style={[styles.input, { height: 100 }]} 
-          multiline value={desc} onChangeText={setDesc} 
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          multiline value={desc} onChangeText={setDesc}
         />
       </View>
 
       {/* Submit Button */}
-      <TouchableOpacity 
-        style={styles.submitButton} 
+      <TouchableOpacity
+        style={styles.submitButton}
         onPress={handleSubmit}
         disabled={loading}
       >
@@ -256,8 +256,8 @@ export default function ReportIssueScreen() {
         )}
       </TouchableOpacity>
 
-      <LocationPickerModal 
-        visible={showMap} 
+      <LocationPickerModal
+        visible={showMap}
         onClose={() => setShowMap(false)}
         onSelectLocation={setLocation}
       />
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   locationButtonText: { color: COLORS.primary, fontWeight: 'bold' },
   submitButton: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   submitText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  
+
   mediaContainer: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   thumbnailWrapper: { width: 80, height: 80, borderRadius: 8, overflow: 'hidden', position: 'relative' },
   thumbnail: { width: '100%', height: '100%' },
