@@ -1,0 +1,81 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
+
+const AuthContext = createContext({});
+
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null); // The Firebase User
+    const [userRole, setUserRole] = useState(null); // 'citizen', 'engineer', etc.
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Listen for Firebase Auth changes
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                // User is signed in, fetch their Role from Firestore
+                await fetchUserRole(firebaseUser.uid);
+                setUser(firebaseUser);
+            } else {
+                // User is signed out
+                setUser(null);
+                setUserRole(null);
+            }
+            setLoading(false);
+        });
+        return unsubscribe;
+    }, []);
+
+    const fetchUserRole = async (uid) => {
+        try {
+            const docRef = doc(db, 'users', uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                setUserRole(docSnap.data().role);
+            } else {
+                // Fallback or error handling
+                console.log("User exists in Auth but not in Firestore 'users' collection");
+            }
+        } catch (e) {
+            console.error("Error fetching role:", e);
+        }
+    };
+
+    const login = async (email, password) => {
+        await signInWithEmailAndPassword(auth, email, password);
+    };
+
+    const registerCitizen = async (email, password, fullName) => {
+        const response = await createUserWithEmailAndPassword(auth, email, password);
+        // Create the User Document in Firestore immediately
+        await setDoc(doc(db, 'users', response.user.uid), {
+            email,
+            name: fullName,
+            role: 'citizen',
+            createdAt: Date.now()
+        });
+        setUserRole('citizen'); // Optimistic update
+    };
+
+    const logout = async () => {
+        await signOut(auth);
+        setUser(null);
+        setUserRole(null);
+    };
+
+    return (
+        <AuthContext.Provider value={{
+            user,
+            userRole,
+            loading,
+            login,
+            registerCitizen,
+            logout
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};

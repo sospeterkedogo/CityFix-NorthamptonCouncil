@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator 
+import {
+  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { TICKET_STATUS } from '../../src/constants/models';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const router = useRouter();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function Dashboard() {
   const fetchTickets = async () => {
     // Note: In a real app, you would filter this by the current User ID
     const data = await TicketService.getAllTickets();
-    
+
     // Sort by newest first
     const sorted = data.sort((a, b) => b.createdAt - a.createdAt);
     setTickets(sorted);
@@ -42,12 +44,18 @@ export default function Dashboard() {
       case TICKET_STATUS.RESOLVED: return COLORS.success;
       case TICKET_STATUS.IN_PROGRESS: return COLORS.warning;
       case TICKET_STATUS.VERIFIED: return COLORS.action;
+      case 'merged': return '#95a5a6'; // Grey (Neutral)
       default: return COLORS.text.secondary; // Draft/Submitted
     }
   };
 
   const renderTicketItem = ({ item }) => (
-    <View style={styles.card}>
+    <TouchableOpacity onPress={() => router.push(
+      {
+        pathname: '/(citizen)/ticket/[id]',
+        params: { id: item.id }
+      }
+    )} style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.categoryTag}>
           <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
@@ -58,14 +66,14 @@ export default function Dashboard() {
           </Text>
         </View>
       </View>
-      
+
       <Text style={styles.cardTitle}>{item.title}</Text>
       <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-      
+
       <Text style={styles.cardDate}>
         Reported on {new Date(item.createdAt).toLocaleDateString()}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -76,13 +84,17 @@ export default function Dashboard() {
           <Text style={styles.greeting}>Hello, Citizen</Text>
           <Text style={styles.subGreeting}>Helping keep Northampton safe.</Text>
         </View>
-        {/* Placeholder for a Profile Icon later */}
-        <View style={styles.avatarPlaceholder} />
+        {/* PROFILE BUTTON */}
+        <TouchableOpacity onPress={() => router.push('/profile')}>
+          <View style={styles.avatarPlaceholder}>
+            <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || '?'}</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Primary Action - "The Big Button" */}
-      <TouchableOpacity 
-        style={styles.actionCard} 
+      <TouchableOpacity
+        style={styles.actionCard}
         onPress={() => router.push('/(citizen)/report')}
       >
         <Text style={styles.actionTitle}>+ Report New Issue</Text>
@@ -91,7 +103,7 @@ export default function Dashboard() {
 
       {/* Ticket List */}
       <Text style={styles.sectionTitle}>My Reports</Text>
-      
+
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
       ) : (
@@ -138,7 +150,14 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: COLORS.text.secondary,
-    opacity: 0.3,
+    opacity: 0.8, // Increased opacity for readability
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
   },
   actionCard: {
     backgroundColor: COLORS.primary,
