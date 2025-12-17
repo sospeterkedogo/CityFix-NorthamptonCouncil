@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator
+  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { TICKET_STATUS } from '../../src/constants/models';
@@ -14,19 +15,32 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [drafts, setDrafts] = useState([]);
+  const [showDraftsModal, setShowDraftsModal] = useState(false);
 
   // Load data - wrapped in useFocusEffect so it refreshes when you navigate back
   useFocusEffect(
     useCallback(() => {
       fetchTickets();
+      checkDrafts();
     }, [])
   );
 
-  const fetchTickets = async () => {
-    // Note: In a real app, you would filter this by the current User ID
-    const data = await TicketService.getAllTickets();
+  const checkDrafts = async () => {
+    try {
+      const json = await AsyncStorage.getItem('report_drafts');
+      if (json) {
+        setDrafts(JSON.parse(json));
+      } else {
+        setDrafts([]);
+      }
+    } catch (e) {
+      console.log("Error checking drafts", e);
+    }
+  };
 
-    // Sort by newest first
+  const fetchTickets = async () => {
+    const data = await TicketService.getCitizenTickets(user.uid);
     const sorted = data.sort((a, b) => b.createdAt - a.createdAt);
     setTickets(sorted);
     setLoading(false);
@@ -100,6 +114,52 @@ export default function Dashboard() {
         <Text style={styles.actionTitle}>+ Report New Issue</Text>
         <Text style={styles.actionSubtitle}>Spot a problem? Let us know.</Text>
       </TouchableOpacity>
+
+      {/* RESUME DRAFTS UI */}
+      {drafts.length > 0 && (
+        <TouchableOpacity
+          style={[styles.actionCard, { backgroundColor: 'white', borderWidth: 2, borderColor: COLORS.primary, marginBottom: SPACING.l }]}
+          onPress={() => setShowDraftsModal(true)}
+        >
+          <Text style={[styles.actionTitle, { color: COLORS.primary }]}>✎ Resume Saved Drafts</Text>
+          <Text style={[styles.actionSubtitle, { color: COLORS.text.secondary }]}>
+            You have {drafts.length} unfinished {drafts.length === 1 ? 'report' : 'reports'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* DRAFTS MODAL */}
+      <Modal visible={showDraftsModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Draft</Text>
+
+            <FlatList
+              data={drafts}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.draftItem}
+                  onPress={() => {
+                    setShowDraftsModal(false);
+                    router.push({ pathname: '/(citizen)/report', params: { draftId: item.id } });
+                  }}
+                >
+                  <Text style={styles.draftItemTitle}>{item.title || "Untitled Report"}</Text>
+                  <Text style={styles.draftItemDate}>{new Date(item.updatedAt).toLocaleString()}</Text>
+                </TouchableOpacity>
+              )}
+            />
+
+            <TouchableOpacity
+              style={styles.closeModalBtn}
+              onPress={() => setShowDraftsModal(false)}
+            >
+              <Text style={{ color: COLORS.text.light, fontWeight: 'bold' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Ticket List */}
       <Text style={styles.sectionTitle}>My Reports</Text>
@@ -245,5 +305,45 @@ const styles = StyleSheet.create({
   emptySubText: {
     fontSize: 14,
     color: '#BDC3C7',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    maxHeight: '80%'
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: COLORS.primary
+  },
+  draftItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderColor: '#eee'
+  },
+  draftItemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text.primary
+  },
+  draftItemDate: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4
+  },
+  closeModalBtn: {
+    backgroundColor: COLORS.primary,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20
   }
 });

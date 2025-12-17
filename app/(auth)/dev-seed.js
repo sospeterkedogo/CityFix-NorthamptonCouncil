@@ -76,6 +76,7 @@ export default function DevSeedScreen() {
         await createStaffAccount('dispatcher@cityfix.com', 'password123', 'Head Dispatcher', 'dispatcher');
         await createStaffAccount('eng@cityfix.com', 'password123', 'Bob The Builder', 'engineer');
         await createStaffAccount('qa@cityfix.com', 'password123', 'Karen Auditor', 'qa');
+        await createStaffAccount('citizen@cityfix.com', 'password123', 'John Citizen', 'citizen');
 
         setLoading(false);
         Alert.alert("Seeding Complete", "You can now log in with these accounts.");

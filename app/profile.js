@@ -30,6 +30,25 @@ export default function UserProfile() {
         ]);
     };
 
+    const handleEnableNotifications = async () => {
+        const { registerForPushNotificationsAsync, saveUserToken, sendPushNotification } = require('../src/utils/notifications');
+
+        try {
+            const token = await registerForPushNotificationsAsync();
+            if (token) {
+                await saveUserToken(user.uid, token);
+                alert(`Success! Token: ${token.slice(0, 10)}...`);
+                // Send a test one immediately
+                await sendPushNotification(token, "Test Notification", "If you see this, notifications are working!");
+            } else {
+                alert("Failed to get token. Check console for details.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error: " + error.message);
+        }
+    };
+
     return (
         <View style={STYLES.container}>
             {/* Back Button */}
@@ -68,6 +87,10 @@ export default function UserProfile() {
                 </View>
             </View>
 
+            <TouchableOpacity style={styles.testBtn} onPress={handleEnableNotifications}>
+                <Text style={styles.testBtnText}>🔔 Enable / Test Notifications</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
@@ -97,7 +120,9 @@ const styles = StyleSheet.create({
     divider: { height: 1, backgroundColor: '#f0f0f0', marginBottom: 15 },
     badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
     badgeText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
-    logoutBtn: { marginTop: 40, backgroundColor: '#ffebee', padding: 15, borderRadius: 12, alignItems: 'center' },
+    testBtn: { marginTop: 20, backgroundColor: COLORS.secondary, padding: 15, borderRadius: 12, alignItems: 'center' },
+    testBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+    logoutBtn: { marginTop: 10, backgroundColor: '#ffebee', padding: 15, borderRadius: 12, alignItems: 'center' },
     logoutText: { color: COLORS.error, fontWeight: 'bold', fontSize: 16 },
     version: { textAlign: 'center', color: '#ccc', marginTop: 20, fontSize: 12 }
 });
