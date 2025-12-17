@@ -14,6 +14,7 @@ export default function LoginScreen() {
 
     const handleDemoLogin = async (role) => {
         const credentials = {
+            citizen: { email: 'citizen@cityfix.com', pass: 'password123' },
             dispatcher: { email: 'dispatcher@cityfix.com', pass: 'password123' },
             engineer: { email: 'eng@cityfix.com', pass: 'password123' },
             qa: { email: 'qa@cityfix.com', pass: 'password123' },
@@ -70,6 +71,10 @@ export default function LoginScreen() {
                 <View style={styles.demoBox}>
                     <Text style={styles.demoTitle}>Select a Persona:</Text>
 
+                    <TouchableOpacity style={[styles.demoBtn, { backgroundColor: COLORS.action }]} onPress={() => handleDemoLogin('citizen')}>
+                        <Text style={styles.demoText}>👤 Citizen</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity style={[styles.demoBtn, { backgroundColor: COLORS.primary }]} onPress={() => handleDemoLogin('dispatcher')}>
                         <Text style={styles.demoText}>👨‍💻 Dispatcher (Admin)</Text>
                     </TouchableOpacity>
@@ -88,7 +93,7 @@ export default function LoginScreen() {
 
             {/* Secret Seed Link (Keep this for safety) */}
             <TouchableOpacity style={{ marginTop: 20 }} onPress={() => router.push('/(auth)/dev-seed')}>
-                <Text style={{ color: '#eee', fontSize: 10, textAlign: 'center' }}>[Dev Seed]</Text>
+                <Text style={{ color: '#ccc', fontSize: 10, textAlign: 'center' }}>[Dev Seed]</Text>
             </TouchableOpacity>
 
         </ScrollView>

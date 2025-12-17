@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Linking, ScrollView, Platform, Alert
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Linking, ScrollView, Platform, Alert, useWindowDimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -24,27 +24,6 @@ export default function DispatcherInbox() {
   const [galleryItems, setGalleryItems] = useState([]);
 
   const DUPLICATE_THRESHOLD_KM = 0.02; // 20 meters
-
-  const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm("Are you sure you want to log out?")) {
-        await logout();
-        router.replace('/(auth)/login');
-      }
-    } else {
-      Alert.alert("Log Out", "Are you sure?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          }
-        }
-      ]);
-    }
-  };
 
   useEffect(() => {
     loadTickets();
@@ -143,10 +122,10 @@ export default function DispatcherInbox() {
   };
 
   // Called when an engineer is clicked in the modal
-  const handleAssignTicket = async (engineerId) => {
+  const handleAssignTicket = async (engineer) => {
     if (!selectedTicket) return;
 
-    const result = await TicketService.assignTicket(selectedTicket.id, engineerId);
+    const result = await TicketService.assignTicket(selectedTicket.id, engineer.id);
 
     if (result.success) {
       // Refresh the list to show the new status
@@ -156,8 +135,15 @@ export default function DispatcherInbox() {
       setSelectedTicket(prev => ({
         ...prev,
         status: 'assigned',
-        assignedTo: engineerId
+        assignedTo: engineer.id
       }));
+
+      if (Platform.OS === 'web') {
+        window.alert(`Success: Ticket assigned to ${engineer.name}`);
+      } else {
+        Alert.alert("Assignment Complete", `Ticket assigned to ${engineer.name}`);
+      }
+
     } else {
       alert("Failed to assign ticket: " + result.error);
     }
@@ -327,6 +313,9 @@ export default function DispatcherInbox() {
     );
   };
 
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+
   if (loading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
 
   return (
@@ -338,9 +327,6 @@ export default function DispatcherInbox() {
           <Text style={styles.headerSub}>Manage and assign tickets</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Log Out</Text>
-          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/profile')}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || 'D'}</Text>
@@ -350,20 +336,32 @@ export default function DispatcherInbox() {
       </View>
 
       <View style={styles.splitView}>
-        {/* LEFT: List */}
-        <View style={styles.listColumn}>
-          <Text style={styles.columnHeader}>Incoming Reports ({tickets.length})</Text>
-          <FlatList
-            data={tickets}
-            renderItem={({ item }) => <TicketRow item={item} />}
-            keyExtractor={(item, index) => item.id || String(index)}
-          />
-        </View>
+        {/* LEFT: List - Show if not mobile OR if mobile and no ticket selected */}
+        {(!isMobile || (isMobile && !selectedTicket)) && (
+          <View style={[styles.listColumn, isMobile && { flex: 1 }]}>
+            <Text style={styles.columnHeader}>Incoming Reports ({tickets.length})</Text>
+            <FlatList
+              data={tickets}
+              renderItem={({ item }) => <TicketRow item={item} />}
+              keyExtractor={(item, index) => item.id || String(index)}
+            />
+          </View>
+        )}
 
-        {/* RIGHT: Details */}
-        <View style={styles.detailColumn}>
-          <DetailPanel />
-        </View>
+        {/* RIGHT: Details - Show if not mobile OR if mobile and ticket is selected */}
+        {(!isMobile || (isMobile && selectedTicket)) && (
+          <View style={[styles.detailColumn, isMobile && { flex: 1 }]}>
+            {isMobile && selectedTicket && (
+              <TouchableOpacity
+                style={{ marginBottom: 10, padding: 10, backgroundColor: '#eee', borderRadius: 8, alignSelf: 'flex-start' }}
+                onPress={() => setSelectedTicket(null)}
+              >
+                <Text style={{ fontWeight: 'bold' }}>← Back to List</Text>
+              </TouchableOpacity>
+            )}
+            <DetailPanel />
+          </View>
+        )}
 
         {/* --- THE GALLERY MODAL --- */}
         {selectedTicket && (

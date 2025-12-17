@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { registerForPushNotificationsAsync, saveUserToken } from '../utils/notifications';
 
 const AuthContext = createContext({});
 
@@ -60,6 +61,26 @@ export const AuthProvider = ({ children }) => {
         setUserRole('citizen'); // Optimistic update
     };
 
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+            await fetchUserRole(firebaseUser.uid);
+            setUser(firebaseUser);
+
+            // WEB-SAFE TOKEN REGISTRATION
+            // We delay slightly to let the browser environment settle
+            setTimeout(async () => {
+                const token = await registerForPushNotificationsAsync();
+                if (token) {
+                    await saveUserToken(firebaseUser.uid, token);
+                }
+            }, 1000);
+
+        } else {
+            // ... (logout logic)
+        }
+        setLoading(false);
+    });
+
     const logout = async () => {
         await signOut(auth);
         setUser(null);
@@ -73,7 +94,8 @@ export const AuthProvider = ({ children }) => {
             loading,
             login,
             registerCitizen,
-            logout
+            logout,
+            unsubscribe
         }}>
             {children}
         </AuthContext.Provider>

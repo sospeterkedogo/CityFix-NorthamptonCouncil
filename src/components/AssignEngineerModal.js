@@ -4,21 +4,27 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, STYLES } from '../constants/theme';
 
-// MOCK DATA - In production, fetch this from Firestore collection "users"
-const MOCK_ENGINEERS = [
-  { id: 'eng-1', name: 'Bob "The Builder" Smith', status: 'Available' },
-  { id: 'eng-2', name: 'Alice Fixit', status: 'Busy' },
-  { id: 'eng-3', name: 'John Doe', status: 'Available' },
-  { id: 'eng-4', name: 'Sarah Connor', status: 'On Leave' },
-];
+import { UserService } from '../services/userService';
 
 export default function AssignEngineerModal({ visible, onClose, onAssign }) {
   const [loading, setLoading] = useState(false);
+  const [engineers, setEngineers] = useState([]);
 
-  const handleSelect = async (engineerId) => {
+  React.useEffect(() => {
+    if (visible) {
+      loadEngineers();
+    }
+  }, [visible]);
+
+  const loadEngineers = async () => {
+    const data = await UserService.getAllEngineers();
+    setEngineers(data);
+  };
+
+  const handleSelect = async (engineer) => {
     setLoading(true);
     // Simulate network delay or wait for parent promise
-    await onAssign(engineerId);
+    await onAssign(engineer);
     setLoading(false);
     onClose();
   };
@@ -26,7 +32,7 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
   const renderEngineer = ({ item }) => (
     <TouchableOpacity
       style={styles.engineerRow}
-      onPress={() => handleSelect(item.id)}
+      onPress={() => handleSelect(item)}
       disabled={loading}
     >
       <View style={styles.avatar}>
@@ -64,7 +70,7 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
             </View>
           ) : (
             <FlatList
-              data={MOCK_ENGINEERS}
+              data={engineers}
               keyExtractor={(item, index) => item.id || String(index)}
               renderItem={renderEngineer}
               contentContainerStyle={{ padding: SPACING.m }}
