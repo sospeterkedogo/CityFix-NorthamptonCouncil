@@ -1,20 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, Image, Platform
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { MediaService } from '../../src/services/mediaService';
 import LocationPickerModal from '../../src/components/LocationPickerModal';
 import { useAuth } from '../../src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const DRAFTS_KEY = 'report_drafts';
+
 
 export default function ReportIssueScreen() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false); // Local state for upload progress
   const { user } = useAuth();
+
+  // Draft ID State
+  const [id, setId] = useState(null);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -25,6 +33,93 @@ export default function ReportIssueScreen() {
 
   // Media State
   const [media, setMedia] = useState([]); // Array of local URIs
+
+  // 1. Check for Draft on Mount
+  useEffect(() => {
+    // If draftId is passed, load that specific draft
+    const { draftId } = router.params || {}; // Get params directly or useLocalSearchParams above
+
+    if (draftId) {
+      loadDraft(draftId);
+    }
+    // We NO LONGER check for "any" draft on mount to avoid nagging. 
+    // Users must click "Resume" from dashboard to resume.
+  }, [router.params]);
+
+  const loadDraft = async (id) => {
+    try {
+      const json = await AsyncStorage.getItem(DRAFTS_KEY);
+      if (json) {
+        const drafts = JSON.parse(json);
+        const draft = drafts.find(d => d.id === id);
+
+        if (draft) {
+          setId(id); // Track current draft ID
+          setTitle(draft.title || '');
+          setDesc(draft.desc || '');
+          setLocation(draft.location || null);
+          setMedia(draft.media || []);
+          setCategory(draft.category || 'pothole');
+        }
+      }
+    } catch (e) {
+      console.error("Error loading draft", e);
+    }
+  };
+
+  // 2. Save Draft Function
+  const handleSaveDraft = async () => {
+    try {
+      const json = await AsyncStorage.getItem(DRAFTS_KEY);
+      let drafts = json ? JSON.parse(json) : [];
+
+      const now = Date.now();
+
+      const draftData = {
+        id: id || now.toString(), // Use existing ID or create new one
+        updatedAt: now,
+        title,
+        desc,
+        location,
+        media,
+        category
+      };
+
+      if (id) {
+        // Update existing
+        const index = drafts.findIndex(d => d.id === id);
+        if (index > -1) drafts[index] = draftData;
+        else drafts.push(draftData);
+      } else {
+        // New Draft
+        setId(draftData.id);
+        drafts.push(draftData);
+      }
+
+      await AsyncStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+
+      Alert.alert("Saved", "Draft saved to 'my drafts'.", [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+
+    } catch (e) {
+      console.log("Error saving draft", e);
+    }
+  };
+
+  const removeCurrentDraft = async () => {
+    if (!id) return;
+    try {
+      const json = await AsyncStorage.getItem(DRAFTS_KEY);
+      if (json) {
+        let drafts = JSON.parse(json);
+        drafts = drafts.filter(d => d.id !== id);
+        await AsyncStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+      }
+    } catch (e) {
+      console.log("Error removing draft", e);
+    }
+  };
 
   // 1. Pick Media (Images/Videos)
   const handleAddMedia = () => {
@@ -98,7 +193,11 @@ export default function ReportIssueScreen() {
 
   const handleSubmit = async () => {
     if (!title || !desc || !location) {
-      Alert.alert("Missing Info", "Please fill in all fields and location.");
+      if (Platform.OS === 'web') {
+        window.alert("Missing Info: Please fill in all fields and location.");
+      } else {
+        Alert.alert("Missing Info", "Please fill in all fields and location.");
+      }
       return;
     }
 
@@ -109,49 +208,70 @@ export default function ReportIssueScreen() {
       let uploadedUrls = [];
 
       if (media.length > 0) {
-        setUploading(true); // Show user we are uploading
+        setUploading(true);
         console.log("Starting Upload for", media.length, "files...");
 
-        // Upload all files in parallel
         const uploadPromises = media.map(file =>
           MediaService.uploadFile(file.uri, "reports")
         );
 
         uploadedUrls = await Promise.all(uploadPromises);
-        console.log("Uploads complete:", uploadedUrls);
+        console.log("Uploads complete");
         setUploading(false);
       }
       // ---------------------------
 
-      // Pass the URLs to the Ticket Service
       const result = await TicketService.submitTicket(
-        user.id, title, desc, category,
+        user.uid, title, desc, category,
         location.latitude, location.longitude,
-        uploadedUrls // <--- Sending the URLs now
+        uploadedUrls
       );
 
       setLoading(false);
 
       if (result.success) {
+        await removeCurrentDraft();
+
+        const successMsg = "Your report has been submitted successfully.";
+
         if (Platform.OS === 'web') {
-          if (confirm("Report Submitted!")) router.back();
+          window.alert("Success: " + successMsg);
+          router.replace('/(citizen)/dashboard');
         } else {
-          Alert.alert("Success", "Report submitted!", [{ text: "OK", onPress: () => router.back() }]);
+          Alert.alert(
+            "Success",
+            successMsg,
+            [{ text: "OK", onPress: () => router.replace('/(citizen)/dashboard') }]
+          );
         }
       } else {
-        alert("Error: " + result.error);
+        const errorMsg = "Error: " + result.error;
+        if (Platform.OS === 'web') {
+          window.alert(errorMsg);
+        } else {
+          Alert.alert("Submission Failed", result.error);
+        }
       }
 
     } catch (e) {
       console.error("Crash:", e);
       setLoading(false);
       setUploading(false);
-      alert("Upload failed. Try again.");
+
+      const crashMsg = "An unexpected error occurred. Please try again.";
+      if (Platform.OS === 'web') {
+        window.alert(crashMsg);
+      } else {
+        Alert.alert("Error", crashMsg);
+      }
     }
   };
 
   return (
     <ScrollView contentContainerStyle={STYLES.container}>
+      <TouchableOpacity onPress={() => router.push('/')} style={{ marginBottom: 10 }}>
+        <Text style={{ color: COLORS.action, fontSize: 16 }}>← Back</Text>
+      </TouchableOpacity>
       <Text style={styles.header}>Report an Issue</Text>
 
       {/* ... Title, Category Inputs ... */}
@@ -238,6 +358,15 @@ export default function ReportIssueScreen() {
         />
       </View>
 
+      {/* SAVE DRAFT BUTTON */}
+      <TouchableOpacity
+        style={styles.draftBtn}
+        onPress={handleSaveDraft}
+        disabled={loading}
+      >
+        <Text style={styles.draftText}>💾 Save Draft</Text>
+      </TouchableOpacity>
+
       {/* Submit Button */}
       <TouchableOpacity
         style={styles.submitButton}
@@ -277,6 +406,7 @@ const styles = StyleSheet.create({
   locationButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F6F3', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: COLORS.action, borderStyle: 'dashed' },
   locationButtonText: { color: COLORS.primary, fontWeight: 'bold' },
   submitButton: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  backButton: { backgroundColor: COLORS.action, padding: 5, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   submitText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 
   mediaContainer: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
@@ -289,4 +419,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 15,
+    marginTop: 30,
+    marginBottom: 50,
+  },
+  draftBtn: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  draftText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  submitBtn: {
+    flex: 2, // Submit button is bigger
+    backgroundColor: COLORS.primary,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...STYLES.shadow,
+  },
+  submitText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  }
 });

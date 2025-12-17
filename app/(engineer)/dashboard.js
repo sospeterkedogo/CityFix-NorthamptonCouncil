@@ -10,10 +10,6 @@ import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import * as Location from 'expo-location';
 import { getDistanceKm } from '../../src/utils/geo';
 
-// HARDCODED ENGINEER ID (Matches the one we used in the Dispatcher Modal)
-const ENGINEER_ID = 'eng-1';
-const ENGINEER_NAME = 'Bob "The Builder" Smith';
-
 export default function EngineerDashboard() {
   const { user } = useAuth();
   const router = useRouter();
@@ -21,6 +17,11 @@ export default function EngineerDashboard() {
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(true); // Default Available
   const [myLocation, setMyLocation] = useState(null);
+
+  // Use the logged-in user's ID
+  const ENGINEER_ID = user?.uid;
+  // We'll get the name from the profile fetch logic
+  const [engineerName, setEngineerName] = useState(user?.displayName || 'Engineer');
 
   useFocusEffect(
     useCallback(() => {
@@ -32,8 +33,10 @@ export default function EngineerDashboard() {
     setLoading(true);
 
     // 1. Load Profile (Status)
+    if (!ENGINEER_ID) return;
     const profile = await UserService.getEngineerProfile(ENGINEER_ID);
     setIsAvailable(profile.status === 'Available');
+    if (profile.name) setEngineerName(profile.name);
 
     // 2. Get My Location
     let loc = await Location.getCurrentPositionAsync({});
@@ -63,7 +66,7 @@ export default function EngineerDashboard() {
   const toggleStatus = async (value) => {
     setIsAvailable(value);
     const newStatus = value ? 'Available' : 'Busy / Holiday';
-    await UserService.updateStatus(ENGINEER_ID, newStatus, ENGINEER_NAME);
+    await UserService.updateStatus(ENGINEER_ID, newStatus, engineerName);
   };
 
   const openExternalMap = (lat, lng) => {

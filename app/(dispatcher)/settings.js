@@ -9,24 +9,17 @@ export default function DispatcherSettings() {
   return (
     <View style={STYLES.container}>
       <Text style={styles.header}>Admin Settings</Text>
-      
+
       <View style={styles.card}>
         <Text style={styles.label}>Profile</Text>
         <Text style={styles.value}>Dispatcher (Admin Role)</Text>
-        
+
         <View style={styles.divider} />
-        
+
         <Text style={styles.label}>Region</Text>
         <Text style={styles.value}>Northampton (North Zone)</Text>
 
         <View style={styles.divider} />
-
-        <TouchableOpacity 
-          style={styles.logoutBtn}
-          onPress={() => router.replace('/')}
-        >
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );

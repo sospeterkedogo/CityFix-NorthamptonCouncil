@@ -2,8 +2,22 @@ import { collection, addDoc, getDocs, doc, updateDoc, query, where, getDoc, writ
 import { db } from '../config/firebase';
 import { createTicket, TICKET_STATUS } from '../constants/models';
 import { canAssign } from '../constants/workflow';
+import { notifyUser, notifyRole } from '../utils/notifications';
+
 
 const TICKET_COLLECTION = 'tickets';
+
+// Helper to get a user's token
+const getUserToken = async (userId) => {
+  try {
+    if (!userId) return null;
+    const userSnap = await getDoc(doc(db, 'users', userId));
+    return userSnap.exists() ? userSnap.data().pushToken : null;
+  } catch (e) {
+    console.error("Error fetching token:", e);
+    return null;
+  }
+};
 
 export const TicketService = {
   /**
@@ -23,10 +37,14 @@ export const TicketService = {
       // 4. Write to Firestore
       const docRef = await addDoc(collection(db, TICKET_COLLECTION), ticketData);
 
-      console.log('✅ Ticket created with ID:', docRef.id);
+      // NOTIFICATION: Confirm to Citizen
+      await notifyUser(userId, "Ticket Received", `We have received your report: "${title}".`);
+
+      // NOTIFICATION: Alert Dispatchers
+      await notifyRole('dispatcher', "New Report", `New ticket submitted: ${title}`);
+
       return { success: true, id: docRef.id };
     } catch (error) {
-      console.error('❌ Error submitting ticket:', error);
       return { success: false, error: error.message };
     }
   },
@@ -102,7 +120,8 @@ export const TicketService = {
       const ticketSnap = await getDoc(ticketRef);
       if (!ticketSnap.exists()) throw new Error("Ticket not found");
 
-      const currentStatus = ticketSnap.data().status;
+      const ticketData = ticketSnap.data();
+      const currentStatus = ticketData.status;
 
       // 2. CHECK THE STATE MACHINE
       if (!canAssign(currentStatus)) {
@@ -116,9 +135,14 @@ export const TicketService = {
         updatedAt: Date.now()
       });
 
+      // NOTIFICATION: To Engineer
+      await notifyUser(engineerId, "New Job Assigned", `You are assigned to: ${ticketData.title}`);
+
+      // NOTIFICATION: To Citizen
+      await notifyUser(ticketData.userId, "Update: Engineer Assigned", `An engineer is on the way to fix your issue.`);
+
       return { success: true };
     } catch (error) {
-      console.error("Error assigning ticket:", error);
       return { success: false, error: error.message };
     }
   },
@@ -135,7 +159,6 @@ export const TicketService = {
       }
       return null;
     } catch (error) {
-      console.error("Error getting ticket:", error);
       return null;
     }
   },
@@ -147,12 +170,23 @@ export const TicketService = {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
 
+      const ticketSnap = await getDoc(ticketRef);
+      const ticketData = ticketSnap.exists() ? ticketSnap.data() : {};
+
       await updateDoc(ticketRef, {
         status: TICKET_STATUS.RESOLVED,
         resolutionNotes: notes,
         afterPhoto: afterPhotoUrl, // The proof!
         resolvedAt: Date.now()
       });
+
+      // NOTIFICATION: To Citizen
+      if (ticketData.userId) {
+        await notifyUser(ticketData.userId, "Issue Resolved! ✅", `Good news! "${ticketData.title}" has been fixed.`);
+      }
+
+      // NOTIFICATION: To QA
+      await notifyRole('qa', "Verification Needed", `Ticket #${ticketId.slice(0, 4)} is resolved. Please verify.`);
 
       return { success: true };
     } catch (error) {
@@ -166,10 +200,19 @@ export const TicketService = {
   verifyTicket: async (ticketId) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
+      const ticketSnap = await getDoc(ticketRef);
+      const ticketData = ticketSnap.exists() ? ticketSnap.data() : {};
+
       await updateDoc(ticketRef, {
         status: TICKET_STATUS.VERIFIED,
         verifiedAt: Date.now()
       });
+
+      // NOTIFICATION: To Citizen
+      if (ticketData.userId) {
+        await notifyUser(ticketData.userId, "Case Closed", `Your report "${ticketData.title}" has been verified and closed.`);
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
