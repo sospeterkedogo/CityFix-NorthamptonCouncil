@@ -6,7 +6,7 @@ import { COLORS, SPACING } from '../constants/theme';
 // --- LEAFLET IMPORTS (Web Only) ---
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+
 
 // Fix missing marker icons in Leaflet
 const icon = L.icon({
