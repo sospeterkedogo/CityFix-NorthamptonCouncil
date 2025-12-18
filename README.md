@@ -109,7 +109,28 @@ The core of City Fix is a strictly typed state machine that governs the lifecycl
 * **Cloud Functions:** Server-side image resizing and video compression to minimize bandwidth usage for field staff.
 
 ### Tech Stack
-* **Frontend:** React Native (Expo Managed Workflow)
-* **Backend:** Firebase (Firestore, Cloud Functions, Storage, Auth)
-* **Mapping:** [Insert Map Provider, e.g., React Native Maps]
-* **State Management:** [Insert State Lib, e.g., Zustand or Context API]
+* **Core Framework**
+    * **Frontend:** React Native (Expo Managed Workflow)
+    * **Platform Support:** Cross-Platform (iOS, Android, Web/PWA)
+    * **Routing:** Expo Router (File-based navigation)
+
+* **Backend & Infrastructure (Serverless)**
+    * **Database:** Firebase Firestore (NoSQL Real-time DB)
+    * **Authentication:** Firebase Auth (Email/Password)
+    * **Storage:** Firebase Storage (Image/Media hosting)
+    * **Hosting:** Firebase Hosting (for the Web PWA)
+
+* **Geospatial & Mapping (Hybrid Strategy)**
+    * **Native Mobile:** react-native-maps (Google Maps SDK / Apple Maps)
+    * **Web/PWA:** react-leaflet & Leaflet (OpenStreetMap)
+    * **Location Services:** expo-location
+
+* **State & Logic**
+    * **State Management:** React Context API (Custom AuthContext for global user state)
+    * **Notifications:** Expo Notifications (Client-side trigger pattern)
+    * **Local Persistence:** AsyncStorage (Draft saving & Onboarding checks)
+
+* **Build & Deployment**
+    * **Mobile Build:** EAS Build (Expo Application Services)
+    * **Web Build:** Metro Bundler (npx expo export)
+
