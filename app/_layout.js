@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { COLORS } from '../src/constants/theme';
 
 // Separate component to handle the "Traffic Cop" logic
@@ -53,6 +53,15 @@ function RootNavigation() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <RootNavigation />
