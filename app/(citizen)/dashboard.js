@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { TICKET_STATUS } from '../../src/constants/models';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -18,7 +19,7 @@ export default function Dashboard() {
   const [drafts, setDrafts] = useState([]);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
 
-  // Load data - wrapped in useFocusEffect so it refreshes when you navigate back
+  // Data refresh handler
   useFocusEffect(
     useCallback(() => {
       fetchTickets();
@@ -52,13 +53,13 @@ export default function Dashboard() {
     fetchTickets();
   };
 
-  // Helper to get status color
+  // Status color mapping
   const getStatusColor = (status) => {
     switch (status) {
       case TICKET_STATUS.RESOLVED: return COLORS.success;
       case TICKET_STATUS.IN_PROGRESS: return COLORS.warning;
       case TICKET_STATUS.VERIFIED: return COLORS.action;
-      case 'merged': return '#95a5a6'; // Grey (Neutral)
+      case 'merged': return '#95a5a6'; // Neutral
       default: return COLORS.text.secondary; // Draft/Submitted
     }
   };
@@ -95,40 +96,50 @@ export default function Dashboard() {
       {/* Header Section */}
       <View style={styles.headerContainer}>
         <View>
-          <Text style={styles.greeting}>Hello, Citizen</Text>
+          <Text style={styles.greeting}>Welcome Back</Text>
           <Text style={styles.subGreeting}>Helping keep Northampton safe.</Text>
         </View>
-        {/* PROFILE BUTTON */}
+        {/* Profile Button */}
         <TouchableOpacity onPress={() => router.push('/profile')}>
           <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || '?'}</Text>
+            {user?.email ? (
+              <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+            ) : (
+              <Ionicons name="person" size={20} color="white" />
+            )}
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* Primary Action - "The Big Button" */}
+      {/* Main Action Card */}
       <TouchableOpacity
         style={styles.actionCard}
         onPress={() => router.push('/(citizen)/report')}
       >
-        <Text style={styles.actionTitle}>+ Report New Issue</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+          <Ionicons name="add-circle-outline" size={24} color={COLORS.text.light} style={{ marginRight: 8 }} />
+          <Text style={styles.actionTitle}>Report New Issue</Text>
+        </View>
         <Text style={styles.actionSubtitle}>Spot a problem? Let us know.</Text>
       </TouchableOpacity>
 
-      {/* RESUME DRAFTS UI */}
+      {/* Resume Drafts UI */}
       {drafts.length > 0 && (
         <TouchableOpacity
           style={[styles.actionCard, { backgroundColor: 'white', borderWidth: 2, borderColor: COLORS.primary, marginBottom: SPACING.l }]}
           onPress={() => setShowDraftsModal(true)}
         >
-          <Text style={[styles.actionTitle, { color: COLORS.primary }]}>✎ Resume Saved Drafts</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+            <Ionicons name="document-text-outline" size={22} color={COLORS.primary} style={{ marginRight: 8 }} />
+            <Text style={[styles.actionTitle, { color: COLORS.primary }]}>Resume Saved Drafts</Text>
+          </View>
           <Text style={[styles.actionSubtitle, { color: COLORS.text.secondary }]}>
             You have {drafts.length} unfinished {drafts.length === 1 ? 'report' : 'reports'}
           </Text>
         </TouchableOpacity>
       )}
 
-      {/* DRAFTS MODAL */}
+      {/* Drafts Modal */}
       <Modal visible={showDraftsModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -178,8 +189,8 @@ export default function Dashboard() {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
+              <Ionicons name="checkmark-circle-outline" size={48} color={COLORS.text.secondary} style={{ marginBottom: 10 }} />
               <Text style={styles.emptyText}>No reports yet.</Text>
-              <Text style={styles.emptySubText}>You're a model citizen!</Text>
             </View>
           }
         />
@@ -210,7 +221,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: COLORS.text.secondary,
-    opacity: 0.8, // Increased opacity for readability
+    opacity: 0.8,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -230,11 +241,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text.light,
-    marginBottom: 4,
   },
   actionSubtitle: {
     fontSize: 14,
     color: '#BDC3C7', // Light grey for contrast on dark blue
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
@@ -301,10 +312,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text.secondary,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: '#BDC3C7',
   },
   modalOverlay: {
     flex: 1,

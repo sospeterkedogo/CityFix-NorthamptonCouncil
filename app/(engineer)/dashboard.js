@@ -9,18 +9,18 @@ import { UserService } from '../../src/services/userService';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import * as Location from 'expo-location';
 import { getDistanceKm } from '../../src/utils/geo';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EngineerDashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(true); // Default Available
+  const [isAvailable, setIsAvailable] = useState(true);
   const [myLocation, setMyLocation] = useState(null);
 
-  // Use the logged-in user's ID
   const ENGINEER_ID = user?.uid;
-  // We'll get the name from the profile fetch logic
+  // Fallback to minimal name until profile loads
   const [engineerName, setEngineerName] = useState(user?.displayName || 'Engineer');
 
   useFocusEffect(
@@ -32,30 +32,28 @@ export default function EngineerDashboard() {
   const loadDashboard = async () => {
     setLoading(true);
 
-    // 1. Load Profile (Status)
+    // Fetch Engineer Profile state
     if (!ENGINEER_ID) return;
     const profile = await UserService.getEngineerProfile(ENGINEER_ID);
     setIsAvailable(profile.status === 'Available');
     if (profile.name) setEngineerName(profile.name);
 
-    // 2. Get My Location
+    // Get current device location
     let loc = await Location.getCurrentPositionAsync({});
     const myLat = loc.coords.latitude;
     const myLng = loc.coords.longitude;
     setMyLocation({ lat: myLat, lng: myLng });
 
-    // 3. Load Assigned Jobs
+    // Fetch assigned task list
     const data = await TicketService.getEngineerJobs(ENGINEER_ID);
-    // Filter out resolved jobs (optional, depends on workflow)
     const activeJobs = data.filter(job => job.status !== 'resolved');
 
-    // 4. Calculate Distances & Sort
+    // Calculate distance and sort by proximity
     const jobsWithDistance = activeJobs.map(job => {
       const dist = getDistanceKm(myLat, myLng, job.location.latitude, job.location.longitude);
       return { ...job, distanceKm: dist };
     });
 
-    // Sort: Nearest First
     const sortedJobs = jobsWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
 
     setJobs(sortedJobs);
@@ -86,46 +84,54 @@ export default function EngineerDashboard() {
         <View style={styles.priorityBadge}>
           <Text style={styles.priorityText}>{item.priority?.toUpperCase() || 'NORMAL'}</Text>
         </View>
+        <Text style={styles.distance}>
+          {item.distanceKm < 1
+            ? `${(item.distanceKm * 1000).toFixed(0)}m away`
+            : `${item.distanceKm.toFixed(1)}km away`}
+        </Text>
       </View>
 
       <Text style={styles.jobTitle}>{item.title}</Text>
       <Text style={styles.jobDesc} numberOfLines={2}>{item.description}</Text>
 
       <View style={styles.footer}>
-        <Text style={styles.address}>
-          📍 {item.location?.latitude.toFixed(4)}, {item.location?.longitude.toFixed(4)}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="location-outline" size={14} color={COLORS.text.secondary} style={{ marginRight: 4 }} />
+          <Text style={styles.address}>
+            {item.location?.latitude.toFixed(4)}, {item.location?.longitude.toFixed(4)}
+          </Text>
+        </View>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => openExternalMap(item.location.latitude, item.location.longitude)}
         >
-          <Text style={styles.navText}>NAVIGATE ➔</Text>
+          <Text style={styles.navText}>NAVIGATE</Text>
+          <Ionicons name="arrow-forward" size={10} color="white" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </View>
-      <Text style={styles.distance}>
-        {item.distanceKm < 1
-          ? `${(item.distanceKm * 1000).toFixed(0)}m away`
-          : `${item.distanceKm.toFixed(1)}km away`}
-      </Text>
     </TouchableOpacity>
 
   );
 
   return (
     <View style={STYLES.container}>
-      {/* HEADER */}
+      {/* Header */}
       <View style={styles.headerContainer}>
         <View>
           <Text style={styles.headerTitle}>Engineer Dashboard</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/profile')}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || 'E'}</Text>
+            {user?.email ? (
+              <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+            ) : (
+              <Ionicons name="person-outline" size={24} color="white" />
+            )}
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* --- STATUS HEADER --- */}
+      {/* Status Toggle Header */}
       <View style={[
         styles.statusHeader,
         { backgroundColor: isAvailable ? COLORS.success : COLORS.error }
@@ -133,7 +139,7 @@ export default function EngineerDashboard() {
         <View>
           <Text style={styles.welcomeText}>Welcome, {user?.email?.split('@')[0] || 'Engineer'}</Text>
           <Text style={styles.statusText}>
-            CURRENT STATUS: {isAvailable ? 'AVAILABLE' : 'BUSY / DO NOT DISTURB'}
+            STATUS: {isAvailable ? 'AVAILABLE' : 'BUSY / DO NOT DISTURB'}
           </Text>
         </View>
         <Switch
@@ -155,8 +161,9 @@ export default function EngineerDashboard() {
           keyExtractor={(item, index) => item.id || String(index)}
           ListEmptyComponent={
             <View style={styles.emptyState}>
+              <Ionicons name="cafe-outline" size={48} color={COLORS.text.secondary} />
               <Text style={styles.emptyText}>No active jobs.</Text>
-              <Text style={styles.emptySub}>Enjoy your coffee break! ☕</Text>
+              <Text style={styles.emptySub}>Enjoy your break.</Text>
             </View>
           }
         />
@@ -210,6 +217,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: SPACING.s,
+    alignItems: 'center'
   },
   priorityBadge: {
     backgroundColor: '#ffedd5',
@@ -255,6 +263,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center'
   },
   navText: {
     color: 'white',
@@ -269,6 +279,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text.secondary,
+    marginTop: 10
   },
   emptySub: {
     marginTop: 8,

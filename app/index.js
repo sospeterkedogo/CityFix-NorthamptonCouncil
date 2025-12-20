@@ -1,54 +1,52 @@
-import { View, Text, Button, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS, STYLES } from '../src/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
+import { useAuth } from '../src/context/AuthContext';
 
-export default function LoginScreen() {
+export default function LandingScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // If already logged in, the RootLayout will likely handle it, 
+  // but we can offer a clear "Get Started" here.
 
   return (
     <View style={[STYLES.container, { justifyContent: 'center', alignItems: 'center', gap: 20 }]}>
-      <Text style={{ fontSize: 32, fontWeight: 'bold', color: COLORS.primary }}>
-        CityFix <Text style={{ color: COLORS.action }}>Northampton</Text>
-      </Text>
+      <View style={{ alignItems: 'center', marginBottom: 40 }}>
+        <Ionicons name="business" size={80} color={COLORS.primary} />
+        <Text style={{ fontSize: 32, fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>
+          CityFix <Text style={{ color: COLORS.action }}>Northampton</Text>
+        </Text>
+        <Text style={{ color: COLORS.text.secondary, marginTop: 5 }}>Community Reporting App</Text>
+      </View>
 
-      {/* Citizen Entry */}
-      <TouchableOpacity 
-        style={{ backgroundColor: COLORS.primary, padding: 15, borderRadius: 8, width: 250, alignItems: 'center' }}
-        onPress={() => router.replace('/(citizen)/dashboard')}
+      <TouchableOpacity
+        style={styles.btnPrimary}
+        onPress={() => router.replace('/(auth)/login')}
       >
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>Login as Citizen</Text>
-      </TouchableOpacity>
-
-      {/* Dispatcher Entry */}
-      <TouchableOpacity 
-        style={{ backgroundColor: 'white', borderWidth: 2, borderColor: COLORS.primary, padding: 15, borderRadius: 8, width: 250, alignItems: 'center' }}
-        onPress={() => router.replace('/(dispatcher)')}
-      >
-        <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Login as Dispatcher</Text>
-      </TouchableOpacity>
-
-      {/* Engineer Entry */}
-      <TouchableOpacity 
-        style={{ 
-          backgroundColor: '#E67E22', // Orange for construction
-          padding: 15, borderRadius: 8, width: 250, alignItems: 'center' 
-        }}
-        onPress={() => router.replace('/(engineer)/dashboard')}
-      >
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>Login as Engineer</Text>
-      </TouchableOpacity>
-
-      {/* QA Entry */}
-      <TouchableOpacity 
-        style={{ 
-          backgroundColor: '#8E44AD', // Purple for Governance
-          padding: 15, borderRadius: 8, width: 250, alignItems: 'center' 
-        }}
-        onPress={() => router.replace('/(qa)/dashboard')}
-      >
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>Login as QA Auditor</Text>
+        <Text style={styles.btnText}>Get Started</Text>
+        <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 10 }} />
       </TouchableOpacity>
 
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  btnPrimary: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...STYLES.shadow
+  },
+  btnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18
+  }
+});
