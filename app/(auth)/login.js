@@ -25,7 +25,6 @@ export default function LoginScreen() {
         if (creds) {
             setEmail(creds.email);
             setPassword(creds.pass);
-            // Initiate login with selected credentials
             setLoading(true);
             try {
                 await login(creds.email, creds.pass);
@@ -41,7 +40,6 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await login(email, password);
-            // Navigation is handled automatically by the root layout upon auth state change
         } catch (e) {
             Alert.alert("Login Failed", e.message);
             setLoading(false);
@@ -115,16 +113,28 @@ const styles = StyleSheet.create({
     loginBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
     btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
     scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f5f5f5' },
-    demoBox: { marginTop: 10, padding: 15, backgroundColor: '#e0e0e0', borderRadius: 8 },
-    demoTitle: { fontWeight: 'bold', marginBottom: 10, color: '#555', textAlign: 'center' },
+
+    demoBox: {
+        marginTop: 10,
+        padding: 15,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        gap: 10 // Explicit gap for desktop support
+    },
+    demoTitle: { fontWeight: 'bold', marginBottom: 5, color: '#555', textAlign: 'center' },
     demoBtn: {
         padding: 12,
-        borderRadius: 6,
-        marginBottom: 8,
+        borderRadius: 8,
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        backgroundColor: COLORS.secondary // Uniform color
+        backgroundColor: COLORS.secondary,
+        // Ensure separation
+        marginBottom: 0, // Using gap instead or let gap handle it
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)'
     },
     demoText: { color: 'white', fontWeight: 'bold' },
     demoNote: { fontSize: 10, color: '#888', textAlign: 'center', marginTop: 5 },
