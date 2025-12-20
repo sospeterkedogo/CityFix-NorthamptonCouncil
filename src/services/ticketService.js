@@ -241,6 +241,22 @@ export const TicketService = {
     }
   },
   /**
+   * Mark ticket as Under Review (Dispatcher Action)
+   */
+  markAsUnderReview: async (ticketId) => {
+    try {
+      const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
+      await updateDoc(ticketRef, {
+        status: TICKET_STATUS.UNDER_REVIEW,
+        updatedAt: Date.now()
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
    * Merges duplicate tickets into a parent ticket
    * @param {string} parentId - The ID of the ticket to keep
    * @param {string[]} duplicateIds - Array of IDs to close
