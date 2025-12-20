@@ -55,10 +55,21 @@ function RootNavigation() {
 export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
+      // 1. Leaflet CSS
+      const leafletLink = document.createElement('link');
+      leafletLink.rel = 'stylesheet';
+      leafletLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(leafletLink);
+
+      // 2. Ionicons Font Injection
+      const fontStyle = document.createElement('style');
+      fontStyle.textContent = `
+        @font-face {
+          font-family: 'Ionicons';
+          src: url('https://unpkg.com/@expo/vector-icons@13.0.0/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
+        }
+      `;
+      document.head.appendChild(fontStyle);
     }
   }, []);
 

@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { TicketService } from '../../../src/services/ticketService';
 import { COLORS, SPACING, STYLES } from '../../../src/constants/theme';
 import MediaGalleryModal from '../../../src/components/MediaGalleryModal';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CitizenTicketDetail() {
     const { id } = useLocalSearchParams();
@@ -42,8 +43,9 @@ export default function CitizenTicketDetail() {
             <ScrollView contentContainerStyle={STYLES.container}>
 
                 {/* HEADER */}
-                <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 10 }}>
-                    <Text style={{ color: COLORS.action, fontSize: 16 }}>← Back</Text>
+                <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="arrow-back" size={16} color={COLORS.action} style={{ marginRight: 5 }} />
+                    <Text style={{ color: COLORS.action, fontSize: 16 }}>Back</Text>
                 </TouchableOpacity>
 
                 <View style={styles.header}>
@@ -69,7 +71,10 @@ export default function CitizenTicketDetail() {
                 {/* SECTION 2: COUNCIL RESOLUTION (Only if Resolved) */}
                 {isResolved && ticket.afterPhoto && (
                     <View style={styles.resolutionBox}>
-                        <Text style={styles.resTitle}>✅ Council Resolution</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                            <Ionicons name="checkmark-circle" size={24} color={COLORS.success} style={{ marginRight: 8 }} />
+                            <Text style={styles.resTitle}>Council Resolution</Text>
+                        </View>
 
                         <View style={{ flexDirection: 'row', gap: 15 }}>
                             <TouchableOpacity onPress={() => openGallery([ticket.afterPhoto])}>
@@ -92,10 +97,28 @@ export default function CitizenTicketDetail() {
                 {/* STATUS TIMELINE (Simple Text Version) */}
                 <View style={styles.timeline}>
                     <Text style={styles.timelineHeader}>History</Text>
-                    <Text style={styles.timelineItem}>• Submitted</Text>
-                    {ticket.status !== 'draft' && <Text style={styles.timelineItem}>• Received by Council</Text>}
-                    {(ticket.status === 'assigned' || isResolved) && <Text style={styles.timelineItem}>• Engineer Assigned</Text>}
-                    {isResolved && <Text style={[styles.timelineItem, { color: COLORS.success, fontWeight: 'bold' }]}>• Issue Resolved</Text>}
+                    <View style={styles.timelineItemRow}>
+                        <Ionicons name="ellipse" size={8} color="#666" style={{ marginRight: 8 }} />
+                        <Text style={styles.timelineItem}>Submitted</Text>
+                    </View>
+                    {ticket.status !== 'draft' && (
+                        <View style={styles.timelineItemRow}>
+                            <Ionicons name="ellipse" size={8} color="#666" style={{ marginRight: 8 }} />
+                            <Text style={styles.timelineItem}>Received by Council</Text>
+                        </View>
+                    )}
+                    {(ticket.status === 'assigned' || isResolved) && (
+                        <View style={styles.timelineItemRow}>
+                            <Ionicons name="ellipse" size={8} color="#666" style={{ marginRight: 8 }} />
+                            <Text style={styles.timelineItem}>Engineer Assigned</Text>
+                        </View>
+                    )}
+                    {isResolved && (
+                        <View style={styles.timelineItemRow}>
+                            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginRight: 8 }} />
+                            <Text style={[styles.timelineItem, { color: COLORS.success, fontWeight: 'bold' }]}>Issue Resolved</Text>
+                        </View>
+                    )}
                 </View>
 
             </ScrollView>
@@ -138,7 +161,7 @@ const styles = StyleSheet.create({
         borderColor: COLORS.success,
         marginBottom: 30,
     },
-    resTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.success, marginBottom: 15 },
+    resTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.success }, // Removed MarginBottom as it's handled by wrapper
     proofThumb: { width: 80, height: 80, borderRadius: 8, borderWidth: 2, borderColor: COLORS.success },
     resLabel: { fontSize: 12, fontWeight: 'bold', color: COLORS.success },
     resText: { fontSize: 14, color: '#333', marginTop: 2, fontStyle: 'italic' },
@@ -147,5 +170,6 @@ const styles = StyleSheet.create({
     // Timeline
     timeline: { borderTopWidth: 1, borderColor: '#eee', paddingTop: 20 },
     timelineHeader: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-    timelineItem: { fontSize: 14, color: '#666', marginBottom: 5, marginLeft: 10 },
+    timelineItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5, marginLeft: 10 },
+    timelineItem: { fontSize: 14, color: '#666' },
 });
