@@ -1,15 +1,16 @@
 import { useAuth } from '../../src/context/AuthContext';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions, Alert } from 'react-native'; // Added Alert
+import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions, Alert } from 'react-native';
 import { Slot, useRouter, usePathname } from 'expo-router';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DispatcherLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { logout } = useAuth(); // Import logout
+  const { logout } = useAuth();
 
   const isMobile = width < 768;
 
@@ -34,20 +35,23 @@ export default function DispatcherLayout() {
     }
   };
 
-  // Simple Sidebar Item Component
-  const NavItem = ({ label, route, icon }) => {
+  // Sidebar navigation item
+  const NavItem = ({ label, route, iconName }) => {
     const isActive = pathname === route;
     return (
       <TouchableOpacity
         style={[styles.navItem, isActive && styles.navItemActive]}
         onPress={() => {
           router.push(route);
-          if (isMobile) setSidebarOpen(false); // Close sidebar on nav
+          if (isMobile) setSidebarOpen(false);
         }}
       >
-        <Text style={[styles.navText, isActive && styles.navTextActive]}>
-          {icon}  {label}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name={iconName} size={20} color={isActive ? "white" : "#bdc3c7"} style={{ marginRight: 10 }} />
+          <Text style={[styles.navText, isActive && styles.navTextActive]}>
+            {label}
+          </Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -55,17 +59,17 @@ export default function DispatcherLayout() {
   return (
     <View style={styles.container}>
 
-      {/* MOBILE HAMBURGER HEADER */}
+      {/* Mobile Header with Hamburger Menu */}
       {isMobile && (
         <View style={styles.mobileHeader}>
           <TouchableOpacity onPress={() => setSidebarOpen(true)} style={{ padding: 5 }}>
-            <Text style={{ fontSize: 28, color: COLORS.primary }}>☰</Text>
+            <Ionicons name="menu-outline" size={28} color={COLORS.primary} />
           </TouchableOpacity>
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: COLORS.primary, marginLeft: 15 }}>Admin Console</Text>
         </View>
       )}
 
-      {/* BACKDROP OVERLAY (Mobile) */}
+      {/* Mobile Backdrop */}
       {isMobile && sidebarOpen && (
         <TouchableOpacity
           style={styles.backdrop}
@@ -74,12 +78,12 @@ export default function DispatcherLayout() {
         />
       )}
 
-      {/* SIDEBAR (Persistent on Desktop, Overlay on Mobile) */}
+      {/* Sidebar Navigation */}
       {(!isMobile || sidebarOpen) && (
         <View style={[styles.sidebar, isMobile && styles.mobileSidebar]}>
           {isMobile && (
             <TouchableOpacity style={styles.closeBtn} onPress={() => setSidebarOpen(false)}>
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>✕</Text>
+              <Ionicons name="close-outline" size={28} color="white" />
             </TouchableOpacity>
           )}
 
@@ -88,22 +92,25 @@ export default function DispatcherLayout() {
           </View>
 
           <View style={styles.navMenu}>
-            <NavItem label="Inbox" route="/(dispatcher)" icon="📥" />
-            <NavItem label="Map View" route="/(dispatcher)/map" icon="🗺️" />
-            <NavItem label="Engineers" route="/(dispatcher)/engineers" icon="👷" />
-            <NavItem label="Settings" route="/(dispatcher)/settings" icon="⚙️" />
+            <NavItem label="Inbox" route="/(dispatcher)" iconName="mail-unread-outline" />
+            <NavItem label="Map View" route="/(dispatcher)/map" iconName="map-outline" />
+            <NavItem label="Engineers" route="/(dispatcher)/engineers" iconName="people-outline" />
+            <NavItem label="Settings" route="/(dispatcher)/settings" iconName="settings-outline" />
           </View>
 
           <TouchableOpacity
             style={styles.logoutBtn}
             onPress={handleLogout}
           >
-            <Text style={styles.logoutText}>Log Out</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="log-out-outline" size={20} color="#e74c3c" style={{ marginRight: 10 }} />
+              <Text style={styles.logoutText}>Log Out</Text>
+            </View>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* MAIN CONTENT AREA */}
+      {/* Main Content Area */}
       <View style={[styles.content, isMobile && { paddingTop: 80, paddingLeft: 10, paddingRight: 10 }]}>
         <Slot />
       </View>
@@ -114,7 +121,7 @@ export default function DispatcherLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row', // Default row layout
+    flexDirection: 'row',
     backgroundColor: '#f3f4f6',
     height: Platform.OS === 'web' ? '100vh' : '100%',
   },
@@ -129,7 +136,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
     borderBottomWidth: 1,
     borderColor: '#ddd',
-    // Elevation for Android
     elevation: 4,
   },
   sidebar: {
@@ -137,12 +143,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     padding: SPACING.m,
     justifyContent: 'space-between',
-    zIndex: 20, // High z-index for mobile overlay
+    zIndex: 20,
   },
   mobileSidebar: {
     position: 'absolute',
     top: 0, bottom: 0, left: 0,
-    width: '80%', // Not full width
+    width: '80%',
     maxWidth: 300,
     ...Platform.select({
       web: { boxShadow: '4px 0 10px rgba(0,0,0,0.3)' },

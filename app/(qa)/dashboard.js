@@ -8,6 +8,7 @@ import { TicketService } from '../../src/services/ticketService';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import BeforeAfterViewer from '../../src/components/BeforeAfterViewer';
 import MediaGalleryModal from '../../src/components/MediaGalleryModal';
+import { Ionicons } from '@expo/vector-icons';
 
 
 export default function QADashboard() {
@@ -17,7 +18,7 @@ export default function QADashboard() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // Rejection Logic
+  // Rejection Handler
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
 
@@ -43,23 +44,19 @@ export default function QADashboard() {
 
   const handleVerify = async () => {
     if (!selectedTicket) {
-      console.log("❌ No ticket selected");
       return;
     }
-
-    console.log("🖱️ Verify button clicked");
 
     // --- WEB LOGIC ---
     if (Platform.OS === 'web') {
       const confirmed = window.confirm("Are you sure this fix meets quality standards?");
       if (confirmed) {
-        console.log("✅ Confirmed. Calling Service...");
         const res = await TicketService.verifyTicket(selectedTicket.id);
 
         if (res.success) {
-          alert("Ticket Verified!"); // Simple web alert
+          alert("Ticket Verified!");
           loadQAQueue();
-          setSelectedTicket(null); // Clear selection
+          setSelectedTicket(null);
         } else {
           alert("Error: " + res.error);
         }
@@ -95,7 +92,7 @@ export default function QADashboard() {
 
     if (res.success) {
       alert("Ticket Reopened. Sent back to Dispatcher.");
-      loadQAQueue(); // Refresh list (item will disappear)
+      loadQAQueue();
     }
   };
 
@@ -111,7 +108,7 @@ export default function QADashboard() {
         <Text style={styles.rowTitle}>{item.title}</Text>
         <Text style={styles.rowSub}>Resolved by Eng. #{item.assignedTo}</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <Ionicons name="chevron-forward" size={18} color="#ccc" />
     </TouchableOpacity>
   );
 
@@ -124,13 +121,17 @@ export default function QADashboard() {
           <Text style={styles.headerSub}>{tickets.length} jobs pending verification</Text>
         </View>
 
-        {/* NEW: Profile / Logout Button */}
+        {/* Profile / Logout Button */}
         <TouchableOpacity
           style={styles.profileBtn}
           onPress={() => router.push('/profile')}
         >
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || 'Q'}</Text>
+            {user?.email ? (
+              <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+            ) : (
+              <Ionicons name="person-outline" size={20} color="white" />
+            )}
           </View>
         </TouchableOpacity>
       </View>
@@ -172,11 +173,13 @@ export default function QADashboard() {
                 {!showRejectInput ? (
                   <>
                     <TouchableOpacity style={styles.rejectBtn} onPress={() => setShowRejectInput(true)}>
-                      <Text style={styles.rejectText}>✕ REJECT / REOPEN</Text>
+                      <Ionicons name="close-circle-outline" size={18} color="white" style={{ marginRight: 5 }} />
+                      <Text style={styles.rejectText}>REJECT / REOPEN</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>
-                      <Text style={styles.verifyText}>✓ VERIFY FIX</Text>
+                      <Ionicons name="checkmark-circle-outline" size={20} color="white" style={{ marginRight: 5 }} />
+                      <Text style={styles.verifyText}>VERIFY FIX</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -209,6 +212,7 @@ export default function QADashboard() {
             </View>
           ) : (
             <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={48} color="#ccc" style={{ marginBottom: 10 }} />
               <Text style={styles.emptyText}>Select a job to verify</Text>
             </View>
           )}
@@ -237,7 +241,6 @@ const styles = StyleSheet.create({
   headerSub: { color: COLORS.text.secondary },
 
   profileBtn: {
-    // Removed border/background logic for pure avatar
   },
   avatarCircle: {
     width: 40,
@@ -269,7 +272,6 @@ const styles = StyleSheet.create({
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
   rowTitle: { fontWeight: 'bold', color: COLORS.primary },
   rowSub: { fontSize: 11, color: '#999' },
-  chevron: { marginLeft: 'auto', color: '#ccc', fontSize: 18 },
 
   detailTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.primary, marginBottom: 20 },
   sectionHeader: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 10, marginTop: 10, textTransform: 'uppercase' },
@@ -279,10 +281,10 @@ const styles = StyleSheet.create({
 
   decisionArea: { marginTop: 40, borderTopWidth: 1, borderColor: '#eee', paddingTop: 20, flexDirection: 'row', justifyContent: 'flex-end', gap: 15 },
 
-  verifyBtn: { backgroundColor: COLORS.success, paddingVertical: 15, paddingHorizontal: 30, borderRadius: 8, ...STYLES.shadow },
+  verifyBtn: { backgroundColor: COLORS.success, paddingVertical: 15, paddingHorizontal: 30, borderRadius: 8, ...STYLES.shadow, flexDirection: 'row', alignItems: 'center' },
   verifyText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 
-  rejectBtn: { backgroundColor: COLORS.error, paddingVertical: 15, paddingHorizontal: 20, borderRadius: 8 },
+  rejectBtn: { backgroundColor: COLORS.error, paddingVertical: 15, paddingHorizontal: 20, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   rejectText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
 
   rejectForm: { flex: 1 },
