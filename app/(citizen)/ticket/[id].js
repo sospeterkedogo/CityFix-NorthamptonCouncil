@@ -98,18 +98,21 @@ export default function CitizenTicketDetail() {
                 <View style={styles.timeline}>
                     <Text style={styles.timelineHeader}>History</Text>
                     <View style={styles.timelineItemRow}>
-                        <Ionicons name="ellipse" size={8} color="#666" style={{ marginRight: 8 }} />
+                        <Ionicons name="item-filled" size={8} color="#666" style={{ marginRight: 8 }} />
                         <Text style={styles.timelineItem}>Submitted</Text>
                     </View>
-                    {ticket.status !== 'draft' && (
+
+                    {/* UNDER REVIEW STEP */}
+                    {(ticket.status === 'under_review' || ticket.status === 'assigned' || isResolved) && (
                         <View style={styles.timelineItemRow}>
-                            <Ionicons name="ellipse" size={8} color="#666" style={{ marginRight: 8 }} />
-                            <Text style={styles.timelineItem}>Received by Council</Text>
+                            <Ionicons name="glasses-outline" size={14} color={COLORS.info} style={{ marginRight: 8 }} />
+                            <Text style={[styles.timelineItem, { color: COLORS.info, fontWeight: 'bold' }]}>Under Review</Text>
                         </View>
                     )}
+
                     {(ticket.status === 'assigned' || isResolved) && (
                         <View style={styles.timelineItemRow}>
-                            <Ionicons name="ellipse" size={8} color="#666" style={{ marginRight: 8 }} />
+                            <Ionicons name="item-filled" size={8} color="#666" style={{ marginRight: 8 }} />
                             <Text style={styles.timelineItem}>Engineer Assigned</Text>
                         </View>
                     )}
@@ -136,6 +139,7 @@ export default function CitizenTicketDetail() {
 const getStatusColor = (status) => {
     if (status === 'resolved') return COLORS.success;
     if (status === 'verified') return COLORS.success;
+    if (status === 'under_review') return '#8e44ad'; // Purple
     if (status === 'merged') return '#95a5a6';
     return COLORS.warning;
 };

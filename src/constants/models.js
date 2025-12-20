@@ -44,6 +44,7 @@
 export const TICKET_STATUS = {
   DRAFT: 'draft',
   SUBMITTED: 'submitted',
+  UNDER_REVIEW: 'under_review',
   ASSIGNED: 'assigned',
   IN_PROGRESS: 'in_progress',
   RESOLVED: 'resolved',

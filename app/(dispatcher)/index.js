@@ -212,6 +212,24 @@ export default function DispatcherInbox() {
             <Text style={styles.btnText}>Open in Maps</Text>
           </TouchableOpacity>
 
+          {/* New: Mark Under Review */}
+          {selectedTicket.status === 'submitted' && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#8e44ad' }]} // Purple for Review
+              onPress={async () => {
+                const res = await TicketService.markAsUnderReview(selectedTicket.id);
+                if (res.success) {
+                  alert("Ticket marked as Under Review");
+                  loadTickets();
+                  setSelectedTicket(prev => ({ ...prev, status: 'under_review' }));
+                }
+              }}
+            >
+              <Ionicons name="eye-outline" size={18} color="white" style={{ marginRight: 5 }} />
+              <Text style={styles.btnText}>Review</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[
               styles.actionBtn,

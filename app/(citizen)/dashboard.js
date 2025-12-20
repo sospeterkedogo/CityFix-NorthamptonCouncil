@@ -59,6 +59,7 @@ export default function Dashboard() {
       case TICKET_STATUS.RESOLVED: return COLORS.success;
       case TICKET_STATUS.IN_PROGRESS: return COLORS.warning;
       case TICKET_STATUS.VERIFIED: return COLORS.action;
+      case TICKET_STATUS.UNDER_REVIEW: return '#8e44ad'; // Purple
       case 'merged': return '#95a5a6'; // Neutral
       default: return COLORS.text.secondary; // Draft/Submitted
     }
