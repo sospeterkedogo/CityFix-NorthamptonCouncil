@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, Platform, Image } from 'react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { useRouter } from 'expo-router';
@@ -47,7 +47,12 @@ export default function LoginScreen() {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView contentContainerStyle={[styles.scrollContainer, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+            <Image
+                source={require('../../assets/splash.png')}
+                style={styles.logo}
+                resizeMode="contain"
+            />
             <Text style={styles.header}>Welcome Back</Text>
 
             {/* Input Fields */}
@@ -62,8 +67,13 @@ export default function LoginScreen() {
                 <Text style={styles.signupText}>Don't have an account? <Text style={styles.signupBold}>Sign Up</Text></Text>
             </TouchableOpacity>
 
+            {/* Demo Tip */}
+            <Text style={{ textAlign: 'center', color: '#666', fontSize: 13, marginTop: 30, marginBottom: 5 }}>
+                💡 Tip: Click below to access featured pages and personas!
+            </Text>
+
             {/* Demo Mode Toggle */}
-            <TouchableOpacity onPress={() => setIsDemoMode(!isDemoMode)} style={{ marginTop: 30, marginBottom: 10 }}>
+            <TouchableOpacity onPress={() => setIsDemoMode(!isDemoMode)} style={{ marginTop: 5, marginBottom: 10 }}>
                 <Text style={{ textAlign: 'center', color: COLORS.text.secondary, textDecorationLine: 'underline' }}>
                     {isDemoMode ? "Hide Demo Options" : "Try Demo Mode"}
                 </Text>
@@ -72,26 +82,39 @@ export default function LoginScreen() {
             {/* Demo Access Controls */}
             {isDemoMode && (
                 <View style={styles.demoBox}>
-                    <Text style={styles.demoTitle}>Select a Persona:</Text>
+                    <Text style={styles.demoTitle}>Select a Persona to Explore:</Text>
+                    <Text style={styles.tipText}>Tip: Click a persona below to instantly log in and experience that role.</Text>
 
                     <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('citizen')}>
                         <Ionicons name="person-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <Text style={styles.demoText}>Citizen</Text>
+                        <View>
+                            <Text style={styles.demoText}>Citizen</Text>
+                            <Text style={styles.demoSubText}>Report issues & track progress</Text>
+                        </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('dispatcher')}>
                         <Ionicons name="desktop-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <Text style={styles.demoText}>Dispatcher (Admin)</Text>
+                        <View>
+                            <Text style={styles.demoText}>Dispatcher (Admin)</Text>
+                            <Text style={styles.demoSubText}>Manage tickets & assign teams</Text>
+                        </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('engineer')}>
                         <Ionicons name="construct-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <Text style={styles.demoText}>Field Engineer</Text>
+                        <View>
+                            <Text style={styles.demoText}>Field Engineer</Text>
+                            <Text style={styles.demoSubText}>Complete tasks on-site</Text>
+                        </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('qa')}>
                         <Ionicons name="clipboard-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <Text style={styles.demoText}>QA Auditor</Text>
+                        <View>
+                            <Text style={styles.demoText}>QA Auditor</Text>
+                            <Text style={styles.demoSubText}>Verify completed work</Text>
+                        </View>
                     </TouchableOpacity>
 
                     <Text style={styles.demoNote}>*Requires Seed Script to be run once.</Text>
@@ -108,7 +131,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-    header: { fontSize: 30, fontWeight: 'bold', color: COLORS.primary, marginBottom: 40, textAlign: 'center' },
+    logo: { width: 150, height: 150, alignSelf: 'center', marginBottom: 20 },
+    header: { fontSize: 30, fontWeight: 'bold', color: COLORS.primary, marginBottom: 80, textAlign: 'center' },
     input: { backgroundColor: 'white', padding: 15, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
     loginBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
     btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
@@ -130,13 +154,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        backgroundColor: COLORS.secondary,
+        backgroundColor: '#455a64', // Darker Grey Blue for better contrast
         // Ensure separation
         marginBottom: 0, // Using gap instead or let gap handle it
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)'
     },
     demoText: { color: 'white', fontWeight: 'bold' },
+    demoSubText: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+    tipText: { fontSize: 12, color: '#666', fontStyle: 'italic', textAlign: 'center', marginBottom: 15 },
     demoNote: { fontSize: 10, color: '#888', textAlign: 'center', marginTop: 5 },
     iconSpacing: { marginRight: 8 },
     signupLink: { marginTop: 15, alignItems: 'center' },

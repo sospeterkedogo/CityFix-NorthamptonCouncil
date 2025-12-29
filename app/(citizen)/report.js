@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, Image, Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
@@ -268,136 +269,141 @@ export default function ReportIssueScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={STYLES.container}>
-      <TouchableOpacity onPress={() => router.push('/')} style={{ marginBottom: 10 }}>
-        <Text style={{ color: COLORS.action, fontSize: 16 }}>← Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.header}>Report an Issue</Text>
-
-      {/* ... Title, Category Inputs ... */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Issue Title</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Deep Pothole"
-          value={title} onChangeText={setTitle}
-        />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Category</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {['pothole', 'street_light', 'rubbish'].map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.catButton, category === cat && styles.catButtonActive]}
-              onPress={() => setCategory(cat)}
-            >
-              <Text style={[styles.catText, category === cat && styles.catTextActive]}>
-                {cat.replace('_', ' ').toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* ... Location Button ... */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Location</Text>
-        <TouchableOpacity style={styles.locationButton} onPress={() => setShowMap(true)}>
-          <Text style={{ fontSize: 24, marginRight: 10 }}>📍</Text>
-          <Text style={styles.locationButtonText}>
-            {location ? "Location Selected" : "Tap to set location"}
-          </Text>
+    <SafeAreaView style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <TouchableOpacity onPress={() => router.push('/')} style={{ marginBottom: 10 }}>
+          <Text style={{ color: COLORS.action, fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
-      </View>
+        <Text style={styles.header}>Report an Issue</Text>
 
-      {/* --- MEDIA PICKER UI --- */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Evidence (Photos/Video)</Text>
-
-        <View style={styles.mediaContainer}>
-          {media.map((item, index) => (
-            <View key={index} style={styles.thumbnailWrapper}>
-
-              {/* --- FIX FOR THUMBNAILS --- */}
-              {item.type === 'video' ? (
-                // Render a placeholder for videos
-                <View style={[styles.thumbnail, styles.videoPlaceholder]}>
-                  <Text style={{ fontSize: 24 }}>🎥</Text>
-                  <Text style={{ fontSize: 10, color: 'white', fontWeight: 'bold' }}>VIDEO</Text>
-                </View>
-              ) : (
-                // Render the image for photos
-                <Image source={{ uri: item.uri }} style={styles.thumbnail} />
-              )}
-
-              <TouchableOpacity
-                style={styles.removeBtn}
-                onPress={() => setMedia(media.filter((_, i) => i !== index))}
-              >
-                <Text style={{ color: 'white', fontWeight: 'bold' }}>X</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-
-          {media.length < 3 && (
-            <TouchableOpacity style={styles.addMediaBtn} onPress={handleAddMedia}>
-              <Text style={{ fontSize: 24, color: COLORS.text.secondary }}>+</Text>
-            </TouchableOpacity>
-          )}
+        {/* ... Title, Category Inputs ... */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Issue Title <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.helperText}>Give a short, clear name to the problem.</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Broken Streetlight on Main St"
+            value={title} onChangeText={setTitle}
+          />
         </View>
-      </View>
 
-      {/* Description */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, { height: 100 }]}
-          multiline value={desc} onChangeText={setDesc}
-        />
-      </View>
-
-      {/* SAVE DRAFT BUTTON */}
-      <TouchableOpacity
-        style={styles.draftBtn}
-        onPress={handleSaveDraft}
-        disabled={loading}
-      >
-        <Text style={styles.draftText}>💾 Save Draft</Text>
-      </TouchableOpacity>
-
-      {/* Submit Button */}
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        {loading ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <ActivityIndicator color={COLORS.text.light} />
-            <Text style={styles.submitText}>
-              {uploading ? "UPLOADING MEDIA..." : "SUBMITTING..."}
-            </Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Category <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.helperText}>Select the best category for this issue.</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {['pothole', 'street_light', 'rubbish'].map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.catButton, category === cat && styles.catButtonActive]}
+                onPress={() => setCategory(cat)}
+              >
+                <Text style={[styles.catText, category === cat && styles.catTextActive]}>
+                  {cat.replace('_', ' ').toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        ) : (
-          <Text style={styles.submitText}>SUBMIT REPORT</Text>
-        )}
-      </TouchableOpacity>
+        </View>
 
-      <LocationPickerModal
-        visible={showMap}
-        onClose={() => setShowMap(false)}
-        onSelectLocation={setLocation}
-      />
-    </ScrollView>
+        {/* ... Location Button ... */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Location <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.helperText}>Tap below to pin the exact location on the map.</Text>
+          <TouchableOpacity style={styles.locationButton} onPress={() => setShowMap(true)}>
+            <Text style={{ fontSize: 24, marginRight: 10 }}>📍</Text>
+            <Text style={styles.locationButtonText}>
+              {location ? "Location Selected" : "Tap to set location"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* --- MEDIA PICKER UI --- */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Evidence (Photos/Video)</Text>
+          <Text style={styles.helperText}>Max 3 files. Helping us see the issue speeds up fixes.</Text>
+
+          <View style={styles.mediaContainer}>
+            {media.map((item, index) => (
+              <View key={index} style={styles.thumbnailWrapper}>
+
+                {/* --- FIX FOR THUMBNAILS --- */}
+                {item.type === 'video' ? (
+                  // Render a placeholder for videos
+                  <View style={[styles.thumbnail, styles.videoPlaceholder]}>
+                    <Text style={{ fontSize: 24 }}>🎥</Text>
+                    <Text style={{ fontSize: 10, color: 'white', fontWeight: 'bold' }}>VIDEO</Text>
+                  </View>
+                ) : (
+                  // Render the image for photos
+                  <Image source={{ uri: item.uri }} style={styles.thumbnail} />
+                )}
+
+                <TouchableOpacity
+                  style={styles.removeBtn}
+                  onPress={() => setMedia(media.filter((_, i) => i !== index))}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>X</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {media.length < 3 && (
+              <TouchableOpacity style={styles.addMediaBtn} onPress={handleAddMedia}>
+                <Text style={{ fontSize: 24, color: COLORS.text.secondary }}>+</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Description */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Description <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.helperText}>Describe the issue in more detail (e.g. size, danger level).</Text>
+          <TextInput
+            style={[styles.input, { height: 100 }]}
+            multiline value={desc} onChangeText={setDesc}
+          />
+        </View>
+
+        {/* ACTION BUTTONS */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.draftBtn}
+            onPress={handleSaveDraft}
+            disabled={loading}
+          >
+            <Text style={styles.draftText}>💾 Save Draft</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.submitBtn}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.submitText}>SUBMIT REPORT</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <LocationPickerModal
+          visible={showMap}
+          onClose={() => setShowMap(false)}
+          onSelectLocation={setLocation}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   header: { fontSize: 28, fontWeight: 'bold', color: COLORS.primary, marginBottom: 20 },
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginBottom: 4 },
+  required: { color: COLORS.error },
+  helperText: { fontSize: 12, color: '#666', marginBottom: 8, fontStyle: 'italic' },
   input: { backgroundColor: COLORS.card, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#ddd' },
   catButton: { padding: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#eee' },
   catButtonActive: { backgroundColor: COLORS.action },

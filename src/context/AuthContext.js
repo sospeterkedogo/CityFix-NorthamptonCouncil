@@ -20,6 +20,19 @@ export const AuthProvider = ({ children }) => {
                 // User is signed in, fetch their Role from Firestore
                 await fetchUserRole(firebaseUser.uid);
                 setUser(firebaseUser);
+
+                // WEB-SAFE TOKEN REGISTRATION
+                setTimeout(async () => {
+                    const token = await registerForPushNotificationsAsync();
+                    if (token) {
+                        try {
+                            await saveUserToken(firebaseUser.uid, token);
+                        } catch (err) {
+                            console.log("Token save failed (minor):", err);
+                        }
+                    }
+                }, 1000);
+
             } else {
                 // User is signed out
                 setUser(null);
@@ -61,30 +74,16 @@ export const AuthProvider = ({ children }) => {
         setUserRole('citizen'); // Optimistic update
     };
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-            await fetchUserRole(firebaseUser.uid);
-            setUser(firebaseUser);
 
-            // WEB-SAFE TOKEN REGISTRATION
-            // We delay slightly to let the browser environment settle
-            setTimeout(async () => {
-                const token = await registerForPushNotificationsAsync();
-                if (token) {
-                    await saveUserToken(firebaseUser.uid, token);
-                }
-            }, 1000);
-
-        } else {
-            // ... (logout logic)
-        }
-        setLoading(false);
-    });
 
     const logout = async () => {
-        await signOut(auth);
-        setUser(null);
-        setUserRole(null);
+        try {
+            await signOut(auth);
+            setUser(null);
+            setUserRole(null);
+        } catch (error) {
+            console.error("AuthContext: SignOut failed", error);
+        }
     };
 
     return (
@@ -94,8 +93,7 @@ export const AuthProvider = ({ children }) => {
             loading,
             login,
             registerCitizen,
-            logout,
-            unsubscribe
+            logout
         }}>
             {children}
         </AuthContext.Provider>

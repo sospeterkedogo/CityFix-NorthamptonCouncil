@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, StyleSheet, Platform 
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, StyleSheet, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,7 +14,7 @@ export default function ResolveJobScreen() {
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Resolution State
   const [notes, setNotes] = useState('');
   const [afterPhoto, setAfterPhoto] = useState(null); // Local URI
@@ -65,16 +65,23 @@ export default function ResolveJobScreen() {
     try {
       // A. Upload the After Photo
       const downloadUrl = await MediaService.uploadFile(afterPhoto.uri, 'resolutions');
-      
+
       // B. Update Firestore
       const result = await TicketService.resolveTicket(ticket.id, notes, downloadUrl);
 
       setUploading(false);
 
       if (result.success) {
-        Alert.alert("Great Job!", "Ticket marked as RESOLVED.", [
-          { text: "Back to Dashboard", onPress: () => router.back() }
+        Alert.alert("Success", "Ticket Resolved!", [
+          { text: "OK", onPress: () => router.replace('/(engineer)/dashboard') }
         ]);
+        // Or for TRULY instant without even "Success" popup, just:
+        // router.replace('/(engineer)/dashboard');
+        // valid user request says "instant redirection", but usually they want to know it worked.
+        // Doing a self-dismissing approach or just direct redirect.
+
+        // Revised per "instant redirection":
+        router.replace('/(engineer)/dashboard');
       } else {
         alert("Error: " + result.error);
       }
@@ -89,7 +96,7 @@ export default function ResolveJobScreen() {
 
   return (
     <ScrollView contentContainerStyle={STYLES.container}>
-      
+
       {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Job #{ticket.id.slice(0, 5)}</Text>
@@ -117,7 +124,7 @@ export default function ResolveJobScreen() {
 
       {/* "AFTER" EVIDENCE (Input) */}
       <Text style={styles.sectionHeader}>The Fix (Proof)</Text>
-      
+
       <TouchableOpacity style={styles.cameraBox} onPress={takeAfterPhoto}>
         {afterPhoto ? (
           <Image source={{ uri: afterPhoto.uri }} style={styles.afterImage} />
@@ -137,7 +144,7 @@ export default function ResolveJobScreen() {
 
       {/* NOTES */}
       <Text style={styles.sectionHeader}>Resolution Notes</Text>
-      <TextInput 
+      <TextInput
         style={styles.input}
         placeholder="e.g. Filled pothole with cold lay asphalt..."
         multiline
@@ -147,11 +154,11 @@ export default function ResolveJobScreen() {
       />
 
       {/* RESOLVE BUTTON */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
-          styles.resolveButton, 
+          styles.resolveButton,
           (!afterPhoto || !notes) && styles.disabledButton // Visual feedback
-        ]} 
+        ]}
         onPress={handleResolve}
         disabled={uploading || !afterPhoto || !notes}
       >
@@ -187,13 +194,13 @@ const styles = StyleSheet.create({
   priorityText: { color: '#c2410c', fontSize: 10, fontWeight: 'bold' },
   jobTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 5 },
   jobDesc: { fontSize: 16, color: COLORS.text.secondary, marginBottom: 20 },
-  
+
   sectionHeader: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary, marginBottom: 10, marginTop: 10 },
   evidenceScroll: { flexDirection: 'row', marginBottom: 20 },
   beforeImage: { width: 120, height: 120, borderRadius: 8, marginRight: 10, backgroundColor: '#eee' },
-  
+
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
-  
+
   cameraBox: {
     height: 200,
     backgroundColor: '#E8F6F3',
@@ -207,7 +214,7 @@ const styles = StyleSheet.create({
   },
   afterImage: { width: '100%', height: '100%' },
   retakeText: { textAlign: 'center', color: COLORS.action, marginTop: 5, fontWeight: 'bold' },
-  
+
   input: {
     backgroundColor: COLORS.card,
     borderRadius: 8,

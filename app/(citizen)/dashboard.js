@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal
+  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -9,15 +9,26 @@ import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { TICKET_STATUS } from '../../src/constants/models';
 import { Ionicons } from '@expo/vector-icons';
+import FeedCard from '../../src/components/FeedCard';
+import { SocialService } from '../../src/services/socialService';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('mine'); // 'mine' or 'feed'
   const router = useRouter();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
+
+  // My Tickets State
+  const [myTickets, setMyTickets] = useState([]);
+
+  // Feed State
+  const [feedData, setFeedData] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [loadingFeed, setLoadingFeed] = useState(false);
 
   // Data refresh handler
   useFocusEffect(
@@ -47,6 +58,30 @@ export default function Dashboard() {
     setLoading(false);
     setRefreshing(false);
   };
+
+  // Fetch Community Feed
+  const fetchFeed = async (isRefresh = false) => {
+    if (loadingFeed) return;
+    setLoadingFeed(true);
+
+    const startAfterDoc = isRefresh ? null : lastDoc;
+    const { data, lastVisible } = await SocialService.getVerifiedFeed(startAfterDoc);
+
+    if (isRefresh) {
+      setFeedData(data);
+    } else {
+      setFeedData(prev => [...prev, ...data]);
+    }
+
+    setLastDoc(lastVisible);
+    setLoadingFeed(false);
+  };
+
+  useEffect(() => {
+    // Initial Load
+    fetchTickets(); // Load mine
+    fetchFeed(true); // Load feed
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -93,23 +128,26 @@ export default function Dashboard() {
   );
 
   return (
-    <View style={STYLES.container}>
+    <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+      {/* Header Section */}
       {/* Header Section */}
       <View style={styles.headerContainer}>
-        <View>
-          <Text style={styles.greeting}>Welcome Back</Text>
-          <Text style={styles.subGreeting}>Helping keep Northampton safe.</Text>
+        {/* --- TAB SELECTOR --- */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'mine' && styles.activeTab]}
+            onPress={() => setActiveTab('mine')}
+          >
+            <Text style={[styles.tabText, activeTab === 'mine' && styles.activeTabText]}>My Reports</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'feed' && styles.activeTab]}
+            onPress={() => setActiveTab('feed')}
+          >
+            <Text style={[styles.tabText, activeTab === 'feed' && styles.activeTabText]}>Community Fixes</Text>
+          </TouchableOpacity>
         </View>
-        {/* Profile Button */}
-        <TouchableOpacity onPress={() => router.push('/profile')}>
-          <View style={styles.avatarPlaceholder}>
-            {user?.email ? (
-              <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
-            ) : (
-              <Ionicons name="person" size={20} color="white" />
-            )}
-          </View>
-        </TouchableOpacity>
       </View>
 
       {/* Main Action Card */}
@@ -173,12 +211,9 @@ export default function Dashboard() {
         </View>
       </Modal>
 
-      {/* Ticket List */}
-      <Text style={styles.sectionTitle}>My Reports</Text>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
-      ) : (
+      {/* --- CONTENT --- */}
+      {activeTab === 'mine' ? (
+        // ... FlatList for My Tickets ...
         <FlatList
           data={tickets}
           renderItem={renderTicketItem}
@@ -195,7 +230,24 @@ export default function Dashboard() {
             </View>
           }
         />
+      ) : (
+        // ... Community Feed ...
+        <FlatList
+          data={feedData}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => <FeedCard ticket={item} />}
+          onEndReached={() => fetchFeed(false)}
+          onEndReachedThreshold={0.5}
+          refreshing={loadingFeed}
+          onRefresh={() => fetchFeed(true)}
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', marginTop: 50, color: '#999' }}>
+              No verified fixes to show yet.
+            </Text>
+          }
+        />
       )}
+
     </View>
   );
 }
@@ -353,5 +405,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20
-  }
+  },
+  tabContainer: { flexDirection: 'row', marginBottom: 15, backgroundColor: '#eee', borderRadius: 8, padding: 4 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
+  activeTab: { backgroundColor: 'white', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
+  tabText: { fontWeight: '600', color: '#999' },
+  activeTabText: { color: COLORS.primary },
 });

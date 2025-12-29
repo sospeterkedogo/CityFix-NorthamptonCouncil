@@ -43,43 +43,18 @@ export default function QADashboard() {
   };
 
   const handleVerify = async () => {
-    if (!selectedTicket) {
-      return;
+    if (!selectedTicket) return;
+
+    console.log("Verify button pressed. Proceeding directly...");
+    const res = await TicketService.verifyTicket(selectedTicket.id);
+
+    if (res.success) {
+      alert("Ticket Verified!");
+      loadQAQueue();
+      setSelectedTicket(null);
+    } else {
+      alert("Error: " + res.error);
     }
-
-    // --- WEB LOGIC ---
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm("Are you sure this fix meets quality standards?");
-      if (confirmed) {
-        const res = await TicketService.verifyTicket(selectedTicket.id);
-
-        if (res.success) {
-          alert("Ticket Verified!");
-          loadQAQueue();
-          setSelectedTicket(null);
-        } else {
-          alert("Error: " + res.error);
-        }
-      }
-      return;
-    }
-
-    // --- MOBILE LOGIC ---
-    Alert.alert("Confirm Verification", "Are you sure this fix meets quality standards?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Yes, Verify",
-        onPress: async () => {
-          const res = await TicketService.verifyTicket(selectedTicket.id);
-          if (res.success) {
-            loadQAQueue();
-            setSelectedTicket(null);
-          } else {
-            Alert.alert("Error", res.error);
-          }
-        }
-      }
-    ]);
   };
 
   const handleReject = async () => {

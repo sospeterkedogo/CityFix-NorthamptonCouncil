@@ -9,25 +9,7 @@ export default function UserProfile() {
     const router = useRouter();
 
     const handleLogout = async () => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Are you sure you want to log out?")) {
-                await logout();
-                router.replace('/(auth)/login');
-            }
-            return;
-        }
-
-        Alert.alert("Log Out", "Are you sure?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Log Out",
-                style: "destructive",
-                onPress: async () => {
-                    await logout();
-                    router.replace('/(auth)/login');
-                }
-            }
-        ]);
+        await logout();
     };
 
     const handleEnableNotifications = async () => {
@@ -50,7 +32,7 @@ export default function UserProfile() {
     };
 
     return (
-        <View style={STYLES.container}>
+        <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
             {/* Back Button */}
             <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 20 }}>
                 <Text style={{ fontSize: 18, color: COLORS.action }}>← Back</Text>
