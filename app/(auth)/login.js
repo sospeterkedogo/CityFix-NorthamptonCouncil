@@ -47,125 +47,319 @@ export default function LoginScreen() {
     };
 
     return (
-        <ScrollView contentContainerStyle={[styles.scrollContainer, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
-            <Image
-                source={require('../../assets/splash.png')}
-                style={styles.logo}
-                resizeMode="contain"
-            />
-            <Text style={styles.header}>Welcome Back</Text>
+        <View style={styles.mainContainer}>
+            {/* Background Pattern or Color */}
+            <View style={styles.bgHeader} />
 
-            {/* Input Fields */}
-            <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
-            <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={[styles.card, Platform.OS === 'web' && styles.webCard]}>
 
-            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
-                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>Log In</Text>}
-            </TouchableOpacity>
+                    {/* Header Section */}
+                    <View style={styles.headerContainer}>
+                        <Image
+                            source={require('../../assets/splash.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                        <Text style={styles.welcomeText}>Welcome Back</Text>
+                        <Text style={styles.subText}>Sign in to continue to City Fix</Text>
+                    </View>
 
-            <TouchableOpacity style={styles.signupLink} onPress={() => router.push('/(auth)/signup')}>
-                <Text style={styles.signupText}>Don't have an account? <Text style={styles.signupBold}>Sign Up</Text></Text>
-            </TouchableOpacity>
-
-            {/* Demo Tip */}
-            <Text style={{ textAlign: 'center', color: '#666', fontSize: 13, marginTop: 30, marginBottom: 5 }}>
-                💡 Tip: Click below to access featured pages and personas!
-            </Text>
-
-            {/* Demo Mode Toggle */}
-            <TouchableOpacity onPress={() => setIsDemoMode(!isDemoMode)} style={{ marginTop: 5, marginBottom: 10 }}>
-                <Text style={{ textAlign: 'center', color: COLORS.text.secondary, textDecorationLine: 'underline' }}>
-                    {isDemoMode ? "Hide Demo Options" : "Try Demo Mode"}
-                </Text>
-            </TouchableOpacity>
-
-            {/* Demo Access Controls */}
-            {isDemoMode && (
-                <View style={styles.demoBox}>
-                    <Text style={styles.demoTitle}>Select a Persona to Explore:</Text>
-                    <Text style={styles.tipText}>Tip: Click a persona below to instantly log in and experience that role.</Text>
-
-                    <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('citizen')}>
-                        <Ionicons name="person-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <View>
-                            <Text style={styles.demoText}>Citizen</Text>
-                            <Text style={styles.demoSubText}>Report issues & track progress</Text>
+                    {/* Form Section */}
+                    <View style={styles.formContainer}>
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.inputLabel}>Email Address</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="name@example.com"
+                                placeholderTextColor="#94a3b8"
+                                value={email}
+                                onChangeText={setEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
                         </View>
+
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.inputLabel}>Password</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter your password"
+                                placeholderTextColor="#94a3b8"
+                                secureTextEntry
+                                value={password}
+                                onChangeText={setPassword}
+                            />
+                        </View>
+
+                        <TouchableOpacity style={styles.forgotBtn}>
+                            <Text style={styles.forgotText}>Forgot password?</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
+                            {loading ? (
+                                <ActivityIndicator color="white" />
+                            ) : (
+                                <Text style={styles.loginBtnText}>Log In</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Divider */}
+                    <View style={styles.dividerContainer}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>OR</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
+
+                    < TouchableOpacity style={styles.signupLink} onPress={() => router.push('/(auth)/signup')}>
+                        <Text style={styles.signupText}>
+                            Don't have an account? <Text style={styles.signupBold}>Sign Up</Text>
+                        </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('dispatcher')}>
-                        <Ionicons name="desktop-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <View>
-                            <Text style={styles.demoText}>Dispatcher (Admin)</Text>
-                            <Text style={styles.demoSubText}>Manage tickets & assign teams</Text>
-                        </View>
-                    </TouchableOpacity>
+                    {/* Developer / Demo Section */}
+                    <View style={styles.demoSection}>
+                        <TouchableOpacity onPress={() => setIsDemoMode(!isDemoMode)} style={styles.demoToggle}>
+                            <Text style={styles.demoToogleText}>
+                                {isDemoMode ? "Hide Demo Access" : "Try Demo Persona Login"}
+                            </Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('engineer')}>
-                        <Ionicons name="construct-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <View>
-                            <Text style={styles.demoText}>Field Engineer</Text>
-                            <Text style={styles.demoSubText}>Complete tasks on-site</Text>
-                        </View>
-                    </TouchableOpacity>
+                        {/* Demo Tip (Always visible if Demo Mode is toggleable?) - User requested explicit tip */}
+                        {!isDemoMode && (
+                            <Text style={styles.tipText}>
+                                💡 Tip: Click above to access featured pages!
+                            </Text>
+                        )}
 
-                    <TouchableOpacity style={styles.demoBtn} onPress={() => handleDemoLogin('qa')}>
-                        <Ionicons name="clipboard-outline" size={20} color="white" style={styles.iconSpacing} />
-                        <View>
-                            <Text style={styles.demoText}>QA Auditor</Text>
-                            <Text style={styles.demoSubText}>Verify completed work</Text>
-                        </View>
-                    </TouchableOpacity>
+                        {isDemoMode && (
+                            <View style={styles.demoBox}>
+                                <Text style={styles.demoTitle}>One-Click Login:</Text>
+                                <View style={styles.demoGrid}>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#3498DB' }]} onPress={() => handleDemoLogin('citizen')}>
+                                        <Text style={styles.demoChipText}>Citizen</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#E67E22' }]} onPress={() => handleDemoLogin('dispatcher')}>
+                                        <Text style={styles.demoChipText}>Dispatcher</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#27AE60' }]} onPress={() => handleDemoLogin('engineer')}>
+                                        <Text style={styles.demoChipText}>Engineer</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#8E44AD' }]} onPress={() => handleDemoLogin('qa')}>
+                                        <Text style={styles.demoChipText}>QA</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={styles.demoNote}>*Run Seed Script first</Text>
+                            </View>
+                        )}
 
-                    <Text style={styles.demoNote}>*Requires Seed Script to be run once.</Text>
+                        <TouchableOpacity onPress={() => router.push('/(auth)/dev-seed')}>
+                            <Text style={styles.devLink}>[Dev Seed]</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            )}
-
-            {/* Developer Tools */}
-            <TouchableOpacity style={{ marginTop: 20 }} onPress={() => router.push('/(auth)/dev-seed')}>
-                <Text style={{ color: '#ccc', fontSize: 10, textAlign: 'center' }}>[Dev Seed]</Text>
-            </TouchableOpacity>
-
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    logo: { width: 150, height: 150, alignSelf: 'center', marginBottom: 20 },
-    header: { fontSize: 30, fontWeight: 'bold', color: COLORS.primary, marginBottom: 80, textAlign: 'center' },
-    input: { backgroundColor: 'white', padding: 15, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
-    loginBtn: { backgroundColor: COLORS.primary, padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
-    btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-    scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f5f5f5' },
-
-    demoBox: {
-        marginTop: 10,
-        padding: 15,
-        backgroundColor: '#f3f4f6',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-        gap: 10 // Explicit gap for desktop support
+    mainContainer: {
+        flex: 1,
+        backgroundColor: '#F8FAFC', // Very light blue-grey
     },
-    demoTitle: { fontWeight: 'bold', marginBottom: 5, color: '#555', textAlign: 'center' },
-    demoBtn: {
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        flexDirection: 'row',
+    bgHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 250,
+        backgroundColor: COLORS.primary,
+    },
+    scrollContent: {
+        flexGrow: 1,
         justifyContent: 'center',
-        backgroundColor: '#455a64', // Darker Grey Blue for better contrast
-        // Ensure separation
-        marginBottom: 0, // Using gap instead or let gap handle it
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)'
+        padding: 20,
+        paddingTop: 60, // Push card down nicely
     },
-    demoText: { color: 'white', fontWeight: 'bold' },
-    demoSubText: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
-    tipText: { fontSize: 12, color: '#666', fontStyle: 'italic', textAlign: 'center', marginBottom: 15 },
-    demoNote: { fontSize: 10, color: '#888', textAlign: 'center', marginTop: 5 },
-    iconSpacing: { marginRight: 8 },
-    signupLink: { marginTop: 15, alignItems: 'center' },
-    signupText: { color: COLORS.text.secondary },
-    signupBold: { color: COLORS.primary, fontWeight: 'bold' }
+    card: {
+        backgroundColor: 'white',
+        borderRadius: 24,
+        padding: 30,
+        width: '100%',
+        maxWidth: 450,
+        alignSelf: 'center',
+        // Modern soft shadow
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    webCard: {
+        maxWidth: 480,
+        marginTop: 40,
+        marginBottom: 40,
+    },
+    headerContainer: {
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 20,
+    },
+    welcomeText: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 8,
+    },
+    subText: {
+        fontSize: 15,
+        color: '#64748B',
+    },
+    formContainer: {
+        width: '100%',
+    },
+    inputWrapper: {
+        marginBottom: 20,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#334155',
+        marginBottom: 8,
+        marginLeft: 4,
+    },
+    input: {
+        backgroundColor: '#F1F5F9', // Slate 100
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        fontSize: 16,
+        color: '#1E293B',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    forgotBtn: {
+        alignSelf: 'flex-end',
+        marginBottom: 24,
+    },
+    forgotText: {
+        color: COLORS.action,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    loginBtn: {
+        backgroundColor: COLORS.action,
+        paddingVertical: 16,
+        borderRadius: 14,
+        alignItems: 'center',
+        shadowColor: COLORS.action,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    loginBtnText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 30,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E2E8F0',
+    },
+    dividerText: {
+        marginHorizontal: 10,
+        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    signupLink: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    signupText: {
+        color: '#64748B',
+        fontSize: 15,
+    },
+    signupBold: {
+        color: COLORS.action,
+        fontWeight: '700',
+    },
+    // Demo Section
+    demoSection: {
+        marginTop: 10,
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        paddingTop: 20,
+    },
+    demoToggle: {
+        paddingVertical: 5,
+    },
+    demoToogleText: {
+        color: '#94a3b8',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    tipText: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 5,
+        fontStyle: 'italic',
+    },
+    demoBox: {
+        width: '100%',
+        marginTop: 15,
+        backgroundColor: '#F8FAFC',
+        padding: 15,
+        borderRadius: 12,
+    },
+    demoTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    demoGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        justifyContent: 'center',
+    },
+    demoChip: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    demoChipText: {
+        color: 'white',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    demoNote: {
+        fontSize: 10,
+        color: '#94a3b8',
+        textAlign: 'center',
+        marginTop: 10,
+    },
+    devLink: {
+        fontSize: 10,
+        color: '#CBD5E1',
+        marginTop: 15,
+    }
 });

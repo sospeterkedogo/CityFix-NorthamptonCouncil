@@ -78,7 +78,7 @@ export default function OnboardingScreen() {
 
     const Slide = ({ item }) => (
         <View style={[styles.slide, { width: slideWidth }]}>
-            <View style={[styles.contentContainer, isDesktop && { maxWidth: 600 }]}>
+            <View style={[styles.card, isDesktop && { maxWidth: 600, height: '85%' }]}>
                 <View style={styles.textContainer}>
                     <Text style={styles.title}>{item.title}</Text>
                     <Text style={styles.subtitle}>{item.subtitle}</Text>
@@ -91,8 +91,11 @@ export default function OnboardingScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={styles.mainContainer}>
             <StatusBar barStyle="light-content" />
+            {/* Background Header Strip */}
+            <View style={styles.bgHeader} />
+
             <FlatList
                 ref={ref}
                 data={SLIDES}
@@ -112,7 +115,6 @@ export default function OnboardingScreen() {
                 )}
             />
 
-            {/* FIXED FOOTER */}
             <View style={styles.footer}>
                 {/* Pagination Dots */}
                 <View style={styles.pagination}>
@@ -127,76 +129,122 @@ export default function OnboardingScreen() {
                     ))}
                 </View>
 
-                {/* Buttons */}
-                <View style={styles.btnRow}>
-                    {/* BACK BUTTON */}
-                    <TouchableOpacity
-                        style={[
-                            styles.btn,
-                            styles.btnSecondary,
-                            currentIndex === 0 && { borderColor: 'rgba(255,255,255,0.3)' } // Dim border
-                        ]}
-                        onPress={prevSlide}
-                        disabled={currentIndex === 0}
-                    >
-                        <Text style={[
-                            styles.btnText,
-                            styles.btnTextSecondary,
-                            currentIndex === 0 && { color: 'rgba(255,255,255,0.3)' } // Dim text
-                        ]}>BACK</Text>
-                    </TouchableOpacity>
+                {/* Action Area */}
+                <View style={[styles.btnWrapper, currentIndex === SLIDES.length - 1 && { width: '100%' }]}>
 
-                    {/* NEXT / START BUTTON */}
-                    <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={currentIndex === SLIDES.length - 1 ? handleFinish : nextSlide}>
-                        <Text style={styles.btnText}>{currentIndex === SLIDES.length - 1 ? "START DEMO" : "NEXT"}</Text>
-                    </TouchableOpacity>
-                </View>
+                    {/* Row Container for Buttons */}
+                    <View style={{ flexDirection: 'row', gap: 15, width: '100%', justifyContent: 'center' }}>
 
-                {/* Toggle & Options (Last Slide Only) */}
-                {currentIndex === SLIDES.length - 1 ? (
-                    <View style={styles.optionsRow}>
-                        <Switch
-                            value={dontShowAgain}
-                            onValueChange={setDontShowAgain}
-                            trackColor={{ false: "#767577", true: COLORS.action }}
-                            thumbColor={dontShowAgain ? "#f4f3f4" : "#f4f3f4"}
-                        />
-                        <Text style={styles.toggleText}>Don't show next time</Text>
+                        {/* BACK BUTTON (Hidden on first slide) */}
+                        <TouchableOpacity
+                            style={[
+                                styles.btn,
+                                styles.btnSecondary,
+                                currentIndex === 0 && { borderColor: 'transparent' } // Hide border if disabled
+                            ]}
+                            onPress={prevSlide}
+                            disabled={currentIndex === 0}
+                        >
+                            <Text style={[
+                                styles.btnText,
+                                styles.btnTextSecondary,
+                                currentIndex === 0 && { color: 'transparent' } // Hide text
+                            ]}>BACK</Text>
+                        </TouchableOpacity>
+
+                        {/* NEXT / FINISH BUTTON */}
+                        {currentIndex === SLIDES.length - 1 ? (
+                            <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={handleFinish}>
+                                <Text style={styles.btnText}>START DEMO</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={nextSlide}>
+                                <Text style={styles.btnText}>NEXT</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
-                ) : (
-                    <TouchableOpacity onPress={handleFinish} style={styles.skipBtn}>
-                        <Text style={styles.skipText}>Skip Intro</Text>
-                    </TouchableOpacity>
-                )}
+
+                    {/* LAST SLIDE EXTRAS */}
+                    {currentIndex === SLIDES.length - 1 && (
+                        <View style={styles.toggleRow}>
+                            <Switch
+                                value={dontShowAgain}
+                                onValueChange={setDontShowAgain}
+                                trackColor={{ false: "#cbd5e1", true: COLORS.action }}
+                                thumbColor={"#f8fafc"}
+                            />
+                            <Text style={styles.toggleText}>Don't show this intro next time</Text>
+                        </View>
+                    )}
+
+                    {/* SKIP BUTTON (Hidden on last slide) */}
+                    {currentIndex !== SLIDES.length - 1 && (
+                        <TouchableOpacity onPress={handleFinish} style={{ marginTop: 20 }}>
+                            <Text style={styles.skipText}>Skip Intro</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.primary },
-    slide: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    contentContainer: { width: '100%', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60 }, // Added top spacing
-    imageContainer: { width: '100%', marginBottom: 25, marginTop: 25, justifyContent: 'center', alignItems: 'center' },
+    mainContainer: { flex: 1, backgroundColor: '#F8FAFC' },
+    bgHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '45%', // Cover top half roughly
+        backgroundColor: COLORS.primary,
+    },
+    slide: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+
+    // Card Style
+    card: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'white',
+        borderRadius: 24,
+        padding: 20,
+        paddingTop: 40,
+        alignItems: 'center',
+        // Shadow
+        shadowColor: "#64748B",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+
+    imageContainer: { width: '100%', marginTop: 'auto', marginBottom: 20, justifyContent: 'center', alignItems: 'center' },
     image: { width: '100%', height: '100%' },
-    textContainer: { width: '100%', alignItems: 'center', minHeight: 100 }, // Reserve space for text
-    title: { fontSize: 28, fontWeight: 'bold', color: 'white', marginBottom: 25, textAlign: 'center' },
-    subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 24 },
 
-    footer: { padding: 20, paddingBottom: 40, alignItems: 'center', backgroundColor: COLORS.primary }, // Blend with bg
-    pagination: { flexDirection: 'row', height: 20, marginBottom: 20 },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 4 },
-    activeDot: { backgroundColor: 'white', width: 12, height: 12, borderRadius: 6, marginTop: -2 },
+    textContainer: { width: '100%', alignItems: 'center', marginBottom: 20 },
+    title: { fontSize: 28, fontWeight: '800', color: '#1E293B', marginBottom: 15, textAlign: 'center' },
+    subtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', lineHeight: 24 },
 
-    btnRow: { flexDirection: 'row', width: '100%', maxWidth: 500, justifyContent: 'space-between', gap: 15 },
-    btn: { flex: 1, paddingVertical: 15, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-    btnPrimary: { backgroundColor: 'white' },
-    btnSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'white' },
-    btnText: { color: COLORS.primary, fontWeight: 'bold', fontSize: 16 },
-    btnTextSecondary: { color: 'white' },
+    footer: { padding: 20, paddingBottom: 40, alignItems: 'center' },
+    pagination: { flexDirection: 'row', justifyContent: 'center', height: 20, marginBottom: 20 },
+    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#CBD5E1', marginHorizontal: 4 }, // Light grey inactive
+    activeDot: { backgroundColor: COLORS.primary, width: 24 }, // Primary active, elongated
 
-    optionsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 10 },
-    toggleText: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
-    skipBtn: { marginTop: 20 },
-    skipText: { color: 'rgba(255,255,255,0.7)', fontSize: 14, textDecorationLine: 'underline' }
+    btnWrapper: { alignItems: 'center', width: '100%' },
+    btn: { flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: 'center', justifyContent: 'center', maxWidth: 200 },
+    btnPrimary: {
+        backgroundColor: COLORS.action,
+        shadowColor: COLORS.action,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    btnSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#94a3b8' },
+    btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+    btnTextSecondary: { color: '#64748B' },
+
+    toggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 10 },
+    toggleText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
+    skipText: { color: '#94a3b8', fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' }
 });
