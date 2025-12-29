@@ -29,7 +29,8 @@
     "notification": {
       "icon": "./assets/icon.png",
       "color": "#ffffff",
-      "vapidPublicKey": "BPfiypc72CFrBdkgMDPLDzy-fijbHD2-W371DyWFmHjzqyfq7hRlsH3za49JvdFlHGsjJcW2L_1ln1GRj7kz2Xg"
+      "vapidPublicKey": "BPfiypc72CFrBdkgMDPLDzy-fijbHD2-W371DyWFmHjzqyfq7hRlsH3za49JvdFlHGsjJcW2L_1ln1GRj7kz2Xg",
+      "serviceWorkerPath": "firebase-messaging-sw.js"
     },
     "web": {
       "favicon": "./assets/splash.png",

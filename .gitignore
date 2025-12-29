@@ -39,3 +39,5 @@ app-example
 
 # firebase config
 firebase.js
+firebase-messaging-sw.js
+    
