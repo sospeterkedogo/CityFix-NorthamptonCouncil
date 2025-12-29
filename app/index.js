@@ -1,52 +1,35 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { COLORS, STYLES } from '../src/constants/theme';
-import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
-import { useAuth } from '../src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { COLORS } from '../src/constants/theme';
 
-export default function LandingScreen() {
+export default function Index() {
   const router = useRouter();
-  const { user } = useAuth();
 
-  // If already logged in, the RootLayout will likely handle it, 
-  // but we can offer a clear "Get Started" here.
+  useEffect(() => {
+    checkOnboarding();
+  }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
+
+      if (hasOnboarded === 'true') {
+        // Only skip if the user explicitly checked the box previously
+        router.replace('/(auth)');
+      } else {
+        // Default: Show the "Demo Intro" slides
+        router.replace('/onboarding');
+      }
+    } catch (e) {
+      router.replace('/onboarding');
+    }
+  };
 
   return (
-    <View style={[STYLES.container, { justifyContent: 'center', alignItems: 'center', gap: 20 }]}>
-      <View style={{ alignItems: 'center', marginBottom: 40 }}>
-        <Ionicons name="business" size={80} color={COLORS.primary} />
-        <Text style={{ fontSize: 32, fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>
-          CityFix <Text style={{ color: COLORS.action }}>Northampton</Text>
-        </Text>
-        <Text style={{ color: COLORS.text.secondary, marginTop: 5 }}>Community Reporting App</Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.btnPrimary}
-        onPress={() => router.replace('/(auth)/login')}
-      >
-        <Text style={styles.btnText}>Get Started</Text>
-        <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 10 }} />
-      </TouchableOpacity>
-
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.primary }}>
+      <ActivityIndicator size="large" color="white" />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  btnPrimary: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    ...STYLES.shadow
-  },
-  btnText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18
-  }
-});

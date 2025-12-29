@@ -40,90 +40,90 @@ export default function CitizenTicketDetail() {
 
     return (
         <View style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={STYLES.container}>
+            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+                    {/* HEADER */}
+                    <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="arrow-back" size={16} color={COLORS.action} style={{ marginRight: 5 }} />
+                        <Text style={{ color: COLORS.action, fontSize: 16 }}>Back</Text>
+                    </TouchableOpacity>
 
-                {/* HEADER */}
-                <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="arrow-back" size={16} color={COLORS.action} style={{ marginRight: 5 }} />
-                    <Text style={{ color: COLORS.action, fontSize: 16 }}>Back</Text>
-                </TouchableOpacity>
-
-                <View style={styles.header}>
-                    <Text style={styles.title}>{ticket.title}</Text>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor(ticket.status) }]}>
-                        <Text style={styles.badgeText}>{ticket.status.toUpperCase()}</Text>
-                    </View>
-                </View>
-
-                <Text style={styles.date}>Reported on {new Date(ticket.createdAt).toLocaleDateString()}</Text>
-                <Text style={styles.desc}>{ticket.description}</Text>
-
-                {/* SECTION 1: MY EVIDENCE */}
-                <Text style={styles.sectionTitle}>Your Evidence</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
-                    {ticket.photos?.length > 0 ? ticket.photos.map((url, i) => (
-                        <TouchableOpacity key={i} onPress={() => openGallery(ticket.photos)}>
-                            <Image source={{ uri: url }} style={styles.thumb} />
-                        </TouchableOpacity>
-                    )) : <Text style={styles.italic}>No photos uploaded.</Text>}
-                </ScrollView>
-
-                {/* SECTION 2: COUNCIL RESOLUTION (Only if Resolved) */}
-                {isResolved && ticket.afterPhoto && (
-                    <View style={styles.resolutionBox}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-                            <Ionicons name="checkmark-circle" size={24} color={COLORS.success} style={{ marginRight: 8 }} />
-                            <Text style={styles.resTitle}>Council Resolution</Text>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>{ticket.title}</Text>
+                        <View style={[styles.badge, { backgroundColor: getStatusColor(ticket.status) }]}>
+                            <Text style={styles.badgeText}>{ticket.status.toUpperCase()}</Text>
                         </View>
+                    </View>
 
-                        <View style={{ flexDirection: 'row', gap: 15 }}>
-                            <TouchableOpacity onPress={() => openGallery([ticket.afterPhoto])}>
-                                <Image source={{ uri: ticket.afterPhoto }} style={styles.proofThumb} />
+                    <Text style={styles.date}>Reported on {new Date(ticket.createdAt).toLocaleDateString()}</Text>
+                    <Text style={styles.desc}>{ticket.description}</Text>
+
+                    {/* SECTION 1: MY EVIDENCE */}
+                    <Text style={styles.sectionTitle}>Your Evidence</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
+                        {ticket.photos?.length > 0 ? ticket.photos.map((url, i) => (
+                            <TouchableOpacity key={i} onPress={() => openGallery(ticket.photos)}>
+                                <Image source={{ uri: url }} style={styles.thumb} />
                             </TouchableOpacity>
+                        )) : <Text style={styles.italic}>No photos uploaded.</Text>}
+                    </ScrollView>
 
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.resLabel}>Engineer's Note:</Text>
-                                <Text style={styles.resText}>
-                                    "{ticket.resolutionNotes || 'Fixed.'}"
-                                </Text>
-                                <Text style={styles.resDate}>
-                                    Fixed on {new Date(ticket.resolvedAt || Date.now()).toLocaleDateString()}
-                                </Text>
+                    {/* SECTION 2: COUNCIL RESOLUTION (Only if Resolved) */}
+                    {isResolved && ticket.afterPhoto && (
+                        <View style={styles.resolutionBox}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                                <Ionicons name="checkmark-circle" size={24} color={COLORS.success} style={{ marginRight: 8 }} />
+                                <Text style={styles.resTitle}>Council Resolution</Text>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 15 }}>
+                                <TouchableOpacity onPress={() => openGallery([ticket.afterPhoto])}>
+                                    <Image source={{ uri: ticket.afterPhoto }} style={styles.proofThumb} />
+                                </TouchableOpacity>
+
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.resLabel}>Engineer's Note:</Text>
+                                    <Text style={styles.resText}>
+                                        "{ticket.resolutionNotes || 'Fixed.'}"
+                                    </Text>
+                                    <Text style={styles.resDate}>
+                                        Fixed on {new Date(ticket.resolvedAt || Date.now()).toLocaleDateString()}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
-                )}
-
-                {/* STATUS TIMELINE (Simple Text Version) */}
-                <View style={styles.timeline}>
-                    <Text style={styles.timelineHeader}>History</Text>
-                    <View style={styles.timelineItemRow}>
-                        <Ionicons name="item-filled" size={8} color="#666" style={{ marginRight: 8 }} />
-                        <Text style={styles.timelineItem}>Submitted</Text>
-                    </View>
-
-                    {/* UNDER REVIEW STEP */}
-                    {(ticket.status === 'under_review' || ticket.status === 'assigned' || isResolved) && (
-                        <View style={styles.timelineItemRow}>
-                            <Ionicons name="glasses-outline" size={14} color={COLORS.info} style={{ marginRight: 8 }} />
-                            <Text style={[styles.timelineItem, { color: COLORS.info, fontWeight: 'bold' }]}>Under Review</Text>
-                        </View>
                     )}
 
-                    {(ticket.status === 'assigned' || isResolved) && (
+                    {/* STATUS TIMELINE (Simple Text Version) */}
+                    <View style={styles.timeline}>
+                        <Text style={styles.timelineHeader}>History</Text>
                         <View style={styles.timelineItemRow}>
                             <Ionicons name="item-filled" size={8} color="#666" style={{ marginRight: 8 }} />
-                            <Text style={styles.timelineItem}>Engineer Assigned</Text>
+                            <Text style={styles.timelineItem}>Submitted</Text>
                         </View>
-                    )}
-                    {isResolved && (
-                        <View style={styles.timelineItemRow}>
-                            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginRight: 8 }} />
-                            <Text style={[styles.timelineItem, { color: COLORS.success, fontWeight: 'bold' }]}>Issue Resolved</Text>
-                        </View>
-                    )}
-                </View>
 
+                        {/* UNDER REVIEW STEP */}
+                        {(ticket.status === 'under_review' || ticket.status === 'assigned' || isResolved) && (
+                            <View style={styles.timelineItemRow}>
+                                <Ionicons name="glasses-outline" size={14} color={COLORS.info} style={{ marginRight: 8 }} />
+                                <Text style={[styles.timelineItem, { color: COLORS.info, fontWeight: 'bold' }]}>Under Review</Text>
+                            </View>
+                        )}
+
+                        {(ticket.status === 'assigned' || isResolved) && (
+                            <View style={styles.timelineItemRow}>
+                                <Ionicons name="item-filled" size={8} color="#666" style={{ marginRight: 8 }} />
+                                <Text style={styles.timelineItem}>Engineer Assigned</Text>
+                            </View>
+                        )}
+                        {isResolved && (
+                            <View style={styles.timelineItemRow}>
+                                <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginRight: 8 }} />
+                                <Text style={[styles.timelineItem, { color: COLORS.success, fontWeight: 'bold' }]}>Issue Resolved</Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
             </ScrollView>
 
             <MediaGalleryModal
