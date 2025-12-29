@@ -1,130 +1,71 @@
 import { Platform } from 'react-native';
-import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
 import { db } from '../config/firebase';
-import { doc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
+import { useEffect } from 'react';
 
 // 1. Configure Notification Handler (Visuals)
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
-        shouldSetBadge: false,
+        shouldSetBadge: true,
     }),
 });
 
-// 2. Get Token (Web Compatible)
+// 2. Register (kept for compatibility)
 export async function registerForPushNotificationsAsync() {
-    let token;
-
-    // Web-Specific Setup
-    if (Platform.OS === 'web') {
-        // On web, we check permissions differently
+    // Permission requests still needed for Local Notifications
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
         try {
             const { status } = await Notifications.requestPermissionsAsync();
-            if (status !== 'granted') {
-                console.log('Web Notification permission denied');
-                return null;
-            }
-        } catch (e) {
-            console.log("Web Push not supported in this browser context:", e);
-            return null;
-        }
-    } else {
-        // Android/iOS Setup
-        if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync('default', {
-                name: 'default',
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
-            });
-        }
+            finalStatus = status;
+        } catch (e) { console.log("Perm error", e) }
+    }
 
-        if (Device.isDevice) {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                finalStatus = status;
-            }
-            if (finalStatus !== 'granted') {
-                return null;
-            }
+    // On Web, manually request browser permission so Alerts work
+    if (Platform.OS === 'web' && 'Notification' in window) {
+        if (Notification.permission !== 'granted') {
+            await Notification.requestPermission();
         }
     }
 
-    // Get the token safely
-    try {
-        if (Platform.OS === 'web') {
-            console.log("Web Push: Skipping token fetch (Service Worker needed).");
-            return null;
-        }
-
-        const projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
-        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-        token = tokenData.data;
-        console.log("🔔 Token:", token);
-    } catch (e) {
-        console.log("Error fetching token (Expected on some simulators/browsers):", e);
-    }
-
-    return token;
+    return "virtual-token-active";
 }
 
-// 3. Save Token Helper
+// 3. Save Token (No-op now)
 export const saveUserToken = async (userId, token) => {
-    if (!userId || !token) return;
-    try {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, { pushToken: token });
-    } catch (e) {
-        // Ignore errors if user doc doesn't exist yet
-    }
+    // No-op
 };
 
-// 4. Send Notification (The Postman)
-export const sendPushNotification = async (expoPushToken, title, body, data = {}) => {
-    if (!expoPushToken) return;
-
-    const message = {
-        to: expoPushToken,
-        sound: 'default',
-        title: title,
-        body: body,
-        data: data,
-    };
-
+// 4. Send "Virtual Push" (Writes to Firestore)
+export const sendAppNotification = async (userId, title, body, data = {}) => {
+    if (!userId) return;
     try {
-        const response = await fetch('https://exp.host/--/api/v2/push/send', {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                'Accept-encoding': 'gzip, deflate',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(message),
+        await addDoc(collection(db, 'users', userId, 'notifications'), {
+            title,
+            body,
+            data,
+            read: false,
+            createdAt: serverTimestamp()
         });
-        const result = await response.json();
-        console.log("🔔 Push Notification Result:", result);
-    } catch (error) {
-        console.error("Push Error:", error);
+        console.log(`📨 Virtual Notification sent to ${userId}:`, title);
+    } catch (e) {
+        console.error("Error sending virtual notification:", e);
     }
-};
+}
+
+export const sendPushNotification = async (token, title, body, data) => {
+    // Deprecated for direct token send, but if used, we can't easily map token -> userId here.
+    // Ideally we use notifyUser/notifyRole instead.
+    console.log("Direct sendPushNotification called (Deprecated for Virtual Push)");
+}
 
 // 5. Notify by ID
 export const notifyUser = async (userId, title, body) => {
-    if (!userId) return;
-    try {
-        const userSnap = await getDoc(doc(db, 'users', userId));
-        if (userSnap.exists()) {
-            const token = userSnap.data().pushToken;
-            if (token) await sendPushNotification(token, title, body);
-        }
-    } catch (e) {
-        console.error("Notify User Error:", e);
-    }
+    await sendAppNotification(userId, title, body);
 };
 
 // 6. Notify by Role
@@ -133,10 +74,47 @@ export const notifyRole = async (role, title, body) => {
         const q = query(collection(db, 'users'), where('role', '==', role));
         const snapshot = await getDocs(q);
         snapshot.forEach(doc => {
-            const token = doc.data().pushToken;
-            if (token) sendPushNotification(token, title, body);
+            sendAppNotification(doc.id, title, body);
         });
+        console.log(`📣 Notified all ${role}s`);
     } catch (e) {
         console.error("Notify Role Error:", e);
     }
+};
+
+// 7. LISTEN HOOK (To be used in _layout.js)
+export const useNotificationListener = (user) => {
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        console.log("👂 Listening for notifications for:", user.uid);
+        const q = query(
+            collection(db, 'users', user.uid, 'notifications'),
+            where('read', '==', false)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type === 'added') {
+                    const notif = change.doc.data();
+
+                    // Trigger Local Notification
+                    await Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: notif.title,
+                            body: notif.body,
+                            data: notif.data,
+                        },
+                        trigger: null, // Instant
+                    });
+
+                    // Mark as read immediately
+                    const docRef = doc(db, 'users', user.uid, 'notifications', change.doc.id);
+                    await updateDoc(docRef, { read: true });
+                }
+            });
+        });
+
+        return () => unsubscribe();
+    }, [user]);
 };
