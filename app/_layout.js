@@ -1,37 +1,85 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { View, ActivityIndicator, Platform } from 'react-native';
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router'; // <--- Import usePathname
+import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/constants/theme';
 
-// Separate component to handle the "Traffic Cop" logic
+// --- Configuration ---
+const ROLE_PATHS = {
+  citizen: '/(citizen)',
+  dispatcher: '/(dispatcher)',
+  engineer: '/(engineer)/dashboard',
+  qa: '/(qa)/dashboard',
+};
+
+const PUBLIC_GROUPS = ['(auth)', 'onboarding'];
+
+// --- Helper Hook for Web Styling (Keep this) ---
+function useWebConfig() {
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    const style = document.createElement('style');
+    style.textContent = `
+      @font-face {
+        font-family: 'Ionicons';
+        src: url('https://unpkg.com/@expo/vector-icons@13.0.0/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+}
+
+// --- Navigation Logic ---
 function RootNavigation() {
   const { user, userRole, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname(); // <--- Get the exact path string
 
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inProfile = segments[0] === 'profile';
+    const currentGroup = segments[0];
 
-    if (!user && !inAuthGroup) {
-      // If not logged in, kick them to the Login page
-      router.replace('/(auth)/login');
-    } else if (user && userRole && !inProfile) {
-      // If logged in, redirect based on Role (unless viewing profile)
-      if (userRole === 'citizen' && segments[0] !== '(citizen)') {
-        router.replace('/(citizen)/dashboard');
-      } else if (userRole === 'dispatcher' && segments[0] !== '(dispatcher)') {
-        router.replace('/(dispatcher)');
-      } else if (userRole === 'engineer' && segments[0] !== '(engineer)') {
-        router.replace('/(engineer)/dashboard');
-      } else if (userRole === 'qa' && segments[0] !== '(qa)') {
-        router.replace('/(qa)/dashboard');
+    // LOGIC FIX: Check pathname for 'profile' because segments might be empty at root
+    const isProfile = pathname.includes('/profile');
+    const isPublic = PUBLIC_GROUPS.includes(currentGroup);
+
+    // Scenario 1: User is NOT logged in
+    if (!user) {
+      // If they are not in a public area, kick them out
+      if (!isPublic) {
+        // User Request: "when they log out, I want them to land back in the onboarding screen"
+        router.replace('/onboarding');
+      }
+      return;
+    }
+
+    // Scenario 2: User IS logged in
+    // If they are on the profile page, let them stay.
+    if (isProfile) return;
+
+    // If they are in a public area (like Login), send them to their dashboard
+    if (isPublic) {
+      if (userRole && ROLE_PATHS[userRole]) {
+        router.replace(ROLE_PATHS[userRole]);
+      }
+      return;
+    }
+
+    // Scenario 3: Role Enforcement
+    if (userRole && currentGroup !== `(${userRole})`) {
+      const targetPath = ROLE_PATHS[userRole];
+      if (targetPath) {
+        router.replace(targetPath);
       }
     }
-  }, [user, userRole, loading, segments]);
+
+  }, [user, userRole, loading, segments, pathname]);
 
   if (loading) {
     return (
@@ -48,31 +96,14 @@ function RootNavigation() {
       <Stack.Screen name="(dispatcher)" />
       <Stack.Screen name="(engineer)" />
       <Stack.Screen name="(qa)" />
+      {/* ADD PROFILE HERE so the router knows about it */}
+      <Stack.Screen name="profile" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      // 1. Leaflet CSS
-      const leafletLink = document.createElement('link');
-      leafletLink.rel = 'stylesheet';
-      leafletLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(leafletLink);
-
-      // 2. Ionicons Font Injection
-      const fontStyle = document.createElement('style');
-      fontStyle.textContent = `
-        @font-face {
-          font-family: 'Ionicons';
-          src: url('https://unpkg.com/@expo/vector-icons@13.0.0/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
-        }
-      `;
-      document.head.appendChild(fontStyle);
-    }
-  }, []);
-
+  useWebConfig();
   return (
     <AuthProvider>
       <RootNavigation />

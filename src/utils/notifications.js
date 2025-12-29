@@ -57,6 +57,11 @@ export async function registerForPushNotificationsAsync() {
 
     // Get the token safely
     try {
+        if (Platform.OS === 'web') {
+            console.log("Web Push: Skipping token fetch (Service Worker needed).");
+            return null;
+        }
+
         const projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
         const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         token = tokenData.data;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
@@ -29,7 +29,12 @@ export default function SignupScreen() {
     };
 
     return (
-        <View style={[STYLES.container, { justifyContent: 'center' }]}>
+        <View style={[STYLES.container, { justifyContent: 'center' }, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+            <Image
+                source={require('../../assets/splash.png')}
+                style={styles.logo}
+                resizeMode="contain"
+            />
             <Text style={styles.header}>Join City Fix</Text>
             <Text style={styles.subHeader}>Help improve your community.</Text>
 
@@ -61,8 +66,9 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
+    logo: { width: 120, height: 120, alignSelf: 'center', marginBottom: 20 },
     header: { fontSize: 30, fontWeight: 'bold', color: COLORS.primary, textAlign: 'center' },
-    subHeader: { fontSize: 16, color: COLORS.text.secondary, textAlign: 'center', marginBottom: 30 },
+    subHeader: { fontSize: 16, color: COLORS.text.secondary, textAlign: 'center', marginBottom: 80 },
     input: { backgroundColor: 'white', padding: 15, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
     btn: { backgroundColor: COLORS.action, padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
     btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
