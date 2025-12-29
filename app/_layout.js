@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { Stack, useRouter, useSegments, usePathname } from 'expo-router'; // <--- Import usePathname
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { NotificationProvider } from '../src/context/NotificationContext';
 import { COLORS } from '../src/constants/theme';
 
 // --- Configuration ---
@@ -14,7 +15,7 @@ const ROLE_PATHS = {
 
 const PUBLIC_GROUPS = ['(auth)', 'onboarding'];
 
-// --- Helper Hook for Web Styling (Keep this) ---
+// --- Helper Hook for Web Styling ---
 function useWebConfig() {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -38,32 +39,29 @@ function RootNavigation() {
   const { user, userRole, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
-  const pathname = usePathname(); // <--- Get the exact path string
+  const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
 
     const currentGroup = segments[0];
 
-    // LOGIC FIX: Check pathname for 'profile' because segments might be empty at root
+    // Check pathname for 'profile' because segments might be empty at root
     const isProfile = pathname.includes('/profile');
     const isPublic = PUBLIC_GROUPS.includes(currentGroup);
 
     // Scenario 1: User is NOT logged in
     if (!user) {
-      // If they are not in a public area, kick them out
       if (!isPublic) {
-        // User Request: "when they log out, I want them to land back in the onboarding screen"
         router.replace('/onboarding');
       }
       return;
     }
 
     // Scenario 2: User IS logged in
-    // If they are on the profile page, let them stay.
     if (isProfile) return;
 
-    // If they are in a public area (like Login), send them to their dashboard
+    // If in public area, redirect to dashboard
     if (isPublic) {
       if (userRole && ROLE_PATHS[userRole]) {
         router.replace(ROLE_PATHS[userRole]);
@@ -106,7 +104,9 @@ export default function RootLayout() {
   useWebConfig();
   return (
     <AuthProvider>
-      <RootNavigation />
+      <NotificationProvider>
+        <RootNavigation />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

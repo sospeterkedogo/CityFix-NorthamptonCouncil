@@ -3,6 +3,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
+import { useNotifications } from '../../src/context/NotificationContext';
 
 // Custom "+" Button Component
 const CustomAddButton = ({ onPress }) => (
@@ -17,6 +18,7 @@ const CustomAddButton = ({ onPress }) => (
 
 export default function CitizenTabsLayout() {
     const router = useRouter();
+    const { unreadCount } = useNotifications();
 
     return (
         <Tabs
@@ -48,7 +50,17 @@ export default function CitizenTabsLayout() {
                 }}
             />
 
-            {/* 2. THE CENTER "+" BUTTON (Dummy Screen) */}
+            {/* 2. DASHBOARD */}
+            <Tabs.Screen
+                name="dashboard"
+                options={{
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="speedometer-outline" size={26} color={color} />
+                    ),
+                }}
+            />
+
+            {/* 3. THE CENTER "+" BUTTON (Dummy Screen) */}
             <Tabs.Screen
                 name="report_dummy"
                 options={{
@@ -65,27 +77,27 @@ export default function CitizenTabsLayout() {
                 })}
             />
 
-            {/* 3. MY REPORTS */}
+            {/* 4. MY REPORTS */}
             <Tabs.Screen
                 name="my-reports"
                 options={{
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="grid-outline" size={28} color={color} />
+                        <Ionicons name="grid-outline" size={26} color={color} />
                     ),
                 }}
             />
 
-            {/* 4. DASHBOARD */}
+            {/* 5. NOTIFICATIONS (New) */}
             <Tabs.Screen
-                name="dashboard"
+                name="notifications"
                 options={{
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="speedometer-outline" size={28} color={color} />
+                        <Ionicons name="notifications-outline" size={26} color={color} />
                     ),
+                    tabBarBadge: unreadCount > 0 ? unreadCount : null,
+                    tabBarBadgeStyle: { backgroundColor: COLORS.error, fontSize: 10, minWidth: 16, height: 16 },
                 }}
             />
-
-
 
             {/* Hide the actual Report screen from the tab bar, 
           so it opens as a full page when clicked */}
