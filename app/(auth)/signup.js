@@ -6,12 +6,35 @@ import { COLORS, STYLES } from '../../src/constants/theme';
 
 export default function SignupScreen() {
     const router = useRouter();
-    const { registerCitizen } = useAuth();
+    const { registerCitizen, login } = useAuth();
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isDemoMode, setIsDemoMode] = useState(false);
+
+    const handleDemoLogin = async (role) => {
+        const credentials = {
+            citizen: { email: 'citizen@cityfix.com', pass: 'password123' },
+            dispatcher: { email: 'dispatcher@cityfix.com', pass: 'password123' },
+            engineer: { email: 'eng@cityfix.com', pass: 'password123' },
+            qa: { email: 'qa@cityfix.com', pass: 'password123' },
+        };
+
+        const creds = credentials[role];
+        if (creds) {
+            setEmail(creds.email);
+            setPassword(creds.pass);
+            setLoading(true);
+            try {
+                await login(creds.email, creds.pass);
+            } catch (e) {
+                Alert.alert("Demo Failed", "Ensure the seed script has been executed. Details: " + e.message);
+                setLoading(false);
+            }
+        }
+    };
 
     const handleSignup = async () => {
         if (!name || !email || !password) {
@@ -94,6 +117,41 @@ export default function SignupScreen() {
                             Log in here
                         </Text>
                     </TouchableOpacity>
+
+                    {/* Developer / Demo Section */}
+                    <View style={styles.demoSection}>
+                        <TouchableOpacity onPress={() => setIsDemoMode(!isDemoMode)} style={styles.demoToggle}>
+                            <Text style={styles.demoToogleText}>
+                                {isDemoMode ? "Hide Demo Access" : "Try Demo Persona Login"}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {!isDemoMode && (
+                            <Text style={styles.tipText}>
+                                💡 Tip: Click above to access featured pages!
+                            </Text>
+                        )}
+
+                        {isDemoMode && (
+                            <View style={styles.demoBox}>
+                                <Text style={styles.demoTitle}>One-Click Login:</Text>
+                                <View style={styles.demoGrid}>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#3498DB' }]} onPress={() => handleDemoLogin('citizen')}>
+                                        <Text style={styles.demoChipText}>Citizen</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#E67E22' }]} onPress={() => handleDemoLogin('dispatcher')}>
+                                        <Text style={styles.demoChipText}>Dispatcher</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#27AE60' }]} onPress={() => handleDemoLogin('engineer')}>
+                                        <Text style={styles.demoChipText}>Engineer</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#8E44AD' }]} onPress={() => handleDemoLogin('qa')}>
+                                        <Text style={styles.demoChipText}>QA</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -218,5 +276,60 @@ const styles = StyleSheet.create({
         color: COLORS.action,
         fontWeight: '700',
         fontSize: 15
+    },
+    // Demo Section
+    demoSection: {
+        marginTop: 30, // Increased spacing
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        paddingTop: 20,
+        width: '100%',
+    },
+    demoToggle: {
+        paddingVertical: 5,
+    },
+    demoToogleText: {
+        color: '#94a3b8',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    tipText: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 5,
+        fontStyle: 'italic',
+    },
+    demoBox: {
+        width: '100%',
+        marginTop: 15,
+        backgroundColor: '#F8FAFC',
+        padding: 15,
+        borderRadius: 12,
+    },
+    demoTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    demoGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        justifyContent: 'center',
+    },
+    demoChip: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    demoChipText: {
+        color: 'white',
+        fontSize: 11,
+        fontWeight: '700',
     }
 });

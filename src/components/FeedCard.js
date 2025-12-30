@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, STYLES } from '../constants/theme';
 import { SocialService } from '../services/socialService';
 import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'expo-router';
 
 export default function FeedCard({ ticket }) {
     const { user } = useAuth();
@@ -12,14 +13,18 @@ export default function FeedCard({ ticket }) {
     const [upvotes, setUpvotes] = useState(ticket.upvoteCount || 0); // Upvotes (Arrow)
     const [isUpvoted, setIsUpvoted] = useState(false);
     const [commentCount, setCommentCount] = useState(ticket.commentCount || 0);
-    const [showComments, setShowComments] = useState(false);
+    const [showComments, setShowComments] = useState(false); // Modal visibility
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
+    const [showFullScreen, setShowFullScreen] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
         if (user && ticket.id) {
             SocialService.checkUserLiked(ticket.id, user.uid).then(setIsLiked);
             SocialService.checkUserUpvoted(ticket.id, user.uid).then(setIsUpvoted);
+            fetchComments(); // Fetch comments on mount for inline display
         }
     }, [ticket.id, user]);
 
@@ -37,21 +42,34 @@ export default function FeedCard({ ticket }) {
         await SocialService.toggleUpvote(ticket.id, user.uid);
     };
 
-    const loadComments = async () => {
+    // Just fetch data, don't open modal
+    const fetchComments = async () => {
         if (!ticket.id) return;
         const data = await SocialService.getComments(ticket.id);
         setComments(data);
+        setCommentCount(data.length); // Sync count with consistency
+    };
+
+    // Open Modal
+    const openCommentsModal = () => {
+        fetchComments(); // Refresh to be safe
         setShowComments(true);
     };
 
     const postComment = async () => {
         if (!newComment.trim()) return;
-        // user.displayName might be null if strictly using email auth, fallbacks to 'Citizen'
+
         const name = user.displayName || 'Citizen';
-        await SocialService.addComment(ticket.id, user.uid, name, newComment);
+        // Optimistic Update
+        const tempId = Date.now().toString();
+        const optimisticComment = { id: tempId, userId: user.uid, userName: name, text: newComment, createdAt: Date.now(), isFlagged: false };
+
+        setComments(prev => [optimisticComment, ...prev]);
+        setCommentCount(prev => prev + 1);
         setNewComment('');
-        setCommentCount(prev => prev + 1); // Optimistic update
-        loadComments(); // Refresh
+
+        await SocialService.addComment(ticket.id, user.uid, name, optimisticComment.text);
+        fetchComments(); // Refresh real data and valid count
     };
 
     const handleFlag = (commentId) => {
@@ -61,9 +79,21 @@ export default function FeedCard({ ticket }) {
                 text: "Report", onPress: async () => {
                     await SocialService.flagComment(ticket.id, commentId);
                     Alert.alert("Thank you", "Content flagged for moderation.");
+                    fetchComments();
                 }
             }
         ]);
+    };
+
+    const handleSaveImage = () => {
+        Alert.alert("Save", "Image saved to gallery (simulation).");
+        setShowMenu(false);
+    };
+
+    const handleViewMore = () => {
+        setShowMenu(false);
+        setShowFullScreen(false);
+        router.push({ pathname: '/(citizen)/ticket/[id]', params: { id: ticket.id } });
     };
 
     if (!ticket || !ticket.id) return null; // Don't render invalid tickets
@@ -82,11 +112,13 @@ export default function FeedCard({ ticket }) {
             </View>
 
             {/* Image (Show "After" photo if exists, else "Before") */}
-            <Image
-                source={{ uri: ticket.afterPhoto || ticket.photos[0] }}
-                style={styles.image}
-                resizeMode="cover"
-            />
+            <TouchableOpacity onPress={() => setShowFullScreen(true)} activeOpacity={0.9}>
+                <Image
+                    source={{ uri: ticket.afterPhoto || ticket.photos[0] }}
+                    style={styles.image}
+                    resizeMode="cover"
+                />
+            </TouchableOpacity>
 
             {/* Action Bar */}
             <View style={styles.actionBar}>
@@ -107,7 +139,7 @@ export default function FeedCard({ ticket }) {
                 </TouchableOpacity>
 
                 {/* Comment Button */}
-                <TouchableOpacity style={styles.actionBtn} onPress={loadComments}>
+                <TouchableOpacity style={styles.actionBtn} onPress={openCommentsModal}>
                     <Ionicons name="chatbubble-outline" size={26} color="#666" />
                     <Text style={styles.actionText}>{commentCount > 0 ? commentCount : 0}</Text>
                 </TouchableOpacity>
@@ -121,45 +153,151 @@ export default function FeedCard({ ticket }) {
                 </Text>
             </View>
 
-            {/* COMMENTS MODAL */}
-            <Modal visible={showComments} animationType="slide" presentationStyle="pageSheet">
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Comments</Text>
-                        <TouchableOpacity onPress={() => setShowComments(false)}><Text style={{ color: 'blue' }}>Close</Text></TouchableOpacity>
+            {/* INLINE COMMENTS SECTION */}
+            <View style={styles.inlineCommentsSection}>
+                {commentCount > 3 && (
+                    <TouchableOpacity onPress={openCommentsModal}>
+                        <Text style={styles.viewAllText}>View all {commentCount} comments</Text>
+                    </TouchableOpacity>
+                )}
+
+                {comments.slice(0, 3).map(comment => (
+                    <View key={comment.id} style={styles.inlineCommentRow}>
+                        <Text numberOfLines={2}>
+                            <Text style={styles.commentUser}>{comment.userName} </Text>
+                            <Text style={styles.commentText}>{comment.isFlagged ? '[Flagged]' : comment.text}</Text>
+                        </Text>
+                    </View>
+                ))}
+
+                {/* Inline Input */}
+                <View style={styles.inlineInputRow}>
+                    <Ionicons name="person-circle-outline" size={30} color="#ccc" />
+                    <TouchableOpacity onPress={openCommentsModal} style={{ flex: 1 }}>
+                        <Text style={[styles.inlineInput, { color: '#999', paddingTop: 10 }]}>Add a comment...</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* COMMENTS MODAL (Bottom Sheet Style) */}
+            <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.bottomSheet}>
+                        <View style={styles.modalHeader}>
+                            <TouchableOpacity onPress={() => setShowComments(false)}>
+                                <Text style={{ color: 'red', fontSize: 16 }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.modalTitle}>Comments</Text>
+                            <View style={{ width: 50 }} />
+                        </View>
+
+                        <FlatList
+                            data={comments}
+                            keyExtractor={item => item.id}
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                            renderItem={({ item }) => (
+                                <View style={[styles.commentRow, item.isFlagged && { opacity: 0.5 }]}>
+                                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', marginRight: 10, justifyContent: 'center', alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 12 }}>👤</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text>
+                                            <Text style={styles.commentUser}>{item.userName} </Text>
+                                            <Text style={styles.commentText}>{item.isFlagged ? '[Flagged for Review]' : item.text}</Text>
+                                        </Text>
+                                        <Text style={{ fontSize: 10, color: '#999', marginTop: 2 }}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                                    </View>
+                                    {!item.isFlagged && (
+                                        <TouchableOpacity onPress={() => handleFlag(item.id)}>
+                                            <Ionicons name="flag-outline" size={14} color="#ccc" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+                            ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>No comments yet.</Text>}
+                        />
+
+                        {/* Input Area */}
+                        <View style={styles.inputRow}>
+                            <View style={styles.avatarSmall}><Text>😎</Text></View>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Add a comment..."
+                                value={newComment}
+                                onChangeText={setNewComment}
+                                autoFocus={true}
+                            />
+                            <TouchableOpacity onPress={postComment} disabled={!newComment.trim()}>
+                                <Text style={{ fontWeight: 'bold', color: newComment.trim() ? COLORS.primary : '#ccc', fontSize: 16 }}>Post</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal >
+
+            {/* FULL SCREEN IMAGE MODAL */}
+            <Modal visible={showFullScreen} animationType="fade" transparent={true} onRequestClose={() => setShowFullScreen(false)}>
+                <View style={styles.fsContainer}>
+                    {/* Top Bar */}
+                    <View style={styles.fsTopBar}>
+                        <TouchableOpacity onPress={() => setShowFullScreen(false)} style={styles.iconBtn}>
+                            <Ionicons name="close" size={28} color="white" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={styles.iconBtn}>
+                            <Ionicons name="ellipsis-vertical" size={24} color="white" />
+                        </TouchableOpacity>
                     </View>
 
-                    <FlatList
-                        data={comments}
-                        keyExtractor={item => item.id}
-                        renderItem={({ item }) => (
-                            <View style={[styles.commentRow, item.isFlagged && { opacity: 0.5 }]}>
-                                <Text style={styles.commentUser}>{item.userName}: </Text>
-                                <Text style={styles.commentText}>{item.isFlagged ? '[Flagged for Review]' : item.text}</Text>
-                                {!item.isFlagged && (
-                                    <TouchableOpacity onPress={() => handleFlag(item.id)}>
-                                        <Text style={{ fontSize: 10, color: '#999', marginLeft: 10 }}>⚐</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        )}
-                        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>No comments yet.</Text>}
-                    />
+                    {/* Menu Overlay (Absolute) */}
+                    {showMenu && (
+                        <View style={styles.menuOverlay}>
+                            <TouchableOpacity style={styles.menuItem} onPress={handleSaveImage}>
+                                <Ionicons name="save-outline" size={20} color={COLORS.text.primary} />
+                                <Text style={styles.menuText}>Save Image</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.menuItem} onPress={handleViewMore}>
+                                <Ionicons name="information-circle-outline" size={20} color={COLORS.text.primary} />
+                                <Text style={styles.menuText}>View Details</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
-                    <View style={styles.inputRow}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Add a comment..."
-                            value={newComment}
-                            onChangeText={setNewComment}
+                    {/* Main Image */}
+                    <View style={styles.fsImageWrapper}>
+                        <Image
+                            source={{ uri: ticket.afterPhoto || ticket.photos[0] }}
+                            style={styles.fsImage}
+                            resizeMode="contain"
                         />
-                        <TouchableOpacity onPress={postComment}>
-                            <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>Post</Text>
+                    </View>
+
+                    {/* Bottom Action Bar */}
+                    <View style={styles.fsBottomBar}>
+                        {/* Like */}
+                        <TouchableOpacity style={styles.fsActionBtn} onPress={handleLike}>
+                            <Text style={{ fontSize: 24 }}>{isLiked ? '❤️' : '🤍'}</Text>
+                            <Text style={styles.fsActionText}>{likes}</Text>
+                        </TouchableOpacity>
+
+                        {/* Upvote */}
+                        <TouchableOpacity style={styles.fsActionBtn} onPress={handleUpvote}>
+                            <Ionicons
+                                name={isUpvoted ? "arrow-up-circle" : "arrow-up-circle-outline"}
+                                size={28}
+                                color={isUpvoted ? COLORS.action : 'white'}
+                            />
+                            <Text style={[styles.fsActionText, isUpvoted && { color: COLORS.action }]}>{upvotes}</Text>
+                        </TouchableOpacity>
+
+                        {/* Comment */}
+                        <TouchableOpacity style={styles.fsActionBtn} onPress={() => { setShowFullScreen(false); openCommentsModal(); }}>
+                            <Ionicons name="chatbubble-outline" size={26} color="white" />
+                            <Text style={styles.fsActionText}>{commentCount}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
-            </Modal>
-        </View>
+            </Modal >
+        </View >
     );
 }
 
@@ -175,12 +313,53 @@ const styles = StyleSheet.create({
     actionText: { fontWeight: '600' },
     captionBox: { paddingHorizontal: 10, paddingBottom: 15 },
 
-    modalContainer: { flex: 1, paddingTop: 20 },
-    modalHeader: { padding: 15, borderBottomWidth: 1, borderColor: '#eee', flexDirection: 'row', justifyContent: 'space-between' },
+    // Modal / Bottom Sheet
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: 'white', height: '80%', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
+    modalHeader: { padding: 15, borderBottomWidth: 0.5, borderColor: '#ccc', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     modalTitle: { fontWeight: 'bold', fontSize: 16 },
-    commentRow: { flexDirection: 'row', padding: 15, borderBottomWidth: 1, borderColor: '#f9f9f9', alignItems: 'center' },
+
+    commentRow: { flexDirection: 'row', padding: 15, alignItems: 'flex-start' },
     commentUser: { fontWeight: 'bold' },
-    commentText: { flex: 1 },
-    inputRow: { flexDirection: 'row', padding: 15, borderTopWidth: 1, borderColor: '#eee', alignItems: 'center', gap: 10 },
-    input: { flex: 1, backgroundColor: '#f0f0f0', padding: 10, borderRadius: 20 },
+    commentText: { lineHeight: 18 },
+
+    inputRow: {
+        flexDirection: 'row', padding: 15, borderTopWidth: 0.5, borderColor: '#ccc', alignItems: 'center', gap: 10,
+        marginBottom: 10 // Keyboard spacing if needed
+    },
+    input: { flex: 1, backgroundColor: 'transparent', fontSize: 16, padding: 5 },
+    avatarSmall: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
+
+    // Full Screen Styles
+    fsContainer: { flex: 1, backgroundColor: 'black', justifyContent: 'center' },
+    fsTopBar: {
+        position: 'absolute', top: 50, left: 0, right: 0, zIndex: 10,
+        flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20
+    },
+    fsBottomBar: {
+        position: 'absolute', bottom: 40, left: 0, right: 0, zIndex: 10,
+        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 15, marginHorizontal: 20, borderRadius: 30
+    },
+    fsImageWrapper: { flex: 1, justifyContent: 'center' },
+    fsImage: { width: '100%', height: '100%' },
+    iconBtn: { padding: 8, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20 },
+    fsActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    fsActionText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+
+    // Menu Overlay
+    menuOverlay: {
+        position: 'absolute', top: 90, right: 20, zIndex: 20,
+        backgroundColor: 'white', borderRadius: 12, padding: 5, width: 160,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5
+    },
+    menuItem: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 },
+    menuText: { fontSize: 14, color: COLORS.text.primary, fontWeight: '500' },
+
+    // Inline Comments
+    inlineCommentsSection: { paddingHorizontal: 15, paddingBottom: 15 },
+    viewAllText: { color: '#999', marginBottom: 5, fontSize: 13 },
+    inlineCommentRow: { marginBottom: 4, flexDirection: 'row' },
+    inlineInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+    inlineInput: { flex: 1, marginLeft: 10, fontSize: 14, padding: 0, height: 40 },
 });
