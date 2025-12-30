@@ -11,6 +11,8 @@ import { MediaService } from '../../src/services/mediaService';
 import LocationPickerModal from '../../src/components/LocationPickerModal';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import MapPreview from '../../src/components/MapPreview';
 
 const DRAFTS_KEY = 'report_drafts';
 
@@ -29,6 +31,7 @@ export default function ReportIssueScreen() {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [category, setCategory] = useState('pothole');
+  const [customCategory, setCustomCategory] = useState('');
   const [location, setLocation] = useState(null);
   const [showMap, setShowMap] = useState(false);
 
@@ -61,6 +64,7 @@ export default function ReportIssueScreen() {
           setLocation(draft.location || null);
           setMedia(draft.media || []);
           setCategory(draft.category || 'pothole');
+          setCustomCategory(draft.customCategory || '');
         }
       }
     } catch (e) {
@@ -83,7 +87,8 @@ export default function ReportIssueScreen() {
         desc,
         location,
         media,
-        category
+        category,
+        customCategory
       };
 
       if (id) {
@@ -202,6 +207,11 @@ export default function ReportIssueScreen() {
       return;
     }
 
+    if (category === 'other' && !customCategory.trim()) {
+      Alert.alert("Missing Info", "Please specify the 'Other' category.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -222,8 +232,12 @@ export default function ReportIssueScreen() {
       }
       // ---------------------------
 
+      // ---------------------------
+
+      const finalCategory = category === 'other' ? customCategory : category;
+
       const result = await TicketService.submitTicket(
-        user.uid, title, desc, category,
+        user.uid, title, desc, finalCategory,
         location.latitude, location.longitude,
         uploadedUrls
       );
@@ -290,8 +304,8 @@ export default function ReportIssueScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Category <Text style={styles.required}>*</Text></Text>
           <Text style={styles.helperText}>Select the best category for this issue.</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {['pothole', 'street_light', 'rubbish'].map((cat) => (
+          <View style={{ flexWrap: 'wrap', flexDirection: 'row', gap: 10 }}>
+            {['pothole', 'street_light', 'rubbish', 'other'].map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[styles.catButton, category === cat && styles.catButtonActive]}
@@ -303,17 +317,45 @@ export default function ReportIssueScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Custom Category Input */}
+          {category === 'other' && (
+            <View style={{ marginTop: 10 }}>
+              <TextInput
+                style={styles.input}
+                placeholder="Please specify category..."
+                value={customCategory}
+                onChangeText={setCustomCategory}
+              />
+            </View>
+          )}
         </View>
 
-        {/* ... Location Button ... */}
+        {/* ... Location Button (Map Widget) ... */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Location <Text style={styles.required}>*</Text></Text>
-          <Text style={styles.helperText}>Tap below to pin the exact location on the map.</Text>
-          <TouchableOpacity style={styles.locationButton} onPress={() => setShowMap(true)}>
-            <Text style={{ fontSize: 24, marginRight: 10 }}>📍</Text>
-            <Text style={styles.locationButtonText}>
-              {location ? "Location Selected" : "Tap to set location"}
-            </Text>
+          <Text style={styles.helperText}>Tap the map to pin the exact location.</Text>
+
+          <TouchableOpacity onPress={() => setShowMap(true)} style={styles.mapWidgetContainer} activeOpacity={0.9}>
+            {/* Map Preview Widget (Platform Specific) */}
+            <MapPreview location={location} />
+
+            {/* Overlay: Prompt when no location */}
+            {!location && (
+              <View style={styles.mapOverlay}>
+                <Text style={styles.mapPrompt}>Tap to Set Location</Text>
+              </View>
+            )}
+
+            {/* Status Badge (if set) */}
+            {location && (
+              <View style={[styles.locationBadge, { maxWidth: '80%' }]}>
+                <Ionicons name="checkmark-circle" size={14} color="white" />
+                <Text style={styles.locationBadgeText} numberOfLines={1}>
+                  {location.address || "Location Set"}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -405,12 +447,56 @@ const styles = StyleSheet.create({
   required: { color: COLORS.error },
   helperText: { fontSize: 12, color: '#666', marginBottom: 8, fontStyle: 'italic' },
   input: { backgroundColor: COLORS.card, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#ddd' },
-  catButton: { padding: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#eee' },
+  catButton: { padding: 8, paddingHorizontal: 16, borderRadius: 5, backgroundColor: '#eee' },
   catButtonActive: { backgroundColor: COLORS.action },
   catText: { color: '#666', fontSize: 12, fontWeight: 'bold' },
   catTextActive: { color: 'white' },
-  locationButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F6F3', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: COLORS.action, borderStyle: 'dashed' },
-  locationButtonText: { color: COLORS.primary, fontWeight: 'bold' },
+
+  // Map Widget Styles
+  mapWidgetContainer: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...STYLES.shadow,
+  },
+  mapOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)', // Slight tint
+  },
+  mapPrompt: {
+    position: 'absolute',
+    bottom: 20,
+    backgroundColor: 'white',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    ...STYLES.shadowSmall,
+  },
+  locationBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: COLORS.success,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+    ...STYLES.shadowSmall,
+  },
+  locationBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+
   submitButton: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   backButton: { backgroundColor: COLORS.action, padding: 5, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   submitText: { color: 'white', fontWeight: 'bold', fontSize: 16 },

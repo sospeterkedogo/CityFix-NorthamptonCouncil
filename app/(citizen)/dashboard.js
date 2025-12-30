@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [feedData, setFeedData] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [loadingFeed, setLoadingFeed] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   // Data refresh handler
   useFocusEffect(
@@ -62,19 +63,32 @@ export default function Dashboard() {
   // Fetch Community Feed
   const fetchFeed = async (isRefresh = false) => {
     if (loadingFeed) return;
+    if (!isRefresh && !hasMore) return; // Stop if no more data
+
     setLoadingFeed(true);
 
-    const startAfterDoc = isRefresh ? null : lastDoc;
-    const { data, lastVisible } = await SocialService.getVerifiedFeed(startAfterDoc);
+    try {
+      const startAfterDoc = isRefresh ? null : lastDoc;
+      const { data, lastVisible } = await SocialService.getVerifiedFeed(startAfterDoc);
 
-    if (isRefresh) {
-      setFeedData(data);
-    } else {
-      setFeedData(prev => [...prev, ...data]);
+      if (isRefresh) {
+        setFeedData(data);
+        setHasMore(true); // Reset pagination
+      } else {
+        if (data.length === 0) {
+          setHasMore(false);
+          alert("No more verified fixes to load.");
+        } else {
+          setFeedData(prev => [...prev, ...data]);
+        }
+      }
+
+      setLastDoc(lastVisible);
+    } catch (error) {
+      console.error("Feed fetch error", error);
+    } finally {
+      setLoadingFeed(false);
     }
-
-    setLastDoc(lastVisible);
-    setLoadingFeed(false);
   };
 
   useEffect(() => {

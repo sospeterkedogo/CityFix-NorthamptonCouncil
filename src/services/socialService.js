@@ -16,7 +16,7 @@ export const SocialService = {
             let q = query(
                 collection(db, TICKETS_COL),
                 where('status', '==', 'verified'), // Only show verified fixes
-                // orderBy('createdAt', 'desc'), // Requires index: https://console.firebase.google.com/...
+                orderBy('createdAt', 'desc'), // Requires index: check console for link if this fails
                 limit(pageSize)
             );
 

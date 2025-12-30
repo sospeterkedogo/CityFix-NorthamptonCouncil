@@ -11,29 +11,8 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const [isDemoMode, setIsDemoMode] = useState(false);
-
-    const handleDemoLogin = async (role) => {
-        const credentials = {
-            citizen: { email: 'citizen@cityfix.com', pass: 'password123' },
-            dispatcher: { email: 'dispatcher@cityfix.com', pass: 'password123' },
-            engineer: { email: 'eng@cityfix.com', pass: 'password123' },
-            qa: { email: 'qa@cityfix.com', pass: 'password123' },
-        };
-
-        const creds = credentials[role];
-        if (creds) {
-            setEmail(creds.email);
-            setPassword(creds.pass);
-            setLoading(true);
-            try {
-                await login(creds.email, creds.pass);
-            } catch (e) {
-                Alert.alert("Demo Failed", "Ensure the seed script has been executed. Details: " + e.message);
-                setLoading(false);
-            }
-        }
-    };
+    const [isDemoMode, setIsDemoMode] = useState(false); // Can be removed if not used elsewhere, but variable name was used in code. Assuming unused now.
+    // Actually, remove the whole block.
 
     const handleLogin = async () => {
         if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
@@ -119,41 +98,7 @@ export default function LoginScreen() {
                     </TouchableOpacity>
 
                     {/* Developer / Demo Section */}
-                    <View style={styles.demoSection}>
-                        <TouchableOpacity onPress={() => setIsDemoMode(!isDemoMode)} style={styles.demoToggle}>
-                            <Text style={styles.demoToogleText}>
-                                {isDemoMode ? "Hide Demo Access" : "Try Demo Persona Login"}
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Demo Tip (Always visible if Demo Mode is toggleable?) - User requested explicit tip */}
-                        {!isDemoMode && (
-                            <Text style={styles.tipText}>
-                                💡 Tip: Click above to access featured pages!
-                            </Text>
-                        )}
-
-                        {isDemoMode && (
-                            <View style={styles.demoBox}>
-                                <Text style={styles.demoTitle}>One-Click Login:</Text>
-                                <View style={styles.demoGrid}>
-                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#3498DB' }]} onPress={() => handleDemoLogin('citizen')}>
-                                        <Text style={styles.demoChipText}>Citizen</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#E67E22' }]} onPress={() => handleDemoLogin('dispatcher')}>
-                                        <Text style={styles.demoChipText}>Dispatcher</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#27AE60' }]} onPress={() => handleDemoLogin('engineer')}>
-                                        <Text style={styles.demoChipText}>Engineer</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.demoChip, { backgroundColor: '#8E44AD' }]} onPress={() => handleDemoLogin('qa')}>
-                                        <Text style={styles.demoChipText}>QA</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <Text style={styles.demoNote}>*Run Seed Script first</Text>
-                            </View>
-                        )}
-
+                    <View style={styles.devSection}>
                         <TouchableOpacity onPress={() => router.push('/(auth)/dev-seed')}>
                             <Text style={styles.devLink}>[Dev Seed]</Text>
                         </TouchableOpacity>
@@ -299,67 +244,21 @@ const styles = StyleSheet.create({
     },
     // Demo Section
     demoSection: {
+        // Keeping empty or basic style if needed, but renamed to devSection in usage above
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    devSection: {
         marginTop: 10,
         alignItems: 'center',
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
         paddingTop: 20,
-    },
-    demoToggle: {
-        paddingVertical: 5,
-    },
-    demoToogleText: {
-        color: '#94a3b8',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    tipText: {
-        fontSize: 11,
-        color: '#64748B',
-        marginTop: 5,
-        fontStyle: 'italic',
-    },
-    demoBox: {
         width: '100%',
-        marginTop: 15,
-        backgroundColor: '#F8FAFC',
-        padding: 15,
-        borderRadius: 12,
-    },
-    demoTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#475569',
-        marginBottom: 10,
-        textAlign: 'center',
-    },
-    demoGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        justifyContent: 'center',
-    },
-    demoChip: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        minWidth: 80,
-        alignItems: 'center',
-    },
-    demoChipText: {
-        color: 'white',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    demoNote: {
-        fontSize: 10,
-        color: '#94a3b8',
-        textAlign: 'center',
-        marginTop: 10,
     },
     devLink: {
         fontSize: 10,
         color: '#CBD5E1',
-        marginTop: 15,
+        marginTop: 5,
     }
 });
