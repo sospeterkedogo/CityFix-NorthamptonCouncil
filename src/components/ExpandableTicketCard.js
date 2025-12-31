@@ -24,24 +24,14 @@ export default function ExpandableTicketCard({ ticket }) {
 
     const statusColor = getStatusColor(ticket.status);
     const isResolved = ticket.status === 'resolved' || ticket.status === 'verified';
-    const beforePhoto = ticket.photos?.[0];
+    // Robustly find the image source
+    const beforePhoto = ticket.photos?.[0] || ticket.image || ticket.photoUrl;
     const afterPhoto = ticket.afterPhoto;
+    const [imageLoadingError, setImageLoadingError] = useState(false);
 
     return (
         <View style={styles.card}>
-            {/* --- HEADER (Always Visible) --- */}
-            <View style={styles.headerRow}>
-                <View style={[styles.badge, { backgroundColor: statusColor }]}>
-                    <Text style={styles.badgeText}>{ticket.status.toUpperCase().replace('_', ' ')}</Text>
-                </View>
-                <Text style={styles.date}>{new Date(ticket.createdAt).toLocaleDateString()}</Text>
-            </View>
-
-            <Text style={styles.title}>{ticket.title}</Text>
-            <Text style={styles.location}>
-                <Ionicons name="location-sharp" size={14} color="#666" />
-                {ticket.locationName || "Unknown Location"}
-            </Text>
+            {/* ... (Header) ... */}
 
             {/* --- IMAGES (Side by Side) --- */}
             <View style={styles.imageRow}>
@@ -51,10 +41,21 @@ export default function ExpandableTicketCard({ ticket }) {
                     onPress={() => beforePhoto && setFullScreenImage(beforePhoto)}
                     disabled={!beforePhoto}
                 >
-                    {beforePhoto ? (
-                        <Image source={{ uri: beforePhoto }} style={styles.image} resizeMode="cover" />
+                    {beforePhoto && !imageLoadingError ? (
+                        <Image
+                            source={{ uri: beforePhoto }}
+                            style={styles.image}
+                            resizeMode="cover"
+                            onError={(e) => {
+                                console.log("Image load error:", e.nativeEvent.error);
+                                setImageLoadingError(true);
+                            }}
+                        />
                     ) : (
-                        <View style={styles.placeholder}><Text style={styles.placeholderText}>No Photo</Text></View>
+                        <View style={styles.placeholder}>
+                            <Ionicons name="image-outline" size={24} color="#ccc" />
+                            <Text style={styles.placeholderText}>No Photo</Text>
+                        </View>
                     )}
                     <View style={styles.imageLabel}><Text style={styles.imageLabelText}>BEFORE</Text></View>
                 </TouchableOpacity>

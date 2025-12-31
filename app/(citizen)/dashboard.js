@@ -1,20 +1,24 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform
+  View, Text, SectionList, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
+import { SocialService } from '../../src/services/socialService';
 import { TICKET_STATUS } from '../../src/constants/models';
 import SimpleExpandableRow from '../../src/components/SimpleExpandableRow';
+import FeedCard from '../../src/components/FeedCard';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [tickets, setTickets] = useState([]);
+  const [socialPosts, setSocialPosts] = useState([]);
+  const [filter, setFilter] = useState('all'); // 'all', 'active', 'resolved', 'social'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drafts, setDrafts] = useState([]);
@@ -42,9 +46,20 @@ export default function Dashboard() {
   };
 
   const fetchTickets = async () => {
-    const data = await TicketService.getCitizenTickets(user.uid);
-    const sorted = data.sort((a, b) => b.createdAt - a.createdAt);
-    setTickets(sorted);
+    // Parallel Fetch: Tickets & Posts
+    const [ticketData, postData] = await Promise.all([
+      TicketService.getCitizenTickets(user.uid),
+      SocialService.getUserSocialPosts(user.uid)
+    ]);
+
+    // STRICTLY SEPARATE: Ensure 'tickets' state only contains reports (not social posts)
+    const reportsOnly = ticketData.filter(t => t.type !== 'social');
+
+    // Sort tickets
+    const sortedTickets = reportsOnly.sort((a, b) => b.createdAt - a.createdAt);
+
+    setTickets(sortedTickets);
+    setSocialPosts(postData);
     setLoading(false);
     setRefreshing(false);
   };
@@ -66,85 +81,124 @@ export default function Dashboard() {
   };
 
   // Stats Calculation
+  // Stats Calculation
   const stats = {
-    total: tickets.length,
+    total: tickets.length + socialPosts.length,
     active: tickets.filter(t => t.status === 'in_progress' || t.status === 'assigned').length,
-    resolved: tickets.filter(t => t.status === 'resolved' || t.status === 'verified').length
+    resolved: tickets.filter(t => t.status === 'resolved' || t.status === 'verified').length,
+    posts: socialPosts.length
   };
+
+  // Filter Logic
+  const getFilteredContent = () => {
+    switch (filter) {
+      case 'active':
+        // Strict Filter: Status matches AND NOT social
+        return tickets.filter(t => (t.status === 'in_progress' || t.status === 'assigned') && t.type !== 'social');
+      case 'resolved':
+        // Strict Filter: Status matches AND NOT social
+        return tickets.filter(t => (t.status === 'resolved' || t.status === 'verified') && t.type !== 'social');
+      case 'social':
+        return socialPosts;
+      default:
+        // Recent Activity: Mix both
+        return [...tickets, ...socialPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+    }
+  };
+
+  const filteredData = getFilteredContent();
 
   return (
     <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
 
-      {/* --- HEADER --- */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Hello, {user?.displayName || 'Citizen'}!</Text>
-          <Text style={styles.subText}>Here is your impact overview</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.push('/profile')} style={styles.profileIcon}>
-          <Text style={styles.profileInitial}>{(user?.email || 'U').charAt(0).toUpperCase()}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* --- STATS CARDS --- */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Reports</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: COLORS.warning }]}>{stats.active}</Text>
-          <Text style={styles.statLabel}>Active</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: COLORS.success }]}>{stats.resolved}</Text>
-          <Text style={styles.statLabel}>Resolved</Text>
-        </View>
-      </View>
-
-      {/* --- MAIN ACTION --- */}
-      <TouchableOpacity
-        style={styles.mainAction}
-        onPress={() => router.push('/(citizen)/report')}
-        activeOpacity={0.9}
-      >
-        <View style={styles.actionIconCircle}>
-          <Ionicons name="add" size={32} color="white" />
-        </View>
-        <View>
-          <Text style={styles.mainActionTitle}>Report an Issue</Text>
-          <Text style={styles.mainActionSub}>Help fix your community</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* --- DRAFTS --- */}
-      {drafts.length > 0 && (
-        <TouchableOpacity
-          style={styles.draftAlert}
-          onPress={() => setShowDraftsModal(true)}
-        >
-          <Ionicons name="document-text" size={20} color={COLORS.primary} />
-          <Text style={styles.draftText}>Resume {drafts.length} Unfinished {drafts.length === 1 ? 'Report' : 'Reports'}</Text>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-        </TouchableOpacity>
-      )}
-
-      {/* --- RECENT ACTIVITY (Simplified) --- */}
-      <Text style={styles.sectionHeader}>Recent Activity</Text>
-
-      <FlatList
-        data={tickets.slice(0, 5)} // Only show last 5
-        renderItem={({ item }) => <SimpleExpandableRow ticket={item} />}
+      <SectionList
+        sections={[{ title: filter, data: filteredData }]}
         keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <FeedCard ticket={item} />
+        )}
+        renderSectionHeader={({ section: { title } }) => (
+          <Text style={[styles.sectionHeader, { backgroundColor: '#f2f2f2' }]}>
+            {title === 'all' ? 'Recent Activity' :
+              title === 'active' ? 'Active Reports' :
+                title === 'resolved' ? 'Resolved Issues' : 'My Posts'}
+          </Text>
+        )}
+        stickySectionHeadersEnabled={true}
+        ListHeaderComponent={
+          <>
+            {/* --- HEADER --- */}
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.welcomeText}>Hello, {user?.displayName || 'Citizen'}!</Text>
+                <Text style={styles.subText}>Here is your impact overview</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/profile')} style={styles.profileIcon}>
+                <Text style={styles.profileInitial}>{(user?.email || 'U').charAt(0).toUpperCase()}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* --- FILTER TABS --- */}
+            <View style={styles.statsRow}>
+              <TouchableOpacity onPress={() => setFilter('all')} style={[styles.statCard, filter === 'all' && styles.activeCard]}>
+                <Text style={[styles.statNumber, filter === 'all' && styles.activeText]}>{stats.total}</Text>
+                <Text style={[styles.statLabel, filter === 'all' && styles.activeText]}>Recent</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setFilter('active')} style={[styles.statCard, filter === 'active' && styles.activeCard]}>
+                <Text style={[styles.statNumber, { color: COLORS.warning }, filter === 'active' && styles.activeText]}>{stats.active}</Text>
+                <Text style={[styles.statLabel, filter === 'active' && styles.activeText]}>Active</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setFilter('resolved')} style={[styles.statCard, filter === 'resolved' && styles.activeCard]}>
+                <Text style={[styles.statNumber, { color: COLORS.success }, filter === 'resolved' && styles.activeText]}>{stats.resolved}</Text>
+                <Text style={[styles.statLabel, filter === 'resolved' && styles.activeText]}>Resolved</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setFilter('social')} style={[styles.statCard, filter === 'social' && styles.activeCard]}>
+                <Text style={[styles.statNumber, { color: COLORS.primary }, filter === 'social' && styles.activeText]}>{stats.posts}</Text>
+                <Text style={[styles.statLabel, filter === 'social' && styles.activeText]}>Posts</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* --- MAIN ACTION --- */}
+            <TouchableOpacity
+              style={styles.mainAction}
+              onPress={() => router.push('/(citizen)/report')}
+              activeOpacity={0.9}
+            >
+              <View style={styles.actionIconCircle}>
+                <Ionicons name="add" size={32} color="white" />
+              </View>
+              <View>
+                <Text style={styles.mainActionTitle}>Report an Issue</Text>
+                <Text style={styles.mainActionSub}>Help fix your community</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* --- DRAFTS --- */}
+            {drafts.length > 0 && (
+              <TouchableOpacity
+                style={styles.draftAlert}
+                onPress={() => setShowDraftsModal(true)}
+              >
+                <Ionicons name="document-text" size={20} color={COLORS.primary} />
+                <Text style={styles.draftText}>Resume {drafts.length} Unfinished {drafts.length === 1 ? 'Report' : 'Reports'}</Text>
+                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
+          </>
+        }
         scrollEnabled={true}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="leaf-outline" size={40} color="#ccc" />
-            <Text style={styles.emptyText}>No recent activity.</Text>
+            <Text style={styles.emptyText}>No items found.</Text>
           </View>
         }
+        contentContainerStyle={{ paddingBottom: 100 }} // padding for tab bar
       />
 
       {/* Drafts Modal (Preserved) */}
@@ -198,6 +252,8 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'white', padding: 15, borderRadius: 12, alignItems: 'center', marginHorizontal: 5,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
+  activeCard: { backgroundColor: COLORS.primary, borderColor: COLORS.primary, borderWidth: 1 },
+  activeText: { color: 'white' },
   statNumber: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 5 },
   statLabel: { fontSize: 12, color: '#666', fontWeight: '600', textTransform: 'uppercase' },
 

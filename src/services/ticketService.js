@@ -246,6 +246,20 @@ export const TicketService = {
         // Let's keep it assigned but flagged.
       });
 
+      // Fetch ticket to get users
+      const ticketSnap = await getDoc(ticketRef);
+      const ticketData = ticketSnap.data();
+
+      // NOTIFICATION: To Engineer
+      if (ticketData.assignedTo) {
+        await notifyUser(ticketData.assignedTo, "Ticket Reopened ⚠️", `Ticket "${ticketData.title}" was reopened. Reason: ${reason}`);
+      }
+
+      // NOTIFICATION: To Citizen
+      if (ticketData.userId) {
+        await notifyUser(ticketData.userId, "Status Update: Reopened", `Your ticket "${ticketData.title}" was reopened for further work.`);
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -261,6 +275,15 @@ export const TicketService = {
         status: TICKET_STATUS.UNDER_REVIEW,
         updatedAt: Date.now()
       });
+
+      const ticketSnap = await getDoc(ticketRef);
+      const ticketData = ticketSnap.data();
+
+      // NOTIFICATION: To Citizen
+      if (ticketData.userId) {
+        await notifyUser(ticketData.userId, "Under Review", `We are reviewing your report: "${ticketData.title}".`);
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -287,6 +310,19 @@ export const TicketService = {
       });
 
       await batch.commit();
+
+      // OPTIONAL: Notify duplicate owners (async loop)
+      // Since this is a batch, we might not want to await individually, but let's do it for completeness
+      duplicateIds.forEach(async (id) => {
+        const snap = await getDoc(doc(db, TICKET_COLLECTION, id));
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.userId) {
+            await notifyUser(d.userId, "Ticket Merged", `Your report "${d.title}" was merged into a similar report.`);
+          }
+        }
+      });
+
       return { success: true };
     } catch (error) {
       console.error("Merge failed:", error);
