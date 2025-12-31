@@ -99,14 +99,16 @@ export const useNotificationListener = (user) => {
                     const notif = change.doc.data();
 
                     // Trigger Local Notification
-                    await Notifications.scheduleNotificationAsync({
-                        content: {
-                            title: notif.title,
-                            body: notif.body,
-                            data: notif.data,
-                        },
-                        trigger: null, // Instant
-                    });
+                    if (Platform.OS !== 'web') {
+                        await Notifications.scheduleNotificationAsync({
+                            content: {
+                                title: notif.title,
+                                body: notif.body,
+                                data: notif.data,
+                            },
+                            trigger: null, // Instant
+                        });
+                    }
 
                     // Mark as read immediately
                     const docRef = doc(db, 'users', user.uid, 'notifications', change.doc.id);

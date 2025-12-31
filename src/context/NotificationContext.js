@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { db } from '../config/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
@@ -55,7 +56,7 @@ export function NotificationProvider({ children }) {
                     // Only alert if it's reasonably new (to avoid alerting for old stuff on reload)
                     // Here we just alert everything coming in as "added" on the stream if it's unread
                     const notif = change.doc.data();
-                    if (!notif.read) {
+                    if (!notif.read && Platform.OS !== 'web') {
                         Notifications.scheduleNotificationAsync({
                             content: {
                                 title: notif.title,

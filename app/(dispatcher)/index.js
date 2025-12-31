@@ -12,6 +12,7 @@ import { canAssign } from '../../src/constants/workflow';
 import { getSLAStatus } from '../../src/utils/sla';
 import { getDistanceKm } from '../../src/utils/geo';
 import { Ionicons } from '@expo/vector-icons';
+import TutorialOverlay from '../../src/components/TutorialOverlay';
 
 export default function DispatcherInbox() {
   const { user, logout } = useAuth();
@@ -23,8 +24,17 @@ export default function DispatcherInbox() {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [galleryItems, setGalleryItems] = useState([]);
+  const [filter, setFilter] = useState('active'); // 'active' | 'resolved'
 
   const DUPLICATE_THRESHOLD_KM = 0.02; // 20 meters
+
+  const filteredTickets = tickets.filter(t => {
+    const status = t.status?.toLowerCase() || '';
+    const isResolvedOrVerified = status === 'resolved' || status === 'verified';
+
+    if (filter === 'resolved') return isResolvedOrVerified;
+    return !isResolvedOrVerified;
+  });
 
   useEffect(() => {
     loadTickets();
@@ -162,6 +172,9 @@ export default function DispatcherInbox() {
 
     return (
       <ScrollView style={styles.detailContainer}>
+
+
+
         <View style={styles.detailHeader}>
           <Text style={styles.detailTitle}>{selectedTicket.title}</Text>
           <View style={[styles.badge, { backgroundColor: getStatusColor(selectedTicket.status) }]}>
@@ -317,6 +330,7 @@ export default function DispatcherInbox() {
 
   return (
     <View style={STYLES.container}>
+      <TutorialOverlay role="dispatcher" page="inbox" />
       {/* HEADER */}
       <View style={styles.headerContainer}>
         <View>
@@ -327,7 +341,7 @@ export default function DispatcherInbox() {
           <TouchableOpacity onPress={() => router.push('/profile')}>
             <View style={styles.avatarCircle}>
               {user?.email ? (
-                <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+                <Text style={styles.avatarText}>{(user?.displayName || user.email).charAt(0).toUpperCase()}</Text>
               ) : (
                 <Ionicons name="person-circle-outline" size={40} color={COLORS.primary} />
               )}
@@ -340,11 +354,29 @@ export default function DispatcherInbox() {
         {/* Left Column: List */}
         {(!isMobile || (isMobile && !selectedTicket)) && (
           <View style={[styles.listColumn, isMobile && { flex: 1 }]}>
-            <Text style={styles.columnHeader}>Incoming Reports ({tickets.length})</Text>
+            <Text style={styles.columnHeader}>Incoming Reports</Text>
+
+            {/* FILTER TABS */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, filter === 'active' && styles.activeTab]}
+                onPress={() => setFilter('active')}
+              >
+                <Text style={[styles.tabText, filter === 'active' && styles.activeTabText]}>Active</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, filter === 'resolved' && styles.activeTab]}
+                onPress={() => setFilter('resolved')}
+              >
+                <Text style={[styles.tabText, filter === 'resolved' && styles.activeTabText]}>Resolved</Text>
+              </TouchableOpacity>
+            </View>
+
             <FlatList
-              data={tickets}
+              data={filteredTickets}
               renderItem={({ item }) => <TicketRow item={item} />}
               keyExtractor={(item, index) => item.id || String(index)}
+              ListEmptyComponent={<Text style={{ padding: 20, color: '#999', textAlign: 'center' }}>No tickets in this section.</Text>}
             />
           </View>
         )}
@@ -397,6 +429,12 @@ const getStatusColor = (status) => {
 };
 
 const styles = StyleSheet.create({
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   splitView: { flex: 1, flexDirection: 'row', gap: 20 },
   listColumn: { flex: 0.4, backgroundColor: 'white', borderRadius: 12, padding: 10, ...STYLES.shadow },
   columnHeader: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, marginLeft: 10, color: COLORS.primary },
@@ -483,5 +521,12 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center'
   },
-  avatarText: { color: 'white', fontWeight: 'bold', fontSize: 18 }
+  avatarText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+
+  // Tabs
+  tabContainer: { flexDirection: 'row', marginBottom: 15, marginHorizontal: 10, backgroundColor: '#f0f0f0', borderRadius: 8, padding: 4 },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
+  activeTab: { backgroundColor: 'white', ...STYLES.shadow },
+  tabText: { fontWeight: '600', color: '#666', fontSize: 12 },
+  activeTabText: { color: COLORS.primary }
 });

@@ -119,9 +119,9 @@ export const SocialService = {
     },
 
     // 4. Comments
-    addComment: async (ticketId, userId, userName, text) => {
+    addComment: async (ticketId, userId, userName, text, userAvatar = null) => {
         await addDoc(collection(db, TICKETS_COL, ticketId, 'comments'), {
-            userId, userName, text,
+            userId, userName, text, userAvatar,
             createdAt: Date.now(),
             isFlagged: false
         });

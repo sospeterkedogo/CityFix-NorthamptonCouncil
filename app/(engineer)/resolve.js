@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { MediaService } from '../../src/services/mediaService';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ResolveJobScreen() {
   const router = useRouter();
@@ -75,12 +76,6 @@ export default function ResolveJobScreen() {
         Alert.alert("Success", "Ticket Resolved!", [
           { text: "OK", onPress: () => router.replace('/(engineer)/dashboard') }
         ]);
-        // Or for TRULY instant without even "Success" popup, just:
-        // router.replace('/(engineer)/dashboard');
-        // valid user request says "instant redirection", but usually they want to know it worked.
-        // Doing a self-dismissing approach or just direct redirect.
-
-        // Revised per "instant redirection":
         router.replace('/(engineer)/dashboard');
       } else {
         alert("Error: " + result.error);
@@ -95,151 +90,202 @@ export default function ResolveJobScreen() {
   if (!ticket) return <Text>Job not found.</Text>;
 
   return (
-    <ScrollView contentContainerStyle={STYLES.container}>
-
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Job #{ticket.id.slice(0, 5)}</Text>
-        <View style={styles.priorityBadge}>
-          <Text style={styles.priorityText}>{ticket.priority?.toUpperCase() || 'NORMAL'}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.jobTitle}>{ticket.title}</Text>
-      <Text style={styles.jobDesc}>{ticket.description}</Text>
-
-      {/* "BEFORE" EVIDENCE */}
-      <Text style={styles.sectionHeader}>The Problem (Before)</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.evidenceScroll}>
-        {ticket.photos?.length > 0 ? (
-          ticket.photos.map((url, i) => (
-            <Image key={i} source={{ uri: url }} style={styles.beforeImage} />
-          ))
-        ) : (
-          <Text style={{ color: '#999', fontStyle: 'italic' }}>No photos provided by citizen.</Text>
-        )}
-      </ScrollView>
-
-      <View style={styles.divider} />
-
-      {/* "AFTER" EVIDENCE (Input) */}
-      <Text style={styles.sectionHeader}>The Fix (Proof)</Text>
-
-      <TouchableOpacity style={styles.cameraBox} onPress={takeAfterPhoto}>
-        {afterPhoto ? (
-          <Image source={{ uri: afterPhoto.uri }} style={styles.afterImage} />
-        ) : (
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 40 }}>📸</Text>
-            <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Take 'After' Photo</Text>
-            <Text style={{ color: COLORS.text.secondary, fontSize: 12 }}>(Required)</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-      {afterPhoto && (
-        <TouchableOpacity onPress={takeAfterPhoto}>
-          <Text style={styles.retakeText}>Retake Photo</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* NOTES */}
-      <Text style={styles.sectionHeader}>Resolution Notes</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. Filled pothole with cold lay asphalt..."
-        multiline
-        numberOfLines={3}
-        value={notes}
-        onChangeText={setNotes}
-      />
-
-      {/* RESOLVE BUTTON */}
-      <TouchableOpacity
-        style={[
-          styles.resolveButton,
-          (!afterPhoto || !notes) && styles.disabledButton // Visual feedback
-        ]}
-        onPress={handleResolve}
-        disabled={uploading || !afterPhoto || !notes}
+    <View style={STYLES.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}
+        showsVerticalScrollIndicator={false}
       >
-        {uploading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={styles.resolveText}>MARK AS RESOLVED ✓</Text>
-        )}
-      </TouchableOpacity>
 
-    </ScrollView>
+        {/* HEADER: Back & Title */}
+        <View style={styles.topHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Resolve Job #{ticket.id.slice(0, 5)}</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* JOB SUMMARY CARD */}
+        <View style={styles.summaryCard}>
+          <View style={styles.badgeRow}>
+            <View style={styles.priorityBadge}>
+              <Text style={styles.priorityText}>{ticket.priority?.toUpperCase() || 'NORMAL'}</Text>
+            </View>
+            <Text style={styles.statusText}>{ticket.status.toUpperCase()}</Text>
+          </View>
+          <Text style={styles.jobTitle}>{ticket.title}</Text>
+          <Text style={styles.jobDesc}>{ticket.description}</Text>
+
+          <View style={styles.locationRow}>
+            <Ionicons name="location-sharp" size={16} color={COLORS.text.secondary} />
+            <Text style={styles.locationText}>
+              {ticket.location?.address || `${ticket.location?.latitude.toFixed(4)}, ${ticket.location?.longitude.toFixed(4)}`}
+            </Text>
+          </View>
+        </View>
+
+        {/* STEP 1: REVIEW EVIDENCE */}
+        <Text style={styles.stepTitle}>STEP 1: Review Issue</Text>
+        <Text style={styles.stepSub}>Check the original report photos.</Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.evidenceScroll}>
+          {ticket.photos?.length > 0 ? (
+            ticket.photos.map((url, i) => (
+              <Image key={i} source={{ uri: url }} style={styles.beforeImage} />
+            ))
+          ) : (
+            <Text style={{ color: '#999', fontStyle: 'italic', padding: 10 }}>No photos provided.</Text>
+          )}
+        </ScrollView>
+
+        <View style={styles.divider} />
+
+        {/* STEP 2: PROOF OF WORK */}
+        <Text style={styles.stepTitle}>STEP 2: Verify Fix</Text>
+        <Text style={styles.stepSub}>Take a photo of the completed work. This is required.</Text>
+
+        <TouchableOpacity style={styles.cameraBox} onPress={takeAfterPhoto}>
+          {afterPhoto ? (
+            <Image source={{ uri: afterPhoto.uri }} style={styles.afterImage} />
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <View style={styles.cameraCircle}>
+                <Ionicons name="camera" size={32} color="white" />
+              </View>
+              <Text style={styles.cameraText}>Take Solution Photo</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {afterPhoto && (
+          <TouchableOpacity onPress={takeAfterPhoto} style={styles.retakeBtn}>
+            <Text style={styles.retakeText}>Retake Photo</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* STEP 3: NOTES */}
+        <Text style={styles.sectionHeader}>Engineer Notes</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Describe what you did (e.g. 'Filled pothole, sealed edges')..."
+          multiline
+          numberOfLines={3}
+          value={notes}
+          onChangeText={setNotes}
+        />
+
+        {/* ACTION */}
+        <TouchableOpacity
+          style={[
+            styles.resolveButton,
+            (!afterPhoto || !notes) && styles.disabledButton
+          ]}
+          onPress={handleResolve}
+          disabled={uploading || !afterPhoto || !notes}
+        >
+          {uploading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-done-circle" size={24} color="white" style={{ marginRight: 10 }} />
+              <Text style={styles.resolveText}>COMPLETE JOB</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  scrollContent: { paddingBottom: 40 },
+  topHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20
   },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  priorityBadge: {
-    backgroundColor: '#ffedd5',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  priorityText: { color: '#c2410c', fontSize: 10, fontWeight: 'bold' },
-  jobTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 5 },
-  jobDesc: { fontSize: 16, color: COLORS.text.secondary, marginBottom: 20 },
+  backBtn: { padding: 8, borderRadius: 8, backgroundColor: '#f0f9ff' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.primary },
 
-  sectionHeader: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary, marginBottom: 10, marginTop: 10 },
-  evidenceScroll: { flexDirection: 'row', marginBottom: 20 },
-  beforeImage: { width: 120, height: 120, borderRadius: 8, marginRight: 10, backgroundColor: '#eee' },
+  summaryCard: {
+    backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 24,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' },
+      default: { elevation: 2 }
+    })
+  },
+  badgeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  priorityBadge: { backgroundColor: '#FFEDD5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  priorityText: { color: '#C2410C', fontWeight: '800', fontSize: 11 },
+  statusText: { color: '#94A3B8', fontWeight: '600', fontSize: 12 },
 
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
+  jobTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
+  jobDesc: { fontSize: 15, color: '#64748B', lineHeight: 22, marginBottom: 16 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  locationText: { color: '#64748B', fontSize: 13, fontWeight: '500' },
+
+  stepTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  stepSub: { fontSize: 14, color: '#64748B', marginBottom: 16 },
+
+  evidenceScroll: { flexDirection: 'row', marginBottom: 24 },
+  beforeImage: { width: 140, height: 140, borderRadius: 12, marginRight: 12 },
+
+  divider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 24 },
 
   cameraBox: {
-    height: 200,
-    backgroundColor: '#E8F6F3',
-    borderRadius: 12,
+    height: 220,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: '#CBD5E1',
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    marginBottom: 8
   },
+  cameraCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  cameraText: { color: '#475569', fontWeight: '600', fontSize: 16 },
   afterImage: { width: '100%', height: '100%' },
-  retakeText: { textAlign: 'center', color: COLORS.action, marginTop: 5, fontWeight: 'bold' },
 
+  retakeBtn: { alignSelf: 'center', padding: 8, marginBottom: 24 },
+  retakeText: { color: COLORS.action, fontWeight: '600' },
+
+  sectionHeader: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 12 },
   input: {
-    backgroundColor: COLORS.card,
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
-    height: 80,
+    borderColor: '#E2E8F0',
+    height: 100,
     textAlignVertical: 'top',
-    marginBottom: 20,
+    marginBottom: 32,
+    fontSize: 15
   },
+
   resolveButton: {
     backgroundColor: COLORS.success,
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 40,
-    ...STYLES.shadow,
+    shadowColor: COLORS.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   disabledButton: {
-    backgroundColor: '#ccc', // Grey out if requirements not met
+    backgroundColor: '#CBD5E1',
+    shadowOpacity: 0,
     elevation: 0,
   },
   resolveText: {
     color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
+    fontWeight: '800',
+    fontSize: 16,
+    letterSpacing: 0.5
   }
 });

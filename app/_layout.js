@@ -46,8 +46,8 @@ function RootNavigation() {
 
     const currentGroup = segments[0];
 
-    // Check pathname for 'profile' because segments might be empty at root
-    const isProfile = pathname.includes('/profile');
+    // Check pathname for shared routes (profile, settings, legal)
+    const isShared = ['/profile', '/settings', '/legal'].some(path => pathname.includes(path));
     const isPublic = PUBLIC_GROUPS.includes(currentGroup);
 
     // Scenario 1: User is NOT logged in
@@ -59,7 +59,8 @@ function RootNavigation() {
     }
 
     // Scenario 2: User IS logged in
-    if (isProfile) return;
+    // Allow shared routes to stay
+    if (isShared) return;
 
     // If in public area, redirect to dashboard
     if (isPublic) {
