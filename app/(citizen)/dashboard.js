@@ -8,28 +8,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { TicketService } from '../../src/services/ticketService';
 import { TICKET_STATUS } from '../../src/constants/models';
+import SimpleExpandableRow from '../../src/components/SimpleExpandableRow';
 import { Ionicons } from '@expo/vector-icons';
-import FeedCard from '../../src/components/FeedCard';
-import { SocialService } from '../../src/services/socialService';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('mine'); // 'mine' or 'feed'
   const router = useRouter();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
-
-  // My Tickets State
-  const [myTickets, setMyTickets] = useState([]);
-
-  // Feed State
-  const [feedData, setFeedData] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [loadingFeed, setLoadingFeed] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
 
   // Data refresh handler
   useFocusEffect(
@@ -60,43 +49,6 @@ export default function Dashboard() {
     setRefreshing(false);
   };
 
-  // Fetch Community Feed
-  const fetchFeed = async (isRefresh = false) => {
-    if (loadingFeed) return;
-    if (!isRefresh && !hasMore) return; // Stop if no more data
-
-    setLoadingFeed(true);
-
-    try {
-      const startAfterDoc = isRefresh ? null : lastDoc;
-      const { data, lastVisible } = await SocialService.getVerifiedFeed(startAfterDoc);
-
-      if (isRefresh) {
-        setFeedData(data);
-        setHasMore(true); // Reset pagination
-      } else {
-        if (data.length === 0) {
-          setHasMore(false);
-          alert("No more verified fixes to load.");
-        } else {
-          setFeedData(prev => [...prev, ...data]);
-        }
-      }
-
-      setLastDoc(lastVisible);
-    } catch (error) {
-      console.error("Feed fetch error", error);
-    } finally {
-      setLoadingFeed(false);
-    }
-  };
-
-  useEffect(() => {
-    // Initial Load
-    fetchTickets(); // Load mine
-    fetchFeed(true); // Load feed
-  }, []);
-
   const onRefresh = () => {
     setRefreshing(true);
     fetchTickets();
@@ -109,95 +61,97 @@ export default function Dashboard() {
       case TICKET_STATUS.IN_PROGRESS: return COLORS.warning;
       case TICKET_STATUS.VERIFIED: return COLORS.action;
       case TICKET_STATUS.UNDER_REVIEW: return '#8e44ad'; // Purple
-      case 'merged': return '#95a5a6'; // Neutral
       default: return COLORS.text.secondary; // Draft/Submitted
     }
   };
 
-  const renderTicketItem = ({ item }) => (
-    <TouchableOpacity onPress={() => router.push(
-      {
-        pathname: '/(citizen)/ticket/[id]',
-        params: { id: item.id }
-      }
-    )} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.categoryTag}>
-          <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
-        </View>
-        <View style={[styles.statusBadge, { borderColor: getStatusColor(item.status) }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status.replace('_', ' ').toUpperCase()}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-
-      <Text style={styles.cardDate}>
-        Reported on {new Date(item.createdAt).toLocaleDateString()}
-      </Text>
-    </TouchableOpacity>
-  );
+  // Stats Calculation
+  const stats = {
+    total: tickets.length,
+    active: tickets.filter(t => t.status === 'in_progress' || t.status === 'assigned').length,
+    resolved: tickets.filter(t => t.status === 'resolved' || t.status === 'verified').length
+  };
 
   return (
     <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
-      {/* Header Section */}
-      {/* Header Section */}
-      <View style={styles.headerContainer}>
-        {/* --- TAB SELECTOR --- */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'mine' && styles.activeTab]}
-            onPress={() => setActiveTab('mine')}
-          >
-            <Text style={[styles.tabText, activeTab === 'mine' && styles.activeTabText]}>My Reports</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'feed' && styles.activeTab]}
-            onPress={() => setActiveTab('feed')}
-          >
-            <Text style={[styles.tabText, activeTab === 'feed' && styles.activeTabText]}>Community Fixes</Text>
-          </TouchableOpacity>
+      {/* --- HEADER --- */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.welcomeText}>Hello, {user?.displayName || 'Citizen'}!</Text>
+          <Text style={styles.subText}>Here is your impact overview</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/profile')} style={styles.profileIcon}>
+          <Text style={styles.profileInitial}>{(user?.email || 'U').charAt(0).toUpperCase()}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* --- STATS CARDS --- */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.total}</Text>
+          <Text style={styles.statLabel}>Reports</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: COLORS.warning }]}>{stats.active}</Text>
+          <Text style={styles.statLabel}>Active</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: COLORS.success }]}>{stats.resolved}</Text>
+          <Text style={styles.statLabel}>Resolved</Text>
         </View>
       </View>
 
-      {/* Main Action Card */}
+      {/* --- MAIN ACTION --- */}
       <TouchableOpacity
-        style={styles.actionCard}
+        style={styles.mainAction}
         onPress={() => router.push('/(citizen)/report')}
+        activeOpacity={0.9}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-          <Ionicons name="add-circle-outline" size={24} color={COLORS.text.light} style={{ marginRight: 8 }} />
-          <Text style={styles.actionTitle}>Report New Issue</Text>
+        <View style={styles.actionIconCircle}>
+          <Ionicons name="add" size={32} color="white" />
         </View>
-        <Text style={styles.actionSubtitle}>Spot a problem? Let us know.</Text>
+        <View>
+          <Text style={styles.mainActionTitle}>Report an Issue</Text>
+          <Text style={styles.mainActionSub}>Help fix your community</Text>
+        </View>
       </TouchableOpacity>
 
-      {/* Resume Drafts UI */}
+      {/* --- DRAFTS --- */}
       {drafts.length > 0 && (
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: 'white', borderWidth: 2, borderColor: COLORS.primary, marginBottom: SPACING.l }]}
+          style={styles.draftAlert}
           onPress={() => setShowDraftsModal(true)}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-            <Ionicons name="document-text-outline" size={22} color={COLORS.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.actionTitle, { color: COLORS.primary }]}>Resume Saved Drafts</Text>
-          </View>
-          <Text style={[styles.actionSubtitle, { color: COLORS.text.secondary }]}>
-            You have {drafts.length} unfinished {drafts.length === 1 ? 'report' : 'reports'}
-          </Text>
+          <Ionicons name="document-text" size={20} color={COLORS.primary} />
+          <Text style={styles.draftText}>Resume {drafts.length} Unfinished {drafts.length === 1 ? 'Report' : 'Reports'}</Text>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
         </TouchableOpacity>
       )}
 
-      {/* Drafts Modal */}
+      {/* --- RECENT ACTIVITY (Simplified) --- */}
+      <Text style={styles.sectionHeader}>Recent Activity</Text>
+
+      <FlatList
+        data={tickets.slice(0, 5)} // Only show last 5
+        renderItem={({ item }) => <SimpleExpandableRow ticket={item} />}
+        keyExtractor={(item) => item.id}
+        scrollEnabled={true}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="leaf-outline" size={40} color="#ccc" />
+            <Text style={styles.emptyText}>No recent activity.</Text>
+          </View>
+        }
+      />
+
+      {/* Drafts Modal (Preserved) */}
       <Modal visible={showDraftsModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Draft</Text>
-
             <FlatList
               data={drafts}
               keyExtractor={item => item.id}
@@ -214,215 +168,75 @@ export default function Dashboard() {
                 </TouchableOpacity>
               )}
             />
-
-            <TouchableOpacity
-              style={styles.closeModalBtn}
-              onPress={() => setShowDraftsModal(false)}
-            >
+            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowDraftsModal(false)}>
               <Text style={{ color: COLORS.text.light, fontWeight: 'bold' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* --- CONTENT --- */}
-      {activeTab === 'mine' ? (
-        // ... FlatList for My Tickets ...
-        <FlatList
-          data={tickets}
-          renderItem={renderTicketItem}
-          keyExtractor={(item, index) => item.id || String(index)}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="checkmark-circle-outline" size={48} color={COLORS.text.secondary} style={{ marginBottom: 10 }} />
-              <Text style={styles.emptyText}>No reports yet.</Text>
-            </View>
-          }
-        />
-      ) : (
-        // ... Community Feed ...
-        <FlatList
-          data={feedData}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => <FeedCard ticket={item} />}
-          onEndReached={() => fetchFeed(false)}
-          onEndReachedThreshold={0.5}
-          refreshing={loadingFeed}
-          onRefresh={() => fetchFeed(true)}
-          ListEmptyComponent={
-            <Text style={{ textAlign: 'center', marginTop: 50, color: '#999' }}>
-              No verified fixes to show yet.
-            </Text>
-          }
-        />
-      )}
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerContainer: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.l,
-    marginTop: SPACING.m,
+    marginBottom: 20,
+    marginTop: 10,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+  welcomeText: { fontSize: 22, fontWeight: 'bold', color: '#202124' },
+  subText: { fontSize: 14, color: '#5f6368' },
+  profileIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  profileInitial: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+
+  // Stats
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
+  statCard: {
+    flex: 1, backgroundColor: 'white', padding: 15, borderRadius: 12, alignItems: 'center', marginHorizontal: 5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
-  subGreeting: {
-    fontSize: 14,
-    color: COLORS.text.secondary,
+  statNumber: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 5 },
+  statLabel: { fontSize: 12, color: '#666', fontWeight: '600', textTransform: 'uppercase' },
+
+  // Main Action
+  mainAction: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.primary, padding: 20, borderRadius: 16, marginBottom: 20,
+    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5
   },
-  avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.text.secondary,
-    opacity: 0.8,
-    justifyContent: 'center',
-    alignItems: 'center',
+  actionIconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  mainActionTitle: { fontSize: 18, fontWeight: 'bold', color: 'white' },
+  mainActionSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+
+  // Drafts
+  draftAlert: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 12, borderRadius: 8, marginBottom: 20,
+    borderWidth: 1, borderColor: '#FFE0B2'
   },
-  avatarText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
+  draftText: { flex: 1, color: '#E65100', fontWeight: '600', marginLeft: 10 },
+
+  // Recent Activity
+  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+  simpleRow: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 10,
+    borderBottomWidth: 1, borderColor: '#f0f0f0'
   },
-  actionCard: {
-    backgroundColor: COLORS.primary,
-    padding: SPACING.l,
-    borderRadius: 16,
-    marginBottom: SPACING.xl,
-    ...STYLES.shadow,
-  },
-  actionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text.light,
-  },
-  actionSubtitle: {
-    fontSize: 14,
-    color: '#BDC3C7', // Light grey for contrast on dark blue
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: SPACING.m,
-  },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: SPACING.m,
-    marginBottom: SPACING.m,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    ...STYLES.shadow,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.s,
-  },
-  categoryTag: {
-    backgroundColor: '#F0F4F8',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-  },
-  categoryText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: COLORS.text.secondary,
-  },
-  statusBadge: {
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text.primary,
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 14,
-    color: COLORS.text.secondary,
-    marginBottom: SPACING.s,
-  },
-  cardDate: {
-    fontSize: 12,
-    color: '#BDC3C7',
-    textAlign: 'right',
-  },
-  emptyState: {
-    alignItems: 'center',
-    marginTop: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text.secondary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    maxHeight: '80%'
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: COLORS.primary
-  },
-  draftItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderColor: '#eee'
-  },
-  draftItemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text.primary
-  },
-  draftItemDate: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4
-  },
-  closeModalBtn: {
-    backgroundColor: COLORS.primary,
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20
-  },
-  tabContainer: { flexDirection: 'row', marginBottom: 15, backgroundColor: '#eee', borderRadius: 8, padding: 4 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
-  activeTab: { backgroundColor: 'white', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
-  tabText: { fontWeight: '600', color: '#999' },
-  activeTabText: { color: COLORS.primary },
+  statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 15 },
+  simpleTitle: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 4 },
+  simpleDate: { fontSize: 12, color: '#999' },
+
+  emptyState: { alignItems: 'center', padding: 30 },
+  emptyText: { color: '#999', marginTop: 10 },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 20, maxHeight: '80%' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, color: COLORS.primary },
+  draftItem: { padding: 15, borderBottomWidth: 1, borderColor: '#eee' },
+  draftItemTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.text.primary },
+  draftItemDate: { fontSize: 12, color: '#999', marginTop: 4 },
+  closeModalBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 20 },
 });

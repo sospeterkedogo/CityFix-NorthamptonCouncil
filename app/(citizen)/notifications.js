@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
@@ -34,35 +34,31 @@ export default function NotificationsScreen() {
 
         return (
             <TouchableOpacity
-                style={[
-                    styles.card,
-                    isUnread ? styles.unreadCard : styles.readCard
-                ]}
+                style={[styles.card, isUnread ? styles.unreadCard : styles.readCard]}
                 onPress={() => markAsRead(item.id)}
+                activeOpacity={0.7}
             >
-                <View style={[styles.iconContainer, isUnread && styles.unreadIcon]}>
+                <View style={[styles.iconContainer, !isUnread && styles.readIconContainer]}>
                     <Ionicons
-                        name={item.type === 'alert' ? 'alert-circle' : 'notifications'}
-                        size={24}
-                        color={isUnread ? 'white' : COLORS.textSecondary}
+                        name={item.type === 'alert' ? 'alert' : 'notifications'}
+                        size={20}
+                        color={isUnread ? 'white' : '#5f6368'}
                     />
                 </View>
 
                 <View style={styles.contentContainer}>
                     <View style={styles.headerRow}>
-                        <Text style={[styles.title, isUnread && styles.unreadTitle]}>
+                        <Text style={[styles.title, isUnread && styles.unreadTitle]} numberOfLines={1}>
                             {item.title}
                         </Text>
                         <Text style={styles.time}>
                             {formatTimeAgo(date)}
                         </Text>
                     </View>
-                    <Text style={[styles.body, isUnread && styles.unreadBody]}>
+                    <Text style={[styles.body, isUnread && styles.unreadBody]} numberOfLines={2}>
                         {item.body}
                     </Text>
                 </View>
-
-                {isUnread && <View style={styles.dot} />}
             </TouchableOpacity>
         );
     };
@@ -77,28 +73,32 @@ export default function NotificationsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Notifications</Text>
-                {notifications.some(n => !n.read) && (
-                    <TouchableOpacity onPress={markAllAsRead}>
-                        <Text style={styles.markAll}>Mark all as read</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
+            <View style={[styles.webLayout, Platform.OS === 'web' && { alignSelf: 'center' }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Notifications</Text>
+                    {notifications.some(n => !n.read) && (
+                        <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
+                            <Text style={styles.markAllText}>Mark all read</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
-            <FlatList
-                data={notifications}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color="#ccc" />
-                        <Text style={styles.emptyText}>No notifications yet</Text>
-                        <Text style={styles.emptySubtext}>We'll let you know when there are updates.</Text>
-                    </View>
-                }
-            />
+                <FlatList
+                    data={notifications}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="notifications-off-outline" size={80} color="#e0e0e0" />
+                            <Text style={styles.emptyText}>All caught up</Text>
+                            <Text style={styles.emptySubtext}>You have no new notifications at this time. Enjoy your day!</Text>
+                        </View>
+                    }
+                />
+            </View>
         </SafeAreaView>
     );
 }
@@ -106,120 +106,132 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC', // Light blue-grey background
+        backgroundColor: '#fff', // Cleaner white background like Google apps
     },
     center: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    // Web Layout Constraint
+    webLayout: {
+        flex: 1,
+        maxWidth: 600,
+        width: '100%',
+        alignSelf: 'center',
+        backgroundColor: '#fff',
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingTop: 50,
-        paddingBottom: 20,
-        backgroundColor: 'white',
+        paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: '#f0f0f0',
+        backgroundColor: '#fff',
+        // Sticky header feel
+        zIndex: 10,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: 'bold',
-        color: COLORS.textPrimary,
-        fontFamily: 'Inter-Bold',
+        color: '#202124', // Google Dark Grey
+        letterSpacing: -0.5,
     },
-    markAll: {
-        color: COLORS.primary,
+    markAllBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: '#F1F3F4', // Google light grey pill
+    },
+    markAllText: {
+        fontSize: 12,
         fontWeight: '600',
+        color: COLORS.primary,
     },
     listContent: {
-        padding: 16,
+        paddingVertical: 10,
     },
+    // Card Styling
     card: {
         flexDirection: 'row',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    readCard: {
-        backgroundColor: 'white',
-        opacity: 0.8,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        backgroundColor: '#fff',
+        // No margin/cards for Google style list, usually separate by border or just space
+        // But for premium feel let's use hover state or subtle bg
     },
     unreadCard: {
-        backgroundColor: 'white',
-        borderLeftWidth: 4,
-        borderLeftColor: COLORS.primary,
-        shadowOpacity: 0.1,
-        elevation: 4,
+        backgroundColor: '#E8F0FE', // Google Light Blue for unread
+    },
+    readCard: {
+        backgroundColor: '#fff',
     },
     iconContainer: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 15,
     },
-    unreadIcon: {
-        backgroundColor: COLORS.primary,
+    readIconContainer: {
+        backgroundColor: '#F1F3F4',
     },
     contentContainer: {
         flex: 1,
+        justifyContent: 'center',
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 4,
+        alignItems: 'center',
     },
     title: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
-        color: '#64748B',
+        color: '#202124',
+        flex: 1,
+        marginRight: 10,
     },
     unreadTitle: {
-        color: '#1E293B',
-        fontWeight: 'bold',
+        fontWeight: '700',
+        color: '#202124',
     },
     time: {
         fontSize: 12,
-        color: '#94A3B8',
+        color: '#5f6368', // Google Grey
     },
     body: {
         fontSize: 14,
-        color: '#64748B',
+        color: '#5f6368',
         lineHeight: 20,
     },
     unreadBody: {
-        color: '#334155',
+        color: '#3c4043', // Darker grey for unread
     },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: COLORS.error, // Red dot
-        marginLeft: 8,
-    },
+    // Dot is redundant with background color, but can keep for clarity if needed
+    // Google uses bold text + bg color usually.
+
     emptyContainer: {
         alignItems: 'center',
-        marginTop: 100,
+        marginTop: 80,
+        paddingHorizontal: 40,
     },
     emptyText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#94A3B8',
-        marginTop: 16,
+        color: '#202124',
+        marginTop: 20,
     },
     emptySubtext: {
-        color: '#CBD5E1',
-        marginTop: 8,
+        fontSize: 14,
+        color: '#5f6368',
+        marginTop: 10,
+        textAlign: 'center',
+        lineHeight: 22,
     },
 });

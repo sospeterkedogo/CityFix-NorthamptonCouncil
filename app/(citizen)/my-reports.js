@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, FlatList, Text, StyleSheet, RefreshControl, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { TicketService } from '../../src/services/ticketService';
-import TicketListItem from '../../src/components/TicketListItem';
+import ExpandableTicketCard from '../../src/components/ExpandableTicketCard';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
 
@@ -39,11 +39,7 @@ export default function MyReportsScreen() {
     };
 
     const renderItem = ({ item }) => (
-        <TicketListItem
-            ticket={item}
-            role="citizen"
-            onPress={() => router.push({ pathname: '/(citizen)/ticket/[id]', params: { id: item.id } })}
-        />
+        <ExpandableTicketCard ticket={item} />
     );
 
     return (

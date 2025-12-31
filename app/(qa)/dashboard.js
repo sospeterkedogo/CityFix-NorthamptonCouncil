@@ -14,7 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 
 export default function QADashboard() {
+  /* State for QA Queue and History */
   const [tickets, setTickets] = useState([]);
+  const [historyTickets, setHistoryTickets] = useState([]); // New History State
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -28,7 +30,7 @@ export default function QADashboard() {
   const [galleryUrl, setGalleryUrl] = useState(null);
 
   // Engineers Logic
-  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'engineers'
+  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'engineers' | 'history'
   const [engineers, setEngineers] = useState([]);
 
   useEffect(() => {
@@ -42,14 +44,20 @@ export default function QADashboard() {
   };
 
   const loadQAQueue = async () => {
-    // In a real app, use a query where("status", "==", "resolved")
     const allData = await TicketService.getAllTickets();
-    const resolvedOnly = allData.filter(t => t.status === 'resolved');
-    setTickets(resolvedOnly);
+
+    // 1. Pending Verification
+    const pending = allData.filter(t => t.status === 'verified');
+    setTickets(pending);
+
+    // 2. Verified History (Resolved tickets)
+    const history = allData.filter(t => t.status === 'resolved');
+    setHistoryTickets(history);
+
     setLoading(false);
 
-    // Clear selection if list refreshed
-    if (selectedTicket && !resolvedOnly.find(t => t.id === selectedTicket.id)) {
+    // Clear selection if list refreshed and item gone
+    if (selectedTicket && !pending.find(t => t.id === selectedTicket.id) && activeTab === 'queue') {
       setSelectedTicket(null);
     }
   };
@@ -139,7 +147,9 @@ export default function QADashboard() {
         <View>
           <Text style={styles.headerTitle}>Quality Assurance</Text>
           <Text style={styles.headerSub}>
-            {activeTab === 'queue' ? `${tickets.length} jobs pending verification` : `${engineers.length} active engineers`}
+            {activeTab === 'queue' ? `${tickets.length} jobs pending verification` :
+              activeTab === 'history' ? `${historyTickets.length} previously verified jobs` :
+                `${engineers.length} active engineers`}
           </Text>
         </View>
 
@@ -172,19 +182,27 @@ export default function QADashboard() {
         >
           <Text style={[styles.tabText, activeTab === 'engineers' && styles.activeTabText]}>Engineer List</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+          onPress={() => { setActiveTab('history'); setSelectedTicket(null); }}
+        >
+          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>Verified History</Text>
+        </TouchableOpacity>
       </View>
 
       {/* CONTENT AREA */}
-      {activeTab === 'queue' ? (
+      {activeTab === 'queue' || activeTab === 'history' ? (
         <View style={styles.splitView}>
           {/* LEFT: LIST */}
           {(!isMobile || (isMobile && !selectedTicket)) && (
             <View style={[styles.listColumn, isMobile && { flex: 1 }]}>
               <FlatList
-                data={tickets}
+                data={activeTab === 'history' ? historyTickets : tickets}
                 renderItem={({ item }) => <TicketRow item={item} />}
                 keyExtractor={(item, index) => item.id || String(index)}
-                ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>Queue is empty. Good job!</Text>}
+                ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>
+                  {activeTab === 'history' ? "No history found." : "Queue is empty. Good job!"}
+                </Text>}
               />
             </View>
           )}
@@ -198,7 +216,7 @@ export default function QADashboard() {
                   onPress={() => setSelectedTicket(null)}
                 >
                   <Ionicons name="arrow-back" size={20} color="black" style={{ marginRight: 5 }} />
-                  <Text style={{ fontWeight: 'bold' }}>Back to Queue</Text>
+                  <Text style={{ fontWeight: 'bold' }}>Back to List</Text>
                 </TouchableOpacity>
               )}
 
@@ -220,52 +238,61 @@ export default function QADashboard() {
                     <Text style={styles.noteText}>{selectedTicket.resolutionNotes || "No notes provided."}</Text>
                   </View>
 
-                  {/* DECISION AREA */}
-                  <View style={styles.decisionArea}>
-                    {!showRejectInput ? (
-                      <>
-                        <TouchableOpacity style={styles.rejectBtn} onPress={() => setShowRejectInput(true)}>
-                          <Ionicons name="close-circle-outline" size={18} color="white" style={{ marginRight: 5 }} />
-                          <Text style={styles.rejectText}>REJECT / REOPEN</Text>
-                        </TouchableOpacity>
+                  {/* DECISION AREA - HIDE IF HISTORY */}
+                  {activeTab === 'queue' && (
+                    <View style={styles.decisionArea}>
+                      {!showRejectInput ? (
+                        <>
+                          <TouchableOpacity style={styles.rejectBtn} onPress={() => setShowRejectInput(true)}>
+                            <Ionicons name="close-circle-outline" size={18} color="white" style={{ marginRight: 5 }} />
+                            <Text style={styles.rejectText}>REJECT / REOPEN</Text>
+                          </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>
-                          <Ionicons name="checkmark-circle-outline" size={20} color="white" style={{ marginRight: 5 }} />
-                          <Text style={styles.verifyText}>VERIFY FIX</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <View style={styles.rejectForm}>
-                        <Text style={styles.rejectLabel}>Reason for Rejection:</Text>
-                        <TextInput
-                          style={styles.rejectInput}
-                          placeholder="e.g. Worksite not cleaned up..."
-                          value={rejectReason}
-                          onChangeText={setRejectReason}
-                        />
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                          <TouchableOpacity
-                            style={[styles.rejectBtn, { flex: 1 }]}
-                            onPress={handleReject}
-                          >
-                            <Text style={styles.rejectText}>CONFIRM REJECTION</Text>
+                          <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>
+                            <Ionicons name="checkmark-circle-outline" size={20} color="white" style={{ marginRight: 5 }} />
+                            <Text style={styles.verifyText}>VERIFY FIX</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.cancelBtn}
-                            onPress={() => setShowRejectInput(false)}
-                          >
-                            <Text style={{ color: '#666' }}>Cancel</Text>
-                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <View style={styles.rejectForm}>
+                          <Text style={styles.rejectLabel}>Reason for Rejection:</Text>
+                          <TextInput
+                            style={styles.rejectInput}
+                            placeholder="e.g. Worksite not cleaned up..."
+                            value={rejectReason}
+                            onChangeText={setRejectReason}
+                          />
+                          <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <TouchableOpacity
+                              style={[styles.rejectBtn, { flex: 1 }]}
+                              onPress={handleReject}
+                            >
+                              <Text style={styles.rejectText}>CONFIRM REJECTION</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.cancelBtn}
+                              onPress={() => setShowRejectInput(false)}
+                            >
+                              <Text style={{ color: '#666' }}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                      </View>
-                    )}
-                  </View>
+                      )}
+                    </View>
+                  )}
+                  {activeTab === 'history' && (
+                    <View style={[styles.decisionArea, { justifyContent: 'center' }]}>
+                      <Text style={{ color: COLORS.success, fontWeight: 'bold' }}>
+                        <Ionicons name="checkmark-circle" size={18} /> Verified & Closed
+                      </Text>
+                    </View>
+                  )}
 
                 </View>
               ) : (
                 <View style={styles.emptyState}>
                   <Ionicons name="search-outline" size={48} color="#ccc" style={{ marginBottom: 10 }} />
-                  <Text style={styles.emptyText}>Select a job to verify</Text>
+                  <Text style={styles.emptyText}>Select a job to view details</Text>
                 </View>
               )}
             </View>
