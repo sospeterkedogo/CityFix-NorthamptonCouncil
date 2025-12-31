@@ -8,15 +8,15 @@ const TICKETS_COL = 'tickets';
 
 export const SocialService = {
 
-    // 1. Fetch Verified Feed (Infinite Scroll)
+    // 1. Fetch Live Feed (Active, Verified, Resolved)
     getVerifiedFeed: async (lastSnapshot = null, pageSize = 5) => {
         try {
-            console.log("Fetching verified feed...");
+            console.log("Fetching live feed...");
             // Create the base query
             let q = query(
                 collection(db, TICKETS_COL),
-                where('status', '==', 'verified'), // Only show verified fixes
-                orderBy('createdAt', 'desc'), // Requires index: check console for link if this fails
+                where('status', 'in', ['in_progress', 'verified', 'resolved']), // Live Feed Strategy
+                orderBy('createdAt', 'desc'),
                 limit(pageSize)
             );
 
@@ -27,7 +27,7 @@ export const SocialService = {
             const snapshot = await getDocs(q);
 
             if (snapshot.empty) {
-                console.log("No strictly verified items found. Checking sample docs...");
+                console.log("No live feed items found. Checking sample docs...");
                 // Debug: Fetch any 5 docs to see what their status is
                 try {
                     const sampleQ = query(collection(db, TICKETS_COL), limit(5));
@@ -38,14 +38,14 @@ export const SocialService = {
                     return {
                         data: [],
                         lastVisible: null,
-                        debugInfo: `No 'verified' tickets found.\nSample DB statuses:\n${sampleStatuses.join('\n')}`
+                        debugInfo: `No active/completed tickets found.\nSample DB statuses:\n${sampleStatuses.join('\n')}`
                     };
                 } catch (err) {
                     return { data: [], lastVisible: null, debugInfo: `Error fetching samples: ${err.message}` };
                 }
             }
 
-            console.log(`Found ${snapshot.docs.length} verified items.`);
+            console.log(`Found ${snapshot.docs.length} live feed items.`);
 
             // FIX: Put `doc.data()` FIRST, then `id: doc.id` to ensure ID isn't overwritten
             // Also ensure we handle missing verifiedAt if we want to sort later

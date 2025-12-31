@@ -84,26 +84,75 @@ export default function FeedCard({ ticket }) {
 
     if (!ticket || !ticket.id) return null; // Don't render invalid tickets
 
+    // --- Dynamic Feed Logic ---
+    const getStatusConfig = (status) => {
+        switch (status) {
+            case 'in_progress':
+                return {
+                    icon: '👷',
+                    title: 'Work in Progress',
+                    subtitle: `Engineer working on ${ticket.title}`,
+                    badge: 'IN PROGRESS',
+                    badgeColor: '#FFA500', // Orange
+                    image: ticket.photos?.[0] // Show BEFORE photo
+                };
+            case 'verified':
+                return {
+                    icon: '✅',
+                    title: 'Fix Deployed',
+                    subtitle: 'Pending final QA check',
+                    badge: 'PENDING QA',
+                    badgeColor: '#3498db', // Blue
+                    image: ticket.afterPhoto || ticket.photos?.[0] // Show AFTER (or fallback)
+                };
+            case 'resolved':
+                return {
+                    icon: '🏆',
+                    title: 'Officially Closed',
+                    subtitle: 'Issue resolved & verified',
+                    badge: 'RESOLVED',
+                    badgeColor: COLORS.success, // Green
+                    image: ticket.afterPhoto || ticket.photos?.[0]
+                };
+            default:
+                return {
+                    icon: '🔧',
+                    title: 'Status Update',
+                    subtitle: ticket.title,
+                    badge: status?.toUpperCase(),
+                    badgeColor: '#999',
+                    image: ticket.photos?.[0]
+                };
+        }
+    };
+
+    const config = getStatusConfig(ticket.status);
+
     return (
         <View style={styles.card}>
             {/* Header */}
             <View style={styles.header}>
-                <View style={styles.avatar}><Text>👷</Text></View>
+                <View style={styles.avatar}><Text style={{ fontSize: 18 }}>{config.icon}</Text></View>
                 <View>
-                    <Text style={styles.username}>Fixed by Council</Text>
+                    <Text style={styles.username}>{config.title}</Text>
                     <Text style={styles.location}>
-                        {ticket.title} • {ticket.verifiedAt ? new Date(ticket.verifiedAt).toLocaleDateString() : 'Just now'}
+                        {config.subtitle} • {new Date(ticket.updatedAt || ticket.createdAt).toLocaleDateString()}
                     </Text>
                 </View>
             </View>
 
-            {/* Image (Show "After" photo if exists, else "Before") */}
-            <TouchableOpacity onPress={() => setShowFullScreen(true)} activeOpacity={0.9}>
+            {/* Image Section */}
+            <TouchableOpacity onPress={() => setShowFullScreen(true)} activeOpacity={0.9} style={{ position: 'relative' }}>
                 <Image
-                    source={{ uri: ticket.afterPhoto || ticket.photos[0] }}
+                    source={{ uri: config.image }}
                     style={styles.image}
                     resizeMode="cover"
                 />
+
+                {/* Status Badge Overlay */}
+                <View style={[styles.statusBadge, { backgroundColor: config.badgeColor }]}>
+                    <Text style={styles.statusBadgeText}>{config.badge}</Text>
+                </View>
             </TouchableOpacity>
 
             {/* Action Bar */}
@@ -133,9 +182,11 @@ export default function FeedCard({ ticket }) {
 
             {/* Caption */}
             <View style={styles.captionBox}>
-                <Text numberOfLines={2}>
-                    <Text style={{ fontWeight: 'bold' }}>Resolution: </Text>
-                    {ticket.resolutionNotes || "Issue resolved."}
+                <Text numberOfLines={3}>
+                    <Text style={{ fontWeight: 'bold' }}>{ticket.status === 'in_progress' ? 'Report: ' : 'Resolution: '}</Text>
+                    {ticket.status === 'in_progress'
+                        ? (ticket.description || "No description provided.")
+                        : (ticket.resolutionNotes || "Issue resolved.")}
                 </Text>
             </View>
 
@@ -259,7 +310,7 @@ export default function FeedCard({ ticket }) {
                     {/* Main Image */}
                     <View style={styles.fsImageWrapper}>
                         <Image
-                            source={{ uri: ticket.afterPhoto || ticket.photos[0] }}
+                            source={{ uri: config.image }}
                             style={styles.fsImage}
                             resizeMode="contain"
                         />
@@ -306,6 +357,19 @@ const styles = StyleSheet.create({
     actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
     actionText: { fontWeight: '600' },
     captionBox: { paddingHorizontal: 10, paddingBottom: 15 },
+
+    // Status Badge
+    statusBadge: {
+        position: 'absolute',
+        top: 15,
+        right: 15,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        elevation: 5,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84,
+    },
+    statusBadgeText: { color: 'white', fontWeight: 'bold', fontSize: 10, letterSpacing: 1 },
 
     // Modal / Bottom Sheet
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
