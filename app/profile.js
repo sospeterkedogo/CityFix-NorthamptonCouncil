@@ -1,15 +1,86 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, ScrollView, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { updateProfile } from 'firebase/auth';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, ScrollView, Switch, Image, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { MediaService } from '../src/services/mediaService';
+import { UserService } from '../src/services/userService';
 
 export default function UserProfile() {
     const { user, userRole, logout } = useAuth();
     const router = useRouter();
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+    // Profile State
+    const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState(user?.displayName || '');
+    const [photo, setPhoto] = useState(user?.photoURL || null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setName(user.displayName || user.email?.split('@')[0]);
+            setPhoto(user.photoURL);
+        }
+    }, [user]);
+
+    const pickImage = async () => {
+        if (!isEditing) return;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setPhoto(result.assets[0].uri);
+        }
+    };
+
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            let photoURL = photo;
+
+            // Upload if it's a local file (file:// or starting with /)
+            if (photo && !photo.startsWith('http')) {
+                photoURL = await MediaService.uploadFile(photo, 'profiles');
+            }
+
+            // 1. Update Firebase Auth Profile (Immediate UI Update)
+            await updateProfile(user, {
+                displayName: name,
+                photoURL: photoURL
+            });
+
+            // 2. Update Firestore Document (Persistence)
+            const res = await UserService.updateUserProfile(user.uid, {
+                name: name,
+                photoURL: photoURL
+            });
+
+            if (res.success) {
+                // Force reload of user to ensure Context catches up if needed
+                await user.reload();
+
+                setIsEditing(false);
+                Alert.alert("Success", "Profile updated!");
+            } else {
+                Alert.alert("Error", "Failed to update profile.");
+            }
+        } catch (e) {
+            console.error(e);
+            Alert.alert("Error", e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogout = async () => {
         if (Platform.OS === 'web') {
@@ -27,7 +98,7 @@ export default function UserProfile() {
         }
     };
 
-    // Toggle Notifications (Visual + Logic Mock)
+    // ... (Toggle Notifications logic remains)
     const toggleNotifications = async (value) => {
         setNotificationsEnabled(value);
         if (value) {
@@ -76,28 +147,52 @@ export default function UserProfile() {
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
             <View style={[styles.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
 
-                {/* Custom Header w/ Back */}
+                {/* Custom Header w/ Back & Edit */}
                 <View style={styles.navHeader}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#333" />
                     </TouchableOpacity>
                     <Text style={styles.pageTitle}>Profile</Text>
-                    <View style={{ width: 24 }} />
+                    <TouchableOpacity onPress={() => isEditing ? handleSave() : setIsEditing(true)} disabled={loading}>
+                        {loading ? <ActivityIndicator color={COLORS.primary} /> : (
+                            <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>
+                                {isEditing ? 'Save' : 'Edit'}
+                            </Text>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                     {/* HERO PROFILE SECTION */}
                     <View style={styles.heroSection}>
-                        <View style={styles.avatarWrapper}>
+                        <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage} disabled={!isEditing}>
                             <View style={styles.avatarCircle}>
-                                <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase()}</Text>
+                                {photo ? (
+                                    <Image source={{ uri: photo }} style={{ width: 92, height: 92, borderRadius: 46 }} />
+                                ) : (
+                                    <Text style={styles.avatarText}>{(name || user?.email)?.charAt(0).toUpperCase()}</Text>
+                                )}
                             </View>
-                            <TouchableOpacity style={styles.editBadge}>
-                                <Ionicons name="pencil" size={12} color="white" />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.userName}>{user?.email?.split('@')[0]}</Text>
+                            {isEditing && (
+                                <View style={styles.editBadge}>
+                                    <Ionicons name="camera" size={12} color="white" />
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
+                        {isEditing ? (
+                            <TextInput
+                                style={styles.nameInput}
+                                value={name}
+                                onChangeText={setName}
+                                placeholder="Display Name"
+                                autoFocus
+                            />
+                        ) : (
+                            <Text style={styles.userName}>{name}</Text>
+                        )}
+
                         <Text style={styles.userEmail}>{user?.email}</Text>
 
                         {/* Role Badge */}
@@ -113,7 +208,7 @@ export default function UserProfile() {
                     {/* Account */}
                     <SectionHeader title="Account" />
                     <View style={styles.sectionCard}>
-                        <SettingsItem icon="person-outline" label="Personal Information" />
+                        <SettingsItem icon="person-outline" label="Personal Information" onPress={() => router.push('/settings/personal-info')} />
                         <View style={styles.divider} />
                         <SettingsItem icon="lock-closed-outline" label="Security & Password" />
                         <View style={styles.divider} />
@@ -135,12 +230,16 @@ export default function UserProfile() {
                         <SettingsItem icon="language-outline" label="Language" />
                     </View>
 
-                    {/* Support */}
-                    <SectionHeader title="Support" />
+                    {/* Support & Legal */}
+                    <SectionHeader title="Support & Legal" />
                     <View style={styles.sectionCard}>
-                        <SettingsItem icon="help-circle-outline" label="Help & Support" />
+                        <SettingsItem icon="help-circle-outline" label="Help & Support" onPress={() => router.push('/settings/help')} />
                         <View style={styles.divider} />
-                        <SettingsItem icon="information-circle-outline" label="About CityFix" />
+                        <SettingsItem icon="information-circle-outline" label="About CityFix" onPress={() => router.push('/settings/about')} />
+                        <View style={styles.divider} />
+                        <SettingsItem icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => router.push('/legal/privacy')} />
+                        <View style={styles.divider} />
+                        <SettingsItem icon="document-text-outline" label="Terms of Use" onPress={() => router.push('/legal/terms')} />
                     </View>
 
                     {/* Sign Out */}
@@ -273,6 +372,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     signOutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 16 },
+    nameInput: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 5,
+        borderBottomWidth: 1,
+        borderColor: COLORS.primary,
+        paddingBottom: 2,
+        minWidth: 150,
+        textAlign: 'center'
+    },
     versionText: {
         textAlign: 'center',
         color: '#ccc',

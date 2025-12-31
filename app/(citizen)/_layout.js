@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
 import { useNotifications } from '../../src/context/NotificationContext';
@@ -24,7 +24,8 @@ export default function CitizenTabsLayout() {
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarShowLabel: false,
+                tabBarShowLabel: true,
+                tabBarLabelPosition: 'below-icon',
                 tabBarStyle: {
                     position: 'absolute',
                     bottom: 0,
@@ -32,20 +33,31 @@ export default function CitizenTabsLayout() {
                     right: 0,
                     elevation: 0,
                     backgroundColor: 'white',
-                    height: 60,
+                    height: 70,
                     borderTopWidth: 1,
                     borderTopColor: '#f0f0f0',
+                    paddingBottom: 10,
+                    ...(Platform.OS === 'web' ? {
+                        marginHorizontal: 'auto',
+                        maxWidth: 600,
+                    } : {})
                 },
                 tabBarActiveTintColor: COLORS.primary,
                 tabBarInactiveTintColor: '#999',
+                tabBarLabelStyle: {
+                    fontSize: 10,
+                    fontWeight: '600',
+                    marginTop: -5,
+                }
             }}
         >
             {/* 1. HOME / FEED (Default) */}
             <Tabs.Screen
                 name="index"
                 options={{
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="home" size={26} color={color} />
+                    title: 'Home',
+                    tabBarIcon: ({ focused, color, size }) => (
+                        <Ionicons name={focused ? "home" : "home-outline"} size={26} color={color} />
                     ),
                 }}
             />
@@ -54,8 +66,9 @@ export default function CitizenTabsLayout() {
             <Tabs.Screen
                 name="dashboard"
                 options={{
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="speedometer-outline" size={26} color={color} />
+                    title: 'Stats',
+                    tabBarIcon: ({ focused, color, size }) => (
+                        <Ionicons name={focused ? "speedometer" : "speedometer-outline"} size={26} color={color} />
                     ),
                 }}
             />
@@ -64,6 +77,7 @@ export default function CitizenTabsLayout() {
             <Tabs.Screen
                 name="report_dummy"
                 options={{
+                    title: 'Report',
                     // We override the button to look like a floating action button
                     tabBarButton: (props) => (
                         <CustomAddButton onPress={() => router.push('/(citizen)/report')} />
@@ -81,8 +95,9 @@ export default function CitizenTabsLayout() {
             <Tabs.Screen
                 name="my-reports"
                 options={{
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="grid-outline" size={26} color={color} />
+                    title: 'My Reports',
+                    tabBarIcon: ({ focused, color, size }) => (
+                        <Ionicons name={focused ? "grid" : "grid-outline"} size={26} color={color} />
                     ),
                 }}
             />
@@ -91,8 +106,9 @@ export default function CitizenTabsLayout() {
             <Tabs.Screen
                 name="notifications"
                 options={{
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="notifications-outline" size={26} color={color} />
+                    title: 'Updates',
+                    tabBarIcon: ({ focused, color, size }) => (
+                        <Ionicons name={focused ? "notifications" : "notifications-outline"} size={26} color={color} />
                     ),
                     tabBarBadge: unreadCount > 0 ? unreadCount : null,
                     tabBarBadgeStyle: { backgroundColor: COLORS.error, fontSize: 10, minWidth: 16, height: 16 },

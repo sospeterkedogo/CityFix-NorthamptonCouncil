@@ -180,6 +180,17 @@ export const TicketService = {
         resolvedAt: Date.now()
       });
 
+      // CREATE NOTIFICATION (This is what triggers the Context listener)
+      await addDoc(collection(db, 'users', ticketData.userId, 'notifications'), {
+        title: "Issue Resolved ✅",
+        body: `Good news! "${ticketData.title}" has been fixed.`,
+        read: false,
+        createdAt: Date.now(),
+        type: 'status_update',
+        ticketId: ticketId
+      });
+
+
       // NOTIFICATION: To Citizen
       if (ticketData.userId) {
         await notifyUser(ticketData.userId, "Issue Resolved! ✅", `Good news! "${ticketData.title}" has been fixed.`);

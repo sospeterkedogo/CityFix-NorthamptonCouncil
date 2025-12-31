@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, FlatList, Text, StyleSheet, RefreshControl, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { TicketService } from '../../src/services/ticketService';
+import TicketListItem from '../../src/components/TicketListItem';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
 
@@ -38,19 +39,11 @@ export default function MyReportsScreen() {
     };
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity
-            style={styles.card}
+        <TicketListItem
+            ticket={item}
+            role="citizen"
             onPress={() => router.push({ pathname: '/(citizen)/ticket/[id]', params: { id: item.id } })}
-        >
-            <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.badgeText}>{item.status}</Text>
-                </View>
-            </View>
-            <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-            <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
-        </TouchableOpacity>
+        />
     );
 
     return (
@@ -80,11 +73,6 @@ export default function MyReportsScreen() {
 const styles = StyleSheet.create({
     header: { backgroundColor: 'white', padding: 15, paddingTop: 40, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
     headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
-    card: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 15, ...STYLES.shadow },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-    cardTitle: { fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 10 },
-    badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
-    date: { fontSize: 12, color: '#999', marginBottom: 5 },
-    desc: { color: '#555' }
+    headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
+    container: { flex: 1 },
 });

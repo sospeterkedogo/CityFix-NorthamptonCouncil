@@ -180,7 +180,7 @@ export default function OnboardingScreen() {
                                 style={[styles.btn, styles.btnSecondary]}
                                 onPress={handleFinish}
                             >
-                                <Text style={[styles.btnText, styles.btnTextSecondary]}>SKIP TO SIGN UP</Text>
+                                <Text style={[styles.btnText, styles.btnTextSecondary]}>TRY DEMO</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -200,7 +200,7 @@ export default function OnboardingScreen() {
                             currentIndex === 0 && { pointerEvents: 'none' } // Disable clicks if first slide
                         ]}
                     >
-                        <View style={{ flexDirection: 'row', gap: 15, width: '100%', justifyContent: 'center' }}>
+                        <View style={{ flexDirection: 'row', gap: 15, width: '100%', maxWidth: 600, justifyContent: 'center' }}>
                             <TouchableOpacity
                                 style={[styles.btn, styles.btnSecondary]}
                                 onPress={prevSlide}

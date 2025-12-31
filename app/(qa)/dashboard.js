@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform, useWindowDimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { TicketService } from '../../src/services/ticketService';
+import { UserService } from '../../src/services/userService';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import BeforeAfterViewer from '../../src/components/BeforeAfterViewer';
 import MediaGalleryModal from '../../src/components/MediaGalleryModal';
+import TutorialOverlay from '../../src/components/TutorialOverlay';
 import { Ionicons } from '@expo/vector-icons';
 
 
@@ -25,9 +27,19 @@ export default function QADashboard() {
   // Gallery Logic
   const [galleryUrl, setGalleryUrl] = useState(null);
 
+  // Engineers Logic
+  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'engineers'
+  const [engineers, setEngineers] = useState([]);
+
   useEffect(() => {
     loadQAQueue();
+    loadEngineers();
   }, []);
+
+  const loadEngineers = async () => {
+    const engs = await UserService.getAllEngineers();
+    setEngineers(engs);
+  };
 
   const loadQAQueue = async () => {
     // In a real app, use a query where("status", "==", "resolved")
@@ -87,13 +99,48 @@ export default function QADashboard() {
     </TouchableOpacity>
   );
 
+  const EngineerRow = ({ item }) => {
+    const getStatusColor = (status) => {
+      if (status === 'Available') return COLORS.success;
+      if (status === 'Busy' || status === 'Holiday') return COLORS.error;
+      return '#666'; // Default/Offline
+    };
+
+    const color = getStatusColor(item.status);
+
+    return (
+      <View style={styles.row}>
+        <View style={[styles.avatarCircle, { width: 32, height: 32, marginRight: 10, backgroundColor: COLORS.secondary }]}>
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>{item.email?.charAt(0).toUpperCase() || 'E'}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rowTitle}>{item.name || item.email || "Engineer"}</Text>
+          <Text style={styles.rowSub}>{item.email}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, marginRight: 6 }} />
+          <Text style={{ fontSize: 12, color: color }}>{item.status || 'Available'}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+
+  if (loading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
+
   return (
     <View style={styles.container}>
+      <TutorialOverlay role="qa" page="dashboard" />
+
       {/* HEADER */}
       <View style={styles.headerContainer}>
         <View>
           <Text style={styles.headerTitle}>Quality Assurance</Text>
-          <Text style={styles.headerSub}>{tickets.length} jobs pending verification</Text>
+          <Text style={styles.headerSub}>
+            {activeTab === 'queue' ? `${tickets.length} jobs pending verification` : `${engineers.length} active engineers`}
+          </Text>
         </View>
 
         {/* Profile / Logout Button */}
@@ -103,7 +150,7 @@ export default function QADashboard() {
         >
           <View style={styles.avatarCircle}>
             {user?.email ? (
-              <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>{(user?.displayName || user.email).charAt(0).toUpperCase()}</Text>
             ) : (
               <Ionicons name="person-outline" size={20} color="white" />
             )}
@@ -111,88 +158,130 @@ export default function QADashboard() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.splitView}>
+      {/* TABS */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'queue' && styles.activeTab]}
+          onPress={() => { setActiveTab('queue'); setSelectedTicket(null); }}
+        >
+          <Text style={[styles.tabText, activeTab === 'queue' && styles.activeTabText]}>Verification Queue</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'engineers' && styles.activeTab]}
+          onPress={() => setActiveTab('engineers')}
+        >
+          <Text style={[styles.tabText, activeTab === 'engineers' && styles.activeTabText]}>Engineer List</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* LEFT: LIST */}
-        <View style={styles.listColumn}>
-          <FlatList
-            data={tickets}
-            renderItem={({ item }) => <TicketRow item={item} />}
-            keyExtractor={(item, index) => item.id || String(index)}
-            ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>Queue is empty. Good job!</Text>}
-          />
-        </View>
-
-        {/* RIGHT: COMPARISON */}
-        <View style={styles.detailColumn}>
-          {selectedTicket ? (
-            <View style={{ flex: 1 }}>
-              <Text style={styles.detailTitle}>{selectedTicket.title}</Text>
-
-              <Text style={styles.sectionHeader}>Visual Verification</Text>
-
-              {/* THE CORE COMPONENT */}
-              <BeforeAfterViewer
-                beforeMedia={selectedTicket.photos}
-                afterMedia={selectedTicket.afterPhoto}
-                onOpenMedia={(url) => setGalleryUrl(url)}
+      {/* CONTENT AREA */}
+      {activeTab === 'queue' ? (
+        <View style={styles.splitView}>
+          {/* LEFT: LIST */}
+          {(!isMobile || (isMobile && !selectedTicket)) && (
+            <View style={[styles.listColumn, isMobile && { flex: 1 }]}>
+              <FlatList
+                data={tickets}
+                renderItem={({ item }) => <TicketRow item={item} />}
+                keyExtractor={(item, index) => item.id || String(index)}
+                ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>Queue is empty. Good job!</Text>}
               />
-
-              <Text style={styles.sectionHeader}>Engineer's Notes</Text>
-              <View style={styles.noteBox}>
-                <Text style={styles.noteText}>{selectedTicket.resolutionNotes || "No notes provided."}</Text>
-              </View>
-
-              {/* DECISION AREA */}
-              <View style={styles.decisionArea}>
-                {!showRejectInput ? (
-                  <>
-                    <TouchableOpacity style={styles.rejectBtn} onPress={() => setShowRejectInput(true)}>
-                      <Ionicons name="close-circle-outline" size={18} color="white" style={{ marginRight: 5 }} />
-                      <Text style={styles.rejectText}>REJECT / REOPEN</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>
-                      <Ionicons name="checkmark-circle-outline" size={20} color="white" style={{ marginRight: 5 }} />
-                      <Text style={styles.verifyText}>VERIFY FIX</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <View style={styles.rejectForm}>
-                    <Text style={styles.rejectLabel}>Reason for Rejection:</Text>
-                    <TextInput
-                      style={styles.rejectInput}
-                      placeholder="e.g. Worksite not cleaned up..."
-                      value={rejectReason}
-                      onChangeText={setRejectReason}
-                    />
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <TouchableOpacity
-                        style={[styles.rejectBtn, { flex: 1 }]}
-                        onPress={handleReject}
-                      >
-                        <Text style={styles.rejectText}>CONFIRM REJECTION</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.cancelBtn}
-                        onPress={() => setShowRejectInput(false)}
-                      >
-                        <Text style={{ color: '#666' }}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-
             </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={48} color="#ccc" style={{ marginBottom: 10 }} />
-              <Text style={styles.emptyText}>Select a job to verify</Text>
+          )}
+
+          {/* RIGHT: COMPARISON */}
+          {(!isMobile || (isMobile && selectedTicket)) && (
+            <View style={[styles.detailColumn, isMobile && { flex: 1 }]}>
+              {isMobile && selectedTicket && (
+                <TouchableOpacity
+                  style={{ marginBottom: 10, padding: 10, backgroundColor: '#eee', borderRadius: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' }}
+                  onPress={() => setSelectedTicket(null)}
+                >
+                  <Ionicons name="arrow-back" size={20} color="black" style={{ marginRight: 5 }} />
+                  <Text style={{ fontWeight: 'bold' }}>Back to Queue</Text>
+                </TouchableOpacity>
+              )}
+
+              {selectedTicket ? (
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.detailTitle}>{selectedTicket.title}</Text>
+
+                  <Text style={styles.sectionHeader}>Visual Verification</Text>
+
+                  {/* THE CORE COMPONENT */}
+                  <BeforeAfterViewer
+                    beforeMedia={selectedTicket.photos}
+                    afterMedia={selectedTicket.afterPhoto}
+                    onOpenMedia={(url) => setGalleryUrl(url)}
+                  />
+
+                  <Text style={styles.sectionHeader}>Engineer's Notes</Text>
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteText}>{selectedTicket.resolutionNotes || "No notes provided."}</Text>
+                  </View>
+
+                  {/* DECISION AREA */}
+                  <View style={styles.decisionArea}>
+                    {!showRejectInput ? (
+                      <>
+                        <TouchableOpacity style={styles.rejectBtn} onPress={() => setShowRejectInput(true)}>
+                          <Ionicons name="close-circle-outline" size={18} color="white" style={{ marginRight: 5 }} />
+                          <Text style={styles.rejectText}>REJECT / REOPEN</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>
+                          <Ionicons name="checkmark-circle-outline" size={20} color="white" style={{ marginRight: 5 }} />
+                          <Text style={styles.verifyText}>VERIFY FIX</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <View style={styles.rejectForm}>
+                        <Text style={styles.rejectLabel}>Reason for Rejection:</Text>
+                        <TextInput
+                          style={styles.rejectInput}
+                          placeholder="e.g. Worksite not cleaned up..."
+                          value={rejectReason}
+                          onChangeText={setRejectReason}
+                        />
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity
+                            style={[styles.rejectBtn, { flex: 1 }]}
+                            onPress={handleReject}
+                          >
+                            <Text style={styles.rejectText}>CONFIRM REJECTION</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.cancelBtn}
+                            onPress={() => setShowRejectInput(false)}
+                          >
+                            <Text style={{ color: '#666' }}>Cancel</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search-outline" size={48} color="#ccc" style={{ marginBottom: 10 }} />
+                  <Text style={styles.emptyText}>Select a job to verify</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
-      </View>
+      ) : (
+        /* ENGINEER LIST VIEW */
+        <View style={[styles.listColumn, { flex: 1 }]}>
+          <FlatList
+            data={engineers}
+            renderItem={({ item }) => <EngineerRow item={item} />}
+            keyExtractor={(item) => item.id}
+            ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>No engineers found.</Text>}
+          />
+        </View>
+      )}
 
       {/* FULL SCREEN MODAL FOR ZOOM */}
       <MediaGalleryModal
@@ -269,4 +358,9 @@ const styles = StyleSheet.create({
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#ccc', fontSize: 20 },
+  tabContainer: { flexDirection: 'row', marginBottom: 20, backgroundColor: 'white', borderRadius: 8, padding: 5, ...STYLES.shadow },
+  tab: { flex: 1, padding: 12, alignItems: 'center', borderRadius: 6 },
+  activeTab: { backgroundColor: COLORS.primary },
+  tabText: { fontWeight: '600', color: '#666' },
+  activeTabText: { color: 'white' },
 });

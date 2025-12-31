@@ -42,7 +42,11 @@ export default function AssignEngineerModal({ visible, onClose, onAssign }) {
         <Text style={styles.name}>{item.name}</Text>
         <Text style={[
           styles.status,
-          { color: item.status === 'Available' ? COLORS.success : COLORS.text.secondary }
+          {
+            color: (item.status === 'Available') ? COLORS.success :
+              (item.status === 'Busy' || item.status === 'Holiday') ? COLORS.error :
+                COLORS.text.secondary
+          }
         ]}>
           {item.status}
         </Text>

@@ -7,6 +7,7 @@ import FeedCard from '../../src/components/FeedCard';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import TutorialOverlay from '../../src/components/TutorialOverlay';
 
 export default function CommunityFeedScreen() {
     const { user } = useAuth();
@@ -48,6 +49,8 @@ export default function CommunityFeedScreen() {
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }} edges={['top', 'left', 'right']}>
             <StatusBar barStyle="dark-content" />
 
+            <TutorialOverlay role="citizen" page="home" />
+
             <View style={styles.header}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 600 }}>
                     <TouchableOpacity
@@ -74,7 +77,7 @@ export default function CommunityFeedScreen() {
                         }}>
                             {user?.email ? (
                                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
-                                    {user.email.charAt(0).toUpperCase()}
+                                    {(user?.displayName || user.email).charAt(0).toUpperCase()}
                                 </Text>
                             ) : (
                                 <Ionicons name="person" size={20} color="white" />
