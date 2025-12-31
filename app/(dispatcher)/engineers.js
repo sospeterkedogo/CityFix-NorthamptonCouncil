@@ -20,7 +20,7 @@ export default function EngineersList() {
   const renderRow = ({ item }) => (
     <View style={styles.row}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{item.name ? item.name.charAt(0) : 'E'}</Text>
+        <Text style={styles.avatarText}>{(item.name || item.email || 'E').charAt(0).toUpperCase()}</Text>
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.name}>{item.name || 'Unknown Engineer'}</Text>

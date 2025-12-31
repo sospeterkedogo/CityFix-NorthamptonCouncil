@@ -10,6 +10,8 @@ import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import * as Location from 'expo-location';
 import { getDistanceKm } from '../../src/utils/geo';
 import { Ionicons } from '@expo/vector-icons';
+import TutorialOverlay from '../../src/components/TutorialOverlay';
+import TicketListItem from '../../src/components/TicketListItem';
 
 export default function EngineerDashboard() {
   const { user } = useAuth();
@@ -46,7 +48,10 @@ export default function EngineerDashboard() {
 
     // Fetch assigned task list
     const data = await TicketService.getEngineerJobs(ENGINEER_ID);
-    const activeJobs = data.filter(job => job.status !== 'resolved');
+
+    const activeJobs = data.filter(job =>
+      ['assigned'].includes(job.status)
+    );
 
     // Calculate distance and sort by proximity
     const jobsWithDistance = activeJobs.map(job => {
@@ -73,48 +78,22 @@ export default function EngineerDashboard() {
   };
 
   const renderJobCard = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
+    <TicketListItem
+      ticket={item}
+      role="engineer"
+      showNavigation={true}
       onPress={() => router.push({
         pathname: '/(engineer)/resolve',
         params: { ticketId: item.id }
       })}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.priorityBadge}>
-          <Text style={styles.priorityText}>{item.priority?.toUpperCase() || 'NORMAL'}</Text>
-        </View>
-        <Text style={styles.distance}>
-          {item.distanceKm < 1
-            ? `${(item.distanceKm * 1000).toFixed(0)}m away`
-            : `${item.distanceKm.toFixed(1)}km away`}
-        </Text>
-      </View>
-
-      <Text style={styles.jobTitle}>{item.title}</Text>
-      <Text style={styles.jobDesc} numberOfLines={2}>{item.description}</Text>
-
-      <View style={styles.footer}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="location-outline" size={14} color={COLORS.text.secondary} style={{ marginRight: 4 }} />
-          <Text style={styles.address}>
-            {item.location?.latitude.toFixed(4)}, {item.location?.longitude.toFixed(4)}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => openExternalMap(item.location.latitude, item.location.longitude)}
-        >
-          <Text style={styles.navText}>NAVIGATE</Text>
-          <Ionicons name="arrow-forward" size={10} color="white" style={{ marginLeft: 4 }} />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-
+      onNavigate={() => openExternalMap(item.location.latitude, item.location.longitude)}
+    />
   );
 
   return (
-    <View style={STYLES.container}>
+    <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+      <TutorialOverlay role="engineer" page="dashboard" />
+
       {/* Header */}
       <View style={styles.headerContainer}>
         <View>
@@ -123,7 +102,7 @@ export default function EngineerDashboard() {
         <TouchableOpacity onPress={() => router.push('/profile')}>
           <View style={styles.avatarCircle}>
             {user?.email ? (
-              <Text style={styles.avatarText}>{user.email.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>{(user?.displayName || user.email).charAt(0).toUpperCase()}</Text>
             ) : (
               <Ionicons name="person-outline" size={24} color="white" />
             )}

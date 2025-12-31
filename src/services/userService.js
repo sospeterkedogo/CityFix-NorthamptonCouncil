@@ -52,5 +52,22 @@ export const UserService = {
       console.error("Error fetching engineers:", error);
       return [];
     }
+  },
+
+  /**
+   * Update generic user profile (name, photo)
+   */
+  updateUserProfile: async (userId, data) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, {
+        ...data,
+        updatedAt: Date.now()
+      }, { merge: true });
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return { success: false, error: error.message };
+    }
   }
 };

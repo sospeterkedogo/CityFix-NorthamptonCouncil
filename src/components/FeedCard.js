@@ -60,40 +60,26 @@ export default function FeedCard({ ticket }) {
         if (!newComment.trim()) return;
 
         const name = user.displayName || 'Citizen';
+        const avatar = user.photoURL || null;
+
         // Optimistic Update
         const tempId = Date.now().toString();
-        const optimisticComment = { id: tempId, userId: user.uid, userName: name, text: newComment, createdAt: Date.now(), isFlagged: false };
+        const optimisticComment = {
+            id: tempId,
+            userId: user.uid,
+            userName: name,
+            userAvatar: avatar,
+            text: newComment,
+            createdAt: Date.now(),
+            isFlagged: false
+        };
 
         setComments(prev => [optimisticComment, ...prev]);
         setCommentCount(prev => prev + 1);
         setNewComment('');
 
-        await SocialService.addComment(ticket.id, user.uid, name, optimisticComment.text);
+        await SocialService.addComment(ticket.id, user.uid, name, optimisticComment.text, avatar);
         fetchComments(); // Refresh real data and valid count
-    };
-
-    const handleFlag = (commentId) => {
-        Alert.alert("Report Comment", "Flag this content as inappropriate?", [
-            { text: "Cancel" },
-            {
-                text: "Report", onPress: async () => {
-                    await SocialService.flagComment(ticket.id, commentId);
-                    Alert.alert("Thank you", "Content flagged for moderation.");
-                    fetchComments();
-                }
-            }
-        ]);
-    };
-
-    const handleSaveImage = () => {
-        Alert.alert("Save", "Image saved to gallery (simulation).");
-        setShowMenu(false);
-    };
-
-    const handleViewMore = () => {
-        setShowMenu(false);
-        setShowFullScreen(false);
-        router.push({ pathname: '/(citizen)/ticket/[id]', params: { id: ticket.id } });
     };
 
     if (!ticket || !ticket.id) return null; // Don't render invalid tickets
@@ -197,9 +183,13 @@ export default function FeedCard({ ticket }) {
                             contentContainerStyle={{ paddingBottom: 20 }}
                             renderItem={({ item }) => (
                                 <View style={[styles.commentRow, item.isFlagged && { opacity: 0.5 }]}>
-                                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', marginRight: 10, justifyContent: 'center', alignItems: 'center' }}>
-                                        <Text style={{ fontSize: 12 }}>👤</Text>
-                                    </View>
+                                    {item.userAvatar ? (
+                                        <Image source={{ uri: item.userAvatar }} style={{ width: 30, height: 30, borderRadius: 15, marginRight: 10 }} />
+                                    ) : (
+                                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', marginRight: 10, justifyContent: 'center', alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 12 }}>{item.userName?.charAt(0).toUpperCase() || '👤'}</Text>
+                                        </View>
+                                    )}
                                     <View style={{ flex: 1 }}>
                                         <Text>
                                             <Text style={styles.commentUser}>{item.userName} </Text>
@@ -219,7 +209,11 @@ export default function FeedCard({ ticket }) {
 
                         {/* Input Area */}
                         <View style={styles.inputRow}>
-                            <View style={styles.avatarSmall}><Text>😎</Text></View>
+                            {user?.photoURL ? (
+                                <Image source={{ uri: user.photoURL }} style={styles.avatarSmall} />
+                            ) : (
+                                <View style={styles.avatarSmall}><Text>{user?.displayName?.charAt(0).toUpperCase() || '😎'}</Text></View>
+                            )}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Add a comment..."
@@ -233,10 +227,10 @@ export default function FeedCard({ ticket }) {
                         </View>
                     </View>
                 </View>
-            </Modal >
+            </Modal>
 
             {/* FULL SCREEN IMAGE MODAL */}
-            <Modal visible={showFullScreen} animationType="fade" transparent={true} onRequestClose={() => setShowFullScreen(false)}>
+            < Modal visible={showFullScreen} animationType="fade" transparent={true} onRequestClose={() => setShowFullScreen(false)}>
                 <View style={styles.fsContainer}>
                     {/* Top Bar */}
                     <View style={styles.fsTopBar}>
