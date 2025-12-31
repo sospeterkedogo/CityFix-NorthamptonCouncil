@@ -292,46 +292,62 @@ export default function FeedCard({ ticket, showDelete = false }) {
                 )}
             </TouchableOpacity>
 
+            {/* Text Content (Caption) - Render HERE if no image (Text Only Post) */}
+            {!config.image && (
+                <View style={[styles.captionBox, { paddingBottom: 10, paddingTop: 5 }]}>
+                    <Text numberOfLines={3} style={{ fontSize: 16, lineHeight: 22 }}>
+                        {ticket.type === 'social' ? (
+                            <Text>{ticket.title || ticket.description}</Text>
+                        ) : (
+                            <>
+                                <Text style={{ fontWeight: 'bold' }}>{ticket.status === 'in_progress' ? 'Report: ' : 'Resolution: '}</Text>
+                                {ticket.status === 'in_progress'
+                                    ? (ticket.description || "No description provided.")
+                                    : (ticket.resolutionNotes || "Issue resolved.")}
+                            </>
+                        )}
+                    </Text>
+                </View>
+            )}
+
             {/* Action Bar */}
-            < View style={styles.actionBar} >
+            <View style={styles.actionBar}>
                 {/* Like Button (Heart) */}
-                < TouchableOpacity style={styles.actionBtn} onPress={handleLike} >
-                    <Text style={{ fontSize: 24, color: isLiked ? 'red' : 'black' }}>{isLiked ? '❤️' : '🤍'}</Text>
-                    <Text style={[styles.actionText, isLiked && { color: 'red' }]}>{likes}</Text>
-                </TouchableOpacity >
+                <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+                    <Ionicons name={isLiked ? "heart" : "heart-outline"} size={24} color={isLiked ? "#ED4956" : "black"} />
+                    {likes > 0 && <Text style={[styles.actionText, { fontSize: 13 }]}>{likes}</Text>}
+                </TouchableOpacity>
 
                 {/* Upvote Button (Arrow) */}
-                < TouchableOpacity style={styles.actionBtn} onPress={handleUpvote} >
+                <TouchableOpacity style={styles.actionBtn} onPress={handleUpvote}>
                     <Ionicons
                         name={isUpvoted ? "arrow-up-circle" : "arrow-up-circle-outline"}
-                        size={28}
-                        color={isUpvoted ? COLORS.action : '#666'}
+                        size={24}
+                        color={isUpvoted ? COLORS.action : 'black'}
                     />
-                    <Text style={[styles.actionText, isUpvoted && { color: COLORS.action }]}>{upvotes}</Text>
-                </TouchableOpacity >
+                    {upvotes > 0 && <Text style={[styles.actionText, isUpvoted && { color: COLORS.action }, { fontSize: 13 }]}>{upvotes}</Text>}
+                </TouchableOpacity>
 
                 {/* Comment Button */}
-                < TouchableOpacity style={styles.actionBtn} onPress={openCommentsModal} >
-                    <Ionicons name="chatbubble-outline" size={26} color="#666" />
-                    <Text style={styles.actionText}>{commentCount > 0 ? commentCount : 0}</Text>
-                </TouchableOpacity >
-            </View >
+                <TouchableOpacity style={styles.actionBtn} onPress={openCommentsModal}>
+                    <Ionicons name="chatbubble-outline" size={23} color="black" />
+                    {commentCount > 0 && <Text style={[styles.actionText, { fontSize: 13 }]}>{commentCount}</Text>}
+                </TouchableOpacity>
+            </View>
 
-            {/* Caption */}
-            < View style={styles.captionBox} >
-                <Text numberOfLines={3}>
-                    {ticket.type === 'social' ? (
-                        <Text>{ticket.title || ticket.description}</Text>
-                    ) : (
-                        <>
-                            <Text style={{ fontWeight: 'bold' }}>{ticket.status === 'in_progress' ? 'Report: ' : 'Resolution: '}</Text>
-                            {ticket.status === 'in_progress'
-                                ? (ticket.description || "No description provided.")
-                                : (ticket.resolutionNotes || "Issue resolved.")}
-                        </>
-                    )}
-                </Text>
-            </View >
+            {/* Caption - Render HERE if image exists (Standard Post) */}
+            {config.image && (
+                <View style={styles.captionBox}>
+                    <Text numberOfLines={2}>
+                        <Text style={{ fontWeight: 'bold' }}>{config.title} </Text>
+                        {ticket.type === 'social' ? (
+                            <Text>{ticket.title || ticket.description}</Text>
+                        ) : (
+                            <Text>{ticket.description}</Text>
+                        )}
+                    </Text>
+                </View>
+            )}
 
             {/* INLINE COMMENTS SECTION */}
             < View style={styles.inlineCommentsSection} >
