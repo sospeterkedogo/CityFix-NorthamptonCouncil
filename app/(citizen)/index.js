@@ -1,147 +1,229 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Text, StyleSheet, StatusBar, Image, Platform, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, SectionList, FlatList, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, Modal, TextInput, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { SocialService } from '../../src/services/socialService';
+import { ImageService } from '../../src/services/ImageService';
 import FeedCard from '../../src/components/FeedCard';
-import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import TutorialOverlay from '../../src/components/TutorialOverlay';
 
-export default function CommunityFeedScreen() {
+export default function HomeScreen() {
     const { user } = useAuth();
-    const router = useRouter();
-    const [feedData, setFeedData] = useState([]);
-    const [lastDoc, setLastDoc] = useState(null);
+    const [activeTab, setActiveTab] = useState('neighborhood'); // 'official' or 'neighborhood'
+    const [feed, setFeed] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [debugMsg, setDebugMsg] = useState(null);
+
+    // Create Post State
+    const [showPostModal, setShowPostModal] = useState(false);
+    const [postText, setPostText] = useState('');
+    const [postMedia, setPostMedia] = useState(null); // URI
+    const [mediaType, setMediaType] = useState('image'); // 'image' | 'video' | 'text'
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        fetchFeed(true);
-    }, []);
+        loadFeed();
+    }, [activeTab]); // Reload when tab changes
 
-    const fetchFeed = async (isRefresh = false) => {
-        if (loading) return;
+    const loadFeed = async () => {
         setLoading(true);
-        setDebugMsg(null);
+        setFeed([]); // Clear old
 
-        const startAfterDoc = isRefresh ? null : lastDoc;
-        const { data, lastVisible, debugInfo } = await SocialService.getVerifiedFeed(startAfterDoc);
-
-        if (isRefresh) {
-            setFeedData(data);
+        let result;
+        if (activeTab === 'official') {
+            result = await SocialService.getVerifiedFeed(); // Your old logic
         } else {
-            setFeedData(prev => {
-                const existingIds = new Set(prev.map(item => item.id));
-                const newItems = data.filter(item => !existingIds.has(item.id));
-                return [...prev, ...newItems];
-            });
+            result = await SocialService.getNeighborhoodFeed(); // The new logic
         }
-
-        if (debugInfo) setDebugMsg(debugInfo);
-
-        setLastDoc(lastVisible);
+        setFeed(result.data);
         setLoading(false);
     };
 
+    // --- POST CREATION LOGIC ---
+    const pickMedia = async (type) => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: type === 'video' ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.5,
+        });
+        if (!result.canceled) {
+            setPostMedia(result.assets[0].uri);
+            setMediaType(type);
+        }
+    };
+
+    const takePhoto = async () => {
+        let { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') return alert('Camera permission needed');
+
+        let result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setPostMedia(result.assets[0].uri);
+            setMediaType('image');
+        }
+    };
+
+    const handlePost = async () => {
+        if (!postText.trim() && !postMedia) return alert("Please add some text or media!");
+        if (uploading) return;
+
+        setUploading(true);
+        try {
+            // 1. Get Location
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') return alert("Permission denied");
+            let loc = await Location.getCurrentPositionAsync({});
+
+            // 2. Upload Media if exists
+            let downloadUrl = null;
+            if (postMedia) {
+                const ext = mediaType === 'video' ? 'mp4' : 'jpg';
+                const path = `posts/${user.uid}/${Date.now()}.${ext}`;
+                downloadUrl = await ImageService.uploadImage(postMedia, path);
+            }
+
+            // 3. Create Post
+            await SocialService.createPost(
+                user.uid,
+                user.photoURL || null, // Pass explicit avatar if exists
+                user.displayName || user.email.split('@')[0],
+                user.email,
+                postText,
+                downloadUrl, // Can be null for text-only
+                { latitude: loc.coords.latitude, longitude: loc.coords.longitude },
+                postMedia ? mediaType : 'text'
+            );
+
+            setShowPostModal(false);
+            setPostText('');
+            setPostMedia(null);
+            setMediaType('image');
+            loadFeed(); // Refresh
+        } catch (error) {
+            console.error("Post creation failed:", error);
+            alert("Failed to post: " + error.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }} edges={['top', 'left', 'right']}>
-            <StatusBar barStyle="dark-content" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
 
-            <TutorialOverlay role="citizen" page="home" />
+            {/* MAIN CONTENT CONTAINER */}
+            <View style={{ flex: 1, maxWidth: 600, width: '100%', alignSelf: 'center' }}>
 
-            <View style={styles.header}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 600 }}>
-                    <TouchableOpacity
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            backgroundColor: COLORS.action,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            ...STYLES.shadow
-                        }}
-                        onPress={() => router.push('/(citizen)/report')}
-                    >
-                        <Ionicons name="add" size={28} color="white" />
-                    </TouchableOpacity>
-
-                    <Text style={{ fontSize: 22, fontWeight: 'bold', color: COLORS.primary }}>CityFix</Text>
-
-                    <TouchableOpacity onPress={() => router.push('/profile')}>
-                        <View style={{
-                            width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.text.secondary,
-                            justifyContent: 'center', alignItems: 'center', opacity: 0.8
-                        }}>
-                            {user?.email ? (
-                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
-                                    {(user?.displayName || user.email).charAt(0).toUpperCase()}
-                                </Text>
-                            ) : (
-                                <Ionicons name="person" size={20} color="white" />
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <View style={styles.feedContainer}>
-                <FlatList
-                    data={feedData}
-                    keyExtractor={item => item.id}
+                {/* FEED LIST */}
+                <SectionList
+                    sections={[{ data: feed }]}
                     renderItem={({ item }) => <FeedCard ticket={item} />}
-                    contentContainerStyle={{ paddingBottom: 100 }} // Space for bottom tab bar
-                    onEndReached={() => fetchFeed(false)}
-                    onEndReachedThreshold={0.5}
-                    refreshing={loading}
-                    onRefresh={() => fetchFeed(true)}
-                    ListEmptyComponent={
-                        <View style={{ alignItems: 'center', marginTop: 50 }}>
-                            <Ionicons name="home-outline" size={50} color="#ccc" />
-                            <Text style={{ color: '#999', marginTop: 10 }}>No verified fixes yet.</Text>
+                    renderSectionHeader={() => (
+                        <View style={{ backgroundColor: '#f8f9fa', paddingBottom: 10 }}>
+                            <View style={styles.tabs}>
+                                <TouchableOpacity onPress={() => setActiveTab('official')} style={[styles.tab, activeTab === 'official' && styles.activeTab]}>
+                                    <Text style={[styles.tabText, activeTab === 'official' && styles.activeTabText]}>Council Fixes</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setActiveTab('neighborhood')} style={[styles.tab, activeTab === 'neighborhood' && styles.activeTab]}>
+                                    <Text style={[styles.tabText, activeTab === 'neighborhood' && styles.activeTabText]}>Neighborhood</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+                    stickySectionHeadersEnabled={true}
+                    ListHeaderComponent={
+                        <View style={styles.header}>
+                            <Text style={styles.title}>City Fix</Text>
                         </View>
                     }
-                    // Responsive styling for desktop
-                    style={Platform.OS === 'web' ? { maxWidth: 600, width: '100%', alignSelf: 'center' } : {}}
+                    onRefresh={loadFeed}
+                    refreshing={loading}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    style={{ flex: 1 }}
                 />
+
+                {/* FLOAT BUTTON (Only on Neighborhood tab) */}
+                {activeTab === 'neighborhood' && (
+                    <TouchableOpacity style={styles.fab} onPress={() => setShowPostModal(true)}>
+                        <Text style={{ fontSize: 24 }}>📷</Text>
+                    </TouchableOpacity>
+                )}
+
             </View>
 
+            <Modal visible={showPostModal} animationType="slide">
+                <SafeAreaView style={{ flex: 1 }}>
+                    <View style={{ flex: 1, maxWidth: 600, width: '100%', alignSelf: 'center', padding: 20 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                            <TouchableOpacity onPress={() => setShowPostModal(false)} style={{ padding: 10 }}>
+                                <Text style={{ fontSize: 18, color: COLORS.primary }}>Back</Text>
+                            </TouchableOpacity>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', marginLeft: 10 }}>New Community Post</Text>
+                        </View>
+
+                        <TextInput
+                            placeholder="What's happening nearby?"
+                            value={postText} onChangeText={setPostText}
+                            style={styles.input}
+                            multiline
+                        />
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                            <TouchableOpacity onPress={takePhoto} style={styles.mediaBtn}>
+                                <Text>📷 Camera</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => pickMedia('image')} style={styles.mediaBtn}>
+                                <Text>🖼️ Gallery</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => pickMedia('video')} style={styles.mediaBtn}>
+                                <Text>🎥 Video</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {postMedia && (
+                            <View style={{ marginBottom: 15 }}>
+                                {mediaType === 'video' ? (
+                                    <View style={{ height: 200, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+                                        <Text style={{ color: 'white' }}>Video Selected</Text>
+                                    </View>
+                                ) : (
+                                    <Image source={{ uri: postMedia }} style={{ width: '100%', height: 200, borderRadius: 8 }} />
+                                )}
+                                <TouchableOpacity onPress={() => setPostMedia(null)} style={{ position: 'absolute', top: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 15, padding: 5 }}>
+                                    <Text style={{ color: 'white' }}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <View style={{ alignItems: 'flex-end', marginTop: 20 }}>
+                            <TouchableOpacity onPress={handlePost} style={[styles.postBtn, uploading && { opacity: 0.7 }]} disabled={uploading}>
+                                <Text style={{ color: 'white' }}>{uploading ? 'Uploading...' : 'Post'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </SafeAreaView>
+            </Modal>
 
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    feedContainer: {
-        flex: 1,
-        // On large screens, centering the container itself can also work, but styling the list is safer for keeping background full width
-        width: '100%',
-    },
-    header: {
-        backgroundColor: 'white',
-        padding: 15,
-        paddingTop: 40, // Adjust for notch
-        borderBottomWidth: 1,
-        borderColor: '#eee',
-        alignItems: 'center'
-    },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
-    headerSub: { fontSize: 12, color: '#999' },
+    header: { backgroundColor: 'white', padding: 15, alignItems: 'center' },
+    title: { fontSize: 22, fontWeight: 'bold', color: COLORS.primary, marginBottom: 10 },
+    tabs: { flexDirection: 'row', backgroundColor: '#eee', borderRadius: 8, padding: 3 },
+    tab: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 6 },
+    activeTab: { backgroundColor: 'white', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
+    tabText: { color: '#888', fontWeight: 'bold' },
+    activeTabText: { color: COLORS.primary },
 
-    reportButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.action,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 25,
-        ...STYLES.shadow
-    },
-    reportButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16
-    }
+    fab: { position: 'absolute', bottom: 90, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+
+    input: { borderWidth: 1, borderColor: '#ddd', padding: 15, borderRadius: 8, minHeight: 100, marginBottom: 15 },
+    mediaBtn: { padding: 10, backgroundColor: '#f0f0f0', borderRadius: 8, flex: 1, alignItems: 'center' },
+    postBtn: { backgroundColor: COLORS.primary, padding: 10, borderRadius: 8, paddingHorizontal: 20 }
 });

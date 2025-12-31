@@ -7,7 +7,7 @@ import { COLORS } from '../src/constants/theme';
 
 // --- Configuration ---
 const ROLE_PATHS = {
-  citizen: '/(citizen)',
+  citizen: '/(citizen)/dashboard', // Default to Dashboard
   dispatcher: '/(dispatcher)',
   engineer: '/(engineer)/dashboard',
   qa: '/(qa)/dashboard',
@@ -31,6 +31,12 @@ function useWebConfig() {
       }
     `;
     document.head.appendChild(style);
+
+    // Inject CSP to allow blob: images (Fixes Security Error)
+    const meta = document.createElement('meta');
+    meta.httpEquiv = "Content-Security-Policy";
+    meta.content = "img-src * 'self' blob: data:;";
+    document.head.appendChild(meta);
   }, []);
 }
 
