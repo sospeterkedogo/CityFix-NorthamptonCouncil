@@ -62,7 +62,18 @@ export default function CitizenTabsLayout() {
                 }}
             />
 
-            {/* 2. DASHBOARD */}
+            {/* 2. MY REPORTS */}
+            <Tabs.Screen
+                name="my-reports"
+                options={{
+                    title: 'My Reports',
+                    tabBarIcon: ({ focused, color, size }) => (
+                        <Ionicons name={focused ? "grid" : "grid-outline"} size={26} color={color} />
+                    ),
+                }}
+            />
+
+            {/* 3. DASHBOARD */}
             <Tabs.Screen
                 name="dashboard"
                 options={{
@@ -73,34 +84,7 @@ export default function CitizenTabsLayout() {
                 }}
             />
 
-            {/* 3. THE CENTER "+" BUTTON (Dummy Screen) */}
-            <Tabs.Screen
-                name="report_dummy"
-                options={{
-                    title: 'Report',
-                    // We override the button to look like a floating action button
-                    tabBarButton: (props) => (
-                        <CustomAddButton onPress={() => router.push('/(citizen)/report')} />
-                    ),
-                }}
-                listeners={() => ({
-                    tabPress: (e) => {
-                        e.preventDefault(); // Stop it from actually opening a tab
-                        router.push('/(citizen)/report'); // Go to report screen instead
-                    },
-                })}
-            />
 
-            {/* 4. MY REPORTS */}
-            <Tabs.Screen
-                name="my-reports"
-                options={{
-                    title: 'My Reports',
-                    tabBarIcon: ({ focused, color, size }) => (
-                        <Ionicons name={focused ? "grid" : "grid-outline"} size={26} color={color} />
-                    ),
-                }}
-            />
 
             {/* 5. NOTIFICATIONS (New) */}
             <Tabs.Screen

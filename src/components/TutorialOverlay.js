@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Define the steps for each role
 const TUTORIAL_STEPS = {
     citizen: [
-        { text: "Welcome, Citizen! This is your feed of verified local fixes.", target: "feed" },
+        { text: "Welcome, Citizen! This is your feed of local fixes.", target: "feed" },
         { text: "Tap the big (+) button to Report a new issue.", target: "fab" },
     ],
     dispatcher: [
