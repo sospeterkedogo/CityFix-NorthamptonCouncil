@@ -40,6 +40,8 @@ export default function CitizenTabsLayout() {
                     ...(Platform.OS === 'web' ? {
                         marginHorizontal: 'auto',
                         maxWidth: 600,
+                        width: '100%',
+                        alignSelf: 'center',
                     } : {})
                 },
                 tabBarActiveTintColor: COLORS.primary,
@@ -77,9 +79,9 @@ export default function CitizenTabsLayout() {
             <Tabs.Screen
                 name="dashboard"
                 options={{
-                    title: 'Stats',
+                    title: 'Dashboard',
                     tabBarIcon: ({ focused, color, size }) => (
-                        <Ionicons name={focused ? "speedometer" : "speedometer-outline"} size={26} color={color} />
+                        <Ionicons name={focused ? "apps" : "apps-outline"} size={26} color={color} />
                     ),
                 }}
             />
@@ -109,6 +111,12 @@ export default function CitizenTabsLayout() {
             {/* Hide Details page from tabs */}
             <Tabs.Screen
                 name="ticket/[id]"
+                options={{ href: null, tabBarStyle: { display: 'none' } }}
+            />
+
+            {/* Hide User Profile Group from tabs */}
+            <Tabs.Screen
+                name="(user)"
                 options={{ href: null, tabBarStyle: { display: 'none' } }}
             />
         </Tabs>

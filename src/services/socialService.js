@@ -3,6 +3,8 @@ import {
     doc, updateDoc, increment, addDoc, getDoc, setDoc, deleteDoc
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import * as Location from 'expo-location';
+import { notifyUser } from '../utils/notifications';
 
 const TICKETS_COL = 'tickets';
 
@@ -64,22 +66,19 @@ export const SocialService = {
         const likeRef = doc(db, TICKETS_COL, ticketId, 'likes', userId);
         const ticketRef = doc(db, TICKETS_COL, ticketId);
 
-        try {
-            const likeSnap = await getDoc(likeRef);
+        // Remove try-catch to allow component to handle errors
+        const likeSnap = await getDoc(likeRef);
 
-            if (likeSnap.exists()) {
-                // Unlike
-                await deleteDoc(likeRef);
-                await updateDoc(ticketRef, { voteCount: increment(-1) });
-                return false; // Not liked
-            } else {
-                // Like
-                await setDoc(likeRef, { createdAt: Date.now() });
-                await updateDoc(ticketRef, { voteCount: increment(1) });
-                return true; // Liked
-            }
-        } catch (e) {
-            console.error(e);
+        if (likeSnap.exists()) {
+            // Unlike
+            await deleteDoc(likeRef);
+            await updateDoc(ticketRef, { voteCount: increment(-1) });
+            return false; // Not liked
+        } else {
+            // Like
+            await setDoc(likeRef, { createdAt: Date.now() });
+            await updateDoc(ticketRef, { voteCount: increment(1) });
+            return true; // Liked
         }
     },
 
@@ -94,22 +93,19 @@ export const SocialService = {
         const upvoteRef = doc(db, TICKETS_COL, ticketId, 'upvotes', userId);
         const ticketRef = doc(db, TICKETS_COL, ticketId);
 
-        try {
-            const upvoteSnap = await getDoc(upvoteRef);
+        // Remove try-catch to allow component to handle errors
+        const upvoteSnap = await getDoc(upvoteRef);
 
-            if (upvoteSnap.exists()) {
-                // Remove Upvote
-                await deleteDoc(upvoteRef);
-                await updateDoc(ticketRef, { upvoteCount: increment(-1) });
-                return false;
-            } else {
-                // Add Upvote
-                await setDoc(upvoteRef, { createdAt: Date.now() });
-                await updateDoc(ticketRef, { upvoteCount: increment(1) });
-                return true;
-            }
-        } catch (e) {
-            console.error(e);
+        if (upvoteSnap.exists()) {
+            // Remove Upvote
+            await deleteDoc(upvoteRef);
+            await updateDoc(ticketRef, { upvoteCount: increment(-1) });
+            return false;
+        } else {
+            // Add Upvote
+            await setDoc(upvoteRef, { createdAt: Date.now() });
+            await updateDoc(ticketRef, { upvoteCount: increment(1) });
+            return true;
         }
     },
 
@@ -145,5 +141,92 @@ export const SocialService = {
         await updateDoc(doc(db, TICKETS_COL, ticketId, 'comments', commentId), {
             isFlagged: true
         });
-    }
+    },
+
+    // 1. NEW: Fetch Neighborhood Feed (User Posts)
+    getNeighborhoodFeed: async (lastSnapshot = null, pageSize = 5) => {
+        let q = query(
+            collection(db, TICKETS_COL),
+            where('type', '==', 'social'), // Only user posts
+            orderBy('createdAt', 'desc'),
+            limit(pageSize)
+        );
+        if (lastSnapshot) q = query(q, startAfter(lastSnapshot));
+
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        return { data, lastVisible };
+    },
+
+    // 2. NEW: Create a Social Post
+    createPost: async (userId, userAvatar, userName, userEmail, text, photoUrl, locationCoords, mediaType = 'image') => {
+        let streetName = "Unknown Location selected";
+
+        try {
+            if (locationCoords && locationCoords.latitude && locationCoords.longitude) {
+                const reverseGeocode = await Location.reverseGeocodeAsync({
+                    latitude: locationCoords.latitude,
+                    longitude: locationCoords.longitude
+                });
+
+                if (reverseGeocode && reverseGeocode.length > 0) {
+                    const place = reverseGeocode[0];
+                    // Construct a robust address
+                    // e.g., "123 Main St, Springfield" or just "Main St"
+                    const parts = [];
+                    if (place.streetNumber) parts.push(place.streetNumber);
+                    if (place.street) parts.push(place.street);
+                    if (place.city) parts.push(place.city);
+
+                    if (parts.length > 0) {
+                        streetName = parts.join(' ');
+                    } else if (place.name) {
+                        streetName = place.name;
+                    }
+                }
+            }
+        } catch (error) {
+            console.log("Reverse geocoding failed:", error);
+            streetName = `Near ${locationCoords.latitude.toFixed(4)}, ${locationCoords.longitude.toFixed(4)}`;
+        }
+
+        // B. Save to DB
+        await addDoc(collection(db, TICKETS_COL), {
+            userId,
+            userAvatar,
+            userName,
+            userEmail,
+            title: text,
+            location: locationCoords,
+            locationName: streetName,
+            photos: [photoUrl],
+            mediaType,
+            type: 'social',
+            status: 'live',
+            createdAt: Date.now(),
+            voteCount: 0,
+            commentCount: 0
+        });
+
+        // NOTIFICATION: Confirm Post
+        await notifyUser(userId, "Post Published", "Your community post is now live at " + streetName);
+    },
+
+    // 3. NEW: Fetch Specific User's Social Posts
+    getUserSocialPosts: async (userId) => {
+        const q = query(
+            collection(db, TICKETS_COL),
+            where('type', '==', 'social'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+
+    // 4. NEW: Delete Post
+    deletePost: async (postId) => {
+        await deleteDoc(doc(db, TICKETS_COL, postId));
+    },
 };

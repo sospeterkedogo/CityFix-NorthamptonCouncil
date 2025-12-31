@@ -1,12 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList, Alert } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, STYLES } from '../constants/theme';
 import { SocialService } from '../services/socialService';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
 
-export default function FeedCard({ ticket }) {
+// Helper for relative time
+// Helper for relative time
+const timeAgo = (date) => {
+    // ... existing implementation ...
+    if (!date) return '';
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    // ... (abbreviated for brevity, assuming tool keeps context if I just prepend)
+    // Actually, I should just insert the component here.
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "mo ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m ago";
+    return "just now";
+};
+
+const AvatarFallback = ({ name, email }) => {
+    // Priority: Name -> Email -> "?"
+    const initial = name ? name.charAt(0).toUpperCase() : (email ? email.charAt(0).toUpperCase() : '?');
+
+    // Generate a consistent color based on the character
+    const colors = ['#f44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#FF5722'];
+    const colorIndex = initial.charCodeAt(0) % colors.length;
+    const backgroundColor = colors[colorIndex];
+
+    return (
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>{initial}</Text>
+        </View>
+    );
+};
+
+export default function FeedCard({ ticket, showDelete = false }) {
     const { user } = useAuth();
     const [likes, setLikes] = useState(ticket.voteCount || 0); // Likes (Heart)
     const [isLiked, setIsLiked] = useState(false);
@@ -18,6 +56,8 @@ export default function FeedCard({ ticket }) {
     const [newComment, setNewComment] = useState('');
     const [showFullScreen, setShowFullScreen] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
+    const [imageError, setImageError] = useState(false); // Track image loading errors
+    const [isDeleted, setIsDeleted] = useState(false); // Local hide state
     const router = useRouter();
 
     useEffect(() => {
@@ -30,16 +70,44 @@ export default function FeedCard({ ticket }) {
 
     const handleLike = async () => {
         if (!ticket.id) return;
+
+        // Optimistic Update
+        const previousState = isLiked;
+        const previousCount = likes;
+
         setIsLiked(!isLiked);
         setLikes(prev => isLiked ? prev - 1 : prev + 1);
-        await SocialService.toggleLike(ticket.id, user.uid);
+
+        try {
+            await SocialService.toggleLike(ticket.id, user.uid);
+        } catch (error) {
+            console.error("Like failed:", error);
+            // Revert state
+            setIsLiked(previousState);
+            setLikes(previousCount);
+            Alert.alert("Error", "Could not update like. Please check your connection or permissions.");
+        }
     };
 
     const handleUpvote = async () => {
         if (!ticket.id) return;
+
+        // Optimistic Update
+        const previousState = isUpvoted;
+        const previousCount = upvotes;
+
         setIsUpvoted(!isUpvoted);
         setUpvotes(prev => isUpvoted ? prev - 1 : prev + 1);
-        await SocialService.toggleUpvote(ticket.id, user.uid);
+
+        try {
+            await SocialService.toggleUpvote(ticket.id, user.uid);
+        } catch (error) {
+            console.error("Upvote failed:", error);
+            // Revert state
+            setIsUpvoted(previousState);
+            setUpvotes(previousCount);
+            Alert.alert("Error", "Could not update upvote. Please check your connection or permissions.");
+        }
     };
 
     // Just fetch data, don't open modal
@@ -82,6 +150,26 @@ export default function FeedCard({ ticket }) {
         fetchComments(); // Refresh real data and valid count
     };
 
+    const confirmDelete = () => {
+        Alert.alert(
+            "Delete Post",
+            "Are you sure you want to remove this post?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsDeleted(true); // Hide immediately
+                        await SocialService.deletePost(ticket.id);
+                    }
+                }
+            ]
+        );
+    };
+
+    if (isDeleted) return null; // Don't render if deleted
+
     if (!ticket || !ticket.id) return null; // Don't render invalid tickets
 
     // --- Dynamic Feed Logic ---
@@ -115,6 +203,17 @@ export default function FeedCard({ ticket }) {
                     image: ticket.afterPhoto || ticket.photos?.[0]
                 };
             default:
+                // Check if it's a social post
+                if (ticket.type === 'social') {
+                    return {
+                        icon: null, // No emoji for social
+                        title: ticket.userName || 'Neighbor',
+                        subtitle: ticket.locationName || 'Nearby',
+                        badge: null, // No badge
+                        badgeColor: 'transparent',
+                        image: ticket.photos?.[0]
+                    };
+                }
                 return {
                     icon: '🔧',
                     title: 'Status Update',
@@ -132,80 +231,126 @@ export default function FeedCard({ ticket }) {
         <View style={styles.card}>
             {/* Header */}
             <View style={styles.header}>
-                <View style={styles.avatar}><Text style={{ fontSize: 18 }}>{config.icon}</Text></View>
-                <View>
-                    <Text style={styles.username}>{config.title}</Text>
-                    <Text style={styles.location}>
-                        {config.subtitle} • {new Date(ticket.updatedAt || ticket.createdAt).toLocaleDateString()}
-                    </Text>
-                </View>
-            </View>
+                <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                    onPress={() => ticket.userId && router.push(`/(citizen)/(user)/${ticket.userId}`)}
+                >
+                    <View style={styles.avatar}>
+                        {ticket.userAvatar && ticket.userAvatar !== '👤' ? (
+                            <Image source={{ uri: ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                        ) : (
+                            // Fallback to first letter if social, or icon if official
+                            config.icon ? (
+                                <Text style={{ fontSize: 18 }}>{config.icon}</Text>
+                            ) : (
+                                <AvatarFallback name={ticket.userName} email={ticket.userEmail} />
+                            )
+                        )}
+                    </View>
+                    <View>
+                        <Text style={styles.username}>{config.title}</Text>
+                        <Text style={styles.location}>
+                            {config.subtitle} • {timeAgo(ticket.updatedAt || ticket.createdAt)}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
+                {/* DELETE BUTTON (If Owner AND showDelete is true) */}
+                {showDelete && user?.uid === ticket.userId && (
+                    <TouchableOpacity onPress={confirmDelete} style={{ padding: 5 }}>
+                        <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                    </TouchableOpacity>
+                )}
+            </View >
 
             {/* Image Section */}
-            <TouchableOpacity onPress={() => setShowFullScreen(true)} activeOpacity={0.9} style={{ position: 'relative' }}>
-                <Image
-                    source={{ uri: config.image }}
-                    style={styles.image}
-                    resizeMode="cover"
-                />
+            < TouchableOpacity onPress={() => setShowFullScreen(true)
+            } activeOpacity={0.9} style={{ position: 'relative' }}>
+                {/* Image/Video Section */}
+                {config.image && (ticket.mediaType === 'video' ? (
+                    <Video
+                        style={styles.image}
+                        source={{ uri: config.image }}
+                        useNativeControls
+                        resizeMode={ResizeMode.COVER}
+                        isLooping
+                    />
+                ) : (
+                    <Image
+                        source={imageError || !config.image ? { uri: 'https://picsum.photos/seed/picsum/600/400' } : { uri: config.image }}
+                        style={styles.image}
+                        resizeMode="cover"
+                        onError={() => setImageError(true)}
+                    />
+                ))}
 
-                {/* Status Badge Overlay */}
-                <View style={[styles.statusBadge, { backgroundColor: config.badgeColor }]}>
-                    <Text style={styles.statusBadgeText}>{config.badge}</Text>
-                </View>
+                {/* Status Badge Overlay - Only if badge exists */}
+                {config.badge && (
+                    <View style={[styles.statusBadge, { backgroundColor: config.badgeColor }]}>
+                        <Text style={styles.statusBadgeText}>{config.badge}</Text>
+                    </View>
+                )}
             </TouchableOpacity>
 
             {/* Action Bar */}
-            <View style={styles.actionBar}>
+            < View style={styles.actionBar} >
                 {/* Like Button (Heart) */}
-                <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+                < TouchableOpacity style={styles.actionBtn} onPress={handleLike} >
                     <Text style={{ fontSize: 24, color: isLiked ? 'red' : 'black' }}>{isLiked ? '❤️' : '🤍'}</Text>
                     <Text style={[styles.actionText, isLiked && { color: 'red' }]}>{likes}</Text>
-                </TouchableOpacity>
+                </TouchableOpacity >
 
                 {/* Upvote Button (Arrow) */}
-                <TouchableOpacity style={styles.actionBtn} onPress={handleUpvote}>
+                < TouchableOpacity style={styles.actionBtn} onPress={handleUpvote} >
                     <Ionicons
                         name={isUpvoted ? "arrow-up-circle" : "arrow-up-circle-outline"}
                         size={28}
                         color={isUpvoted ? COLORS.action : '#666'}
                     />
                     <Text style={[styles.actionText, isUpvoted && { color: COLORS.action }]}>{upvotes}</Text>
-                </TouchableOpacity>
+                </TouchableOpacity >
 
                 {/* Comment Button */}
-                <TouchableOpacity style={styles.actionBtn} onPress={openCommentsModal}>
+                < TouchableOpacity style={styles.actionBtn} onPress={openCommentsModal} >
                     <Ionicons name="chatbubble-outline" size={26} color="#666" />
                     <Text style={styles.actionText}>{commentCount > 0 ? commentCount : 0}</Text>
-                </TouchableOpacity>
-            </View>
+                </TouchableOpacity >
+            </View >
 
             {/* Caption */}
-            <View style={styles.captionBox}>
+            < View style={styles.captionBox} >
                 <Text numberOfLines={3}>
-                    <Text style={{ fontWeight: 'bold' }}>{ticket.status === 'in_progress' ? 'Report: ' : 'Resolution: '}</Text>
-                    {ticket.status === 'in_progress'
-                        ? (ticket.description || "No description provided.")
-                        : (ticket.resolutionNotes || "Issue resolved.")}
+                    {ticket.type === 'social' ? (
+                        <Text>{ticket.title || ticket.description}</Text>
+                    ) : (
+                        <>
+                            <Text style={{ fontWeight: 'bold' }}>{ticket.status === 'in_progress' ? 'Report: ' : 'Resolution: '}</Text>
+                            {ticket.status === 'in_progress'
+                                ? (ticket.description || "No description provided.")
+                                : (ticket.resolutionNotes || "Issue resolved.")}
+                        </>
+                    )}
                 </Text>
-            </View>
+            </View >
 
             {/* INLINE COMMENTS SECTION */}
-            <View style={styles.inlineCommentsSection}>
+            < View style={styles.inlineCommentsSection} >
                 {commentCount > 3 && (
                     <TouchableOpacity onPress={openCommentsModal}>
                         <Text style={styles.viewAllText}>View all {commentCount} comments</Text>
                     </TouchableOpacity>
                 )}
 
-                {comments.slice(0, 3).map(comment => (
-                    <View key={comment.id} style={styles.inlineCommentRow}>
-                        <Text numberOfLines={2}>
-                            <Text style={styles.commentUser}>{comment.userName} </Text>
-                            <Text style={styles.commentText}>{comment.isFlagged ? '[Flagged]' : comment.text}</Text>
-                        </Text>
-                    </View>
-                ))}
+                {
+                    comments.slice(0, 3).map(comment => (
+                        <View key={comment.id} style={styles.inlineCommentRow}>
+                            <Text numberOfLines={2}>
+                                <Text style={styles.commentUser}>{comment.userName} </Text>
+                                <Text style={styles.commentText}>{comment.isFlagged ? '[Flagged]' : comment.text}</Text>
+                            </Text>
+                        </View>
+                    ))
+                }
 
                 {/* Inline Input */}
                 <View style={styles.inlineInputRow}>
@@ -214,10 +359,10 @@ export default function FeedCard({ ticket }) {
                         <Text style={[styles.inlineInput, { color: '#999', paddingTop: 10 }]}>Add a comment...</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </View >
 
             {/* COMMENTS MODAL (Bottom Sheet Style) */}
-            <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
+            < Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.bottomSheet}>
                         <View style={styles.modalHeader}>
@@ -278,7 +423,7 @@ export default function FeedCard({ ticket }) {
                         </View>
                     </View>
                 </View>
-            </Modal>
+            </Modal >
 
             {/* FULL SCREEN IMAGE MODAL */}
             < Modal visible={showFullScreen} animationType="fade" transparent={true} onRequestClose={() => setShowFullScreen(false)}>
