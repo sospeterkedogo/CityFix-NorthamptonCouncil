@@ -11,6 +11,7 @@ import { SocialService } from '../../src/services/socialService';
 import { TICKET_STATUS } from '../../src/constants/models';
 import SimpleExpandableRow from '../../src/components/SimpleExpandableRow';
 import FeedCard from '../../src/components/FeedCard';
+import Toast from '../../src/components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Dashboard() {
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false); // Toast State
 
   // Data refresh handler
   useFocusEffect(
@@ -108,12 +110,35 @@ export default function Dashboard() {
 
   const filteredData = getFilteredContent();
 
+  const sectionListRef = React.useRef(null);
+
+  const handleEndReached = () => {
+    // Prevent multiple triggers if empty or loading
+    if (loading || filteredData.length === 0) return;
+
+    // Pop up message
+    setToastVisible(true);
+
+    // Jump to top
+    if (sectionListRef.current) {
+      sectionListRef.current.scrollToLocation({
+        sectionIndex: 0,
+        itemIndex: 0,
+        viewOffset: 0,
+        animated: true
+      });
+    }
+  };
+
   return (
     <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
 
       <SectionList
+        ref={sectionListRef}
         sections={[{ title: filter, data: filteredData }]}
         keyExtractor={(item) => item.id}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.1}
         renderItem={({ item }) => (
           <FeedCard ticket={item} />
         )}
@@ -229,7 +254,14 @@ export default function Dashboard() {
         </View>
       </Modal>
 
-    </View>
+      {/* TOAST NOTIFICATION */}
+      <Toast
+        visible={toastVisible}
+        message="You're all caught up!"
+        onHide={() => setToastVisible(false)}
+      />
+
+    </View >
   );
 }
 

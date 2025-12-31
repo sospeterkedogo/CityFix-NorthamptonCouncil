@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, SectionList, FlatList, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, Modal, TextInput, Image } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, SectionList, FlatList, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, Modal, TextInput, Image, Alert } from 'react-native';
+import { useFocusEffect } from 'expo-router'; // Add useFocusEffect
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { SocialService } from '../../src/services/socialService';
 import { ImageService } from '../../src/services/ImageService';
 import FeedCard from '../../src/components/FeedCard';
+import Toast from '../../src/components/Toast';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function HomeScreen() {
@@ -13,6 +15,7 @@ export default function HomeScreen() {
     const [activeTab, setActiveTab] = useState('neighborhood'); // 'official' or 'neighborhood'
     const [feed, setFeed] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [toastVisible, setToastVisible] = useState(false);
 
     // Create Post State
     const [showPostModal, setShowPostModal] = useState(false);
@@ -21,9 +24,13 @@ export default function HomeScreen() {
     const [mediaType, setMediaType] = useState('image'); // 'image' | 'video' | 'text'
     const [uploading, setUploading] = useState(false);
 
-    useEffect(() => {
-        loadFeed();
-    }, [activeTab]); // Reload when tab changes
+    const sectionListRef = useRef(null);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadFeed();
+        }, [activeTab]) // Reload when tab changes OR when focused
+    );
 
     const loadFeed = async () => {
         setLoading(true);
@@ -120,7 +127,15 @@ export default function HomeScreen() {
 
                 {/* FEED LIST */}
                 <SectionList
+                    ref={sectionListRef}
                     sections={[{ data: feed }]}
+                    onEndReached={() => {
+                        if (feed.length > 0 && !loading) {
+                            setToastVisible(true);
+                            sectionListRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true });
+                        }
+                    }}
+                    onEndReachedThreshold={0.1}
                     renderItem={({ item }) => <FeedCard ticket={item} />}
                     renderSectionHeader={() => (
                         <View style={{ backgroundColor: '#f8f9fa', paddingBottom: 10 }}>
@@ -208,7 +223,9 @@ export default function HomeScreen() {
                 </SafeAreaView>
             </Modal>
 
-        </SafeAreaView>
+            <Toast visible={toastVisible} message="You're all caught up!" onHide={() => setToastVisible(false)} />
+
+        </SafeAreaView >
     );
 }
 

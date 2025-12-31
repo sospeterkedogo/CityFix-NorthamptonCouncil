@@ -58,8 +58,8 @@ export default function CitizenTabsLayout() {
                 name="index"
                 options={{
                     title: 'Home',
-                    tabBarIcon: ({ focused, color, size }) => (
-                        <Ionicons name={focused ? "home" : "home-outline"} size={26} color={color} />
+                    tabBarIcon: ({ focused, color }) => (
+                        <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
                     ),
                 }}
             />
@@ -68,9 +68,9 @@ export default function CitizenTabsLayout() {
             <Tabs.Screen
                 name="my-reports"
                 options={{
-                    title: 'My Reports',
-                    tabBarIcon: ({ focused, color, size }) => (
-                        <Ionicons name={focused ? "grid" : "grid-outline"} size={26} color={color} />
+                    title: 'Reports',
+                    tabBarIcon: ({ focused, color }) => (
+                        <Ionicons name={focused ? "folder-open" : "folder-open-outline"} size={24} color={color} />
                     ),
                 }}
             />
@@ -80,45 +80,31 @@ export default function CitizenTabsLayout() {
                 name="dashboard"
                 options={{
                     title: 'Dashboard',
-                    tabBarIcon: ({ focused, color, size }) => (
-                        <Ionicons name={focused ? "apps" : "apps-outline"} size={26} color={color} />
+                    tabBarIcon: ({ focused, color }) => (
+                        <Ionicons name={focused ? "grid" : "grid-outline"} size={24} color={color} />
                     ),
                 }}
             />
 
-
-
-            {/* 5. NOTIFICATIONS (New) */}
+            {/* 4. NOTIFICATIONS */}
             <Tabs.Screen
                 name="notifications"
                 options={{
                     title: 'Updates',
-                    tabBarIcon: ({ focused, color, size }) => (
-                        <Ionicons name={focused ? "notifications" : "notifications-outline"} size={26} color={color} />
+                    tabBarIcon: ({ focused, color }) => (
+                        <Ionicons name={focused ? "notifications" : "notifications-outline"} size={24} color={color} />
                     ),
                     tabBarBadge: unreadCount > 0 ? unreadCount : null,
                     tabBarBadgeStyle: { backgroundColor: COLORS.error, fontSize: 10, minWidth: 16, height: 16 },
                 }}
             />
 
-            {/* Hide the actual Report screen from the tab bar, 
-          so it opens as a full page when clicked */}
-            <Tabs.Screen
-                name="report"
-                options={{ href: null, tabBarStyle: { display: 'none' } }}
-            />
-
-            {/* Hide Details page from tabs */}
-            <Tabs.Screen
-                name="ticket/[id]"
-                options={{ href: null, tabBarStyle: { display: 'none' } }}
-            />
-
-            {/* Hide User Profile Group from tabs */}
-            <Tabs.Screen
-                name="(user)"
-                options={{ href: null, tabBarStyle: { display: 'none' } }}
-            />
+            {/* HIDE ALL OTHER ROUTES STRICTLY */}
+            <Tabs.Screen name="report" options={{ href: null }} />
+            <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
+            <Tabs.Screen name="(user)" options={{ href: null }} />
+            <Tabs.Screen name="(user)/[uid]" options={{ href: null }} />
+            <Tabs.Screen name="ticket" options={{ href: null }} />
         </Tabs>
     );
 }
