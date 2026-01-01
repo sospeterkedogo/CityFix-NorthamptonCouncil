@@ -155,7 +155,7 @@ export default function Dashboard() {
             {/* --- HEADER --- */}
             <View style={styles.header}>
               <View>
-                <Text style={styles.welcomeText}>Hello, {user?.displayName || 'Citizen'}!</Text>
+                <Text style={styles.welcomeText}>Welcome back, {user?.displayName || 'Citizen'}!</Text>
                 <Text style={styles.subText}>Here is your impact overview</Text>
               </View>
               <TouchableOpacity onPress={() => router.push('/profile')}>
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    marginTop: 10,
+    marginTop: Platform.OS === 'android' ? 50 : 10,
   },
   welcomeText: { fontSize: 22, fontWeight: 'bold', color: '#202124' },
   subText: { fontSize: 14, color: '#5f6368' },
