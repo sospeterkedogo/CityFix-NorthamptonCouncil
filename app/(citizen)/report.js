@@ -223,7 +223,7 @@ export default function ReportIssueScreen() {
         console.log("Starting Upload for", media.length, "files...");
 
         const uploadPromises = media.map(file =>
-          MediaService.uploadFile(file.uri, "reports")
+          MediaService.uploadFile(file.uri, `users/${user.uid}/reports`)
         );
 
         uploadedUrls = await Promise.all(uploadPromises);
@@ -273,20 +273,32 @@ export default function ReportIssueScreen() {
       setLoading(false);
       setUploading(false);
 
-      const crashMsg = "An unexpected error occurred. Please try again.";
+      const crashMsg = e.message || "An unexpected error occurred. Please try again.";
       if (Platform.OS === 'web') {
-        window.alert(crashMsg);
+        window.alert("Error: " + crashMsg);
       } else {
         Alert.alert("Error", crashMsg);
       }
     }
   };
 
+  if (!user) {
+    return (
+      <SafeAreaView style={[STYLES.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={{ marginTop: 20 }}>Loading User Profile...</Text>
+      </SafeAreaView>
+    );
+  }
+
+
   return (
     <SafeAreaView style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <TouchableOpacity onPress={() => router.push('/')} style={{ marginBottom: 10 }}>
-          <Text style={{ color: COLORS.action, fontSize: 16 }}>← Back</Text>
+          <Text style={{ color: COLORS.action, fontSize: 16 }}>
+            <Ionicons name="arrow-back" size={16} color={COLORS.action} /> Back
+          </Text>
         </TouchableOpacity>
         <Text style={styles.header}>Report an Issue</Text>
 
@@ -372,12 +384,20 @@ export default function ReportIssueScreen() {
                 {item.type === 'video' ? (
                   // Render a placeholder for videos
                   <View style={[styles.thumbnail, styles.videoPlaceholder]}>
-                    <Text style={{ fontSize: 24 }}>🎥</Text>
+                    <Ionicons name="videocam-outline" size={24} color={COLORS.text.secondary} />
                     <Text style={{ fontSize: 10, color: 'white', fontWeight: 'bold' }}>VIDEO</Text>
                   </View>
                 ) : (
                   // Render the image for photos
-                  <Image source={{ uri: item.uri }} style={styles.thumbnail} />
+                  Platform.OS === 'web' ? (
+                    <img
+                      src={item.uri}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                      alt="Evidence"
+                    />
+                  ) : (
+                    <Image source={{ uri: item.uri }} style={styles.thumbnail} />
+                  )
                 )}
 
                 <TouchableOpacity
@@ -414,7 +434,8 @@ export default function ReportIssueScreen() {
             onPress={handleSaveDraft}
             disabled={loading}
           >
-            <Text style={styles.draftText}>💾 Save Draft</Text>
+            <Ionicons name="save-outline" size={20} color={COLORS.action} style={{ marginRight: 8 }} />
+            <Text style={styles.draftText}>Save Draft</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

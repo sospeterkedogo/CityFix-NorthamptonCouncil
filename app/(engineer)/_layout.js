@@ -57,6 +57,17 @@ export default function EngineerLayout() {
         }}
       />
 
+      {/* 3. NOTIFICATIONS */}
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Updates',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? "notifications" : "notifications-outline"} size={26} color={color} />
+          ),
+        }}
+      />
+
       {/* Hidden Screens */}
       <Tabs.Screen
         name="resolve"

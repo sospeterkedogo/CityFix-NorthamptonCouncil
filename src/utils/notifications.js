@@ -51,7 +51,7 @@ export const sendAppNotification = async (userId, title, body, data = {}) => {
             read: false,
             createdAt: serverTimestamp()
         });
-        console.log(`📨 Virtual Notification sent to ${userId}:`, title);
+        console.log(`Virtual Notification sent to ${userId}:`, title);
     } catch (e) {
         console.error("Error sending virtual notification:", e);
     }
@@ -76,7 +76,7 @@ export const notifyRole = async (role, title, body) => {
         snapshot.forEach(doc => {
             sendAppNotification(doc.id, title, body);
         });
-        console.log(`📣 Notified all ${role}s`);
+        console.log(`Notified all ${role}s`);
     } catch (e) {
         console.error("Notify Role Error:", e);
     }
@@ -87,7 +87,7 @@ export const useNotificationListener = (user) => {
     useEffect(() => {
         if (!user?.uid) return;
 
-        console.log("👂 Listening for notifications for:", user.uid);
+        console.log("Listening for notifications for:", user.uid);
         const q = query(
             collection(db, 'users', user.uid, 'notifications'),
             where('read', '==', false)

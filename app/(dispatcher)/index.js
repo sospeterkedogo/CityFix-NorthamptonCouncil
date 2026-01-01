@@ -102,7 +102,7 @@ export default function DispatcherInbox() {
           )}
 
           <Text style={styles.rowSub}>
-            {item.category.toUpperCase()} • {new Date(item.createdAt).toLocaleDateString()}
+            {(item.category || 'General').toUpperCase()} • {new Date(item.createdAt).toLocaleDateString()}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#ccc" />
@@ -130,6 +130,22 @@ export default function DispatcherInbox() {
       }
     } else {
       alert("Failed to assign ticket: " + result.error);
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    if (!selectedTicket) return;
+    const confirm = Platform.OS === 'web' ? window.confirm("Auto-assign this ticket to the nearest available engineer?") : true;
+    if (!confirm) return;
+
+    const result = await TicketService.autoAssign(selectedTicket.id);
+    if (result.success) {
+      alert("Ticket auto-assigned successfully!");
+      loadTickets();
+      // Optimistically update
+      setSelectedTicket(prev => ({ ...prev, status: 'assigned' }));
+    } else {
+      alert("Auto-assign failed: " + result.error);
     }
   };
 
@@ -261,6 +277,17 @@ export default function DispatcherInbox() {
               {selectedTicket?.status === 'assigned' ? 'Change Engineer' : (isAssignable ? 'Assign Engineer' : 'Locked')}
             </Text>
           </TouchableOpacity>
+
+          {/* Auto Assign Button */}
+          {isAssignable && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#FF8C00' }]} // Dark Orange
+              onPress={handleAutoAssign}
+            >
+              <Ionicons name="flash-outline" size={18} color="white" style={{ marginRight: 5 }} />
+              <Text style={styles.btnText}>Auto Assign</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Section: Citizen Evidence */}
