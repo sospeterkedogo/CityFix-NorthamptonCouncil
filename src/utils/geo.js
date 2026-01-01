@@ -18,3 +18,25 @@ export const getDistanceKm = (lat1, lon1, lat2, lon2) => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
+
+/**
+ * Check if a point is inside a polygon using Ray Casting algorithm
+ * @param {Object} point { latitude, longitude }
+ * @param {Array} polygon [{ latitude, longitude }, ...]
+ */
+export const isPointInPolygon = (point, polygon) => {
+  if (!polygon || polygon.length < 3) return false;
+
+  let x = point.latitude, y = point.longitude;
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    let xi = polygon[i].latitude, yi = polygon[i].longitude;
+    let xj = polygon[j].latitude, yj = polygon[j].longitude;
+
+    let intersect = ((yi > y) !== (yj > y))
+      && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};

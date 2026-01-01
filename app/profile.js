@@ -19,14 +19,30 @@ export default function UserProfile() {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(user?.displayName || '');
     const [photo, setPhoto] = useState(user?.photoURL || null);
+
+    // Structured Address State
+    const [doorNo, setDoorNo] = useState('');
+    const [street, setStreet] = useState('');
+    const [city, setCity] = useState('');
+
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (user) {
             setName(user.displayName || user.email?.split('@')[0]);
             setPhoto(user.photoURL);
+            loadProfileData();
         }
     }, [user]);
+
+    const loadProfileData = async () => {
+        const data = await UserService.getEngineerProfile(user.uid);
+        if (data) {
+            setDoorNo(data.doorNo || '');
+            setStreet(data.street || '');
+            setCity(data.city || '');
+        }
+    };
 
     const pickImage = async () => {
         if (!isEditing) return;
@@ -60,9 +76,14 @@ export default function UserProfile() {
             });
 
             // 2. Update Firestore Document (Persistence)
+            const fullAddress = `${doorNo} ${street}, ${city}`;
             const res = await UserService.updateUserProfile(user.uid, {
                 name: name,
-                photoURL: photoURL
+                photoURL: photoURL,
+                doorNo,
+                street,
+                city,
+                address: fullAddress.trim() // Keep full string for easy fallback
             });
 
             if (res.success) {
@@ -201,6 +222,54 @@ export default function UserProfile() {
                                 {userRole?.toUpperCase()} ACCOUNT
                             </Text>
                         </View>
+                    </View>
+
+                    {/* ADDRESS SECTION (Structured) */}
+                    <SectionHeader title="Location" />
+                    <View style={styles.sectionCard}>
+                        {isEditing ? (
+                            <View style={{ padding: 15 }}>
+                                <View style={styles.inputRow}>
+                                    <View style={{ flex: 1, marginRight: 10 }}>
+                                        <Text style={styles.inputLabel}>Door/Flat No</Text>
+                                        <TextInput
+                                            style={styles.addressInput}
+                                            value={doorNo}
+                                            onChangeText={setDoorNo}
+                                            placeholder="12A"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 2 }}>
+                                        <Text style={styles.inputLabel}>Street Name</Text>
+                                        <TextInput
+                                            style={styles.addressInput}
+                                            value={street}
+                                            onChangeText={setStreet}
+                                            placeholder="Main Street"
+                                        />
+                                    </View>
+                                </View>
+
+                                <View style={{ marginTop: 15 }}>
+                                    <Text style={styles.inputLabel}>City/Town</Text>
+                                    <TextInput
+                                        style={styles.addressInput}
+                                        value={city}
+                                        onChangeText={setCity}
+                                        placeholder="Northampton"
+                                    />
+                                </View>
+
+                                <Text style={styles.helperText}>Used for local updates (e.g., "{city || 'Northampton'}").</Text>
+                            </View>
+                        ) : (
+                            <SettingsItem
+                                icon="map-outline"
+                                label={(doorNo || street || city) ? `${doorNo} ${street}, ${city}` : "Set your location"}
+                                onPress={() => setIsEditing(true)}
+                                color={(doorNo || street || city) ? '#333' : '#999'}
+                            />
+                        )}
                     </View>
 
                     {/* SETTINGS GROUPS */}
@@ -388,5 +457,27 @@ const styles = StyleSheet.create({
         color: '#ccc',
         marginTop: 20,
         fontSize: 12,
+    },
+    addressInput: {
+        fontSize: 16,
+        color: '#333',
+        borderBottomWidth: 1,
+        borderColor: '#ddd',
+        paddingVertical: 8,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#888',
+        marginBottom: 2
+    },
+    helperText: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 10
     }
 });

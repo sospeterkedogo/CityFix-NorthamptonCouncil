@@ -25,5 +25,26 @@ export const ImageService = {
             console.error("Image Upload Error:", error);
             throw error;
         }
+    },
+
+    downloadImage: async (url) => {
+        try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== 'granted') {
+                return { success: false, error: 'Permission denied' };
+            }
+
+            const filename = url.split('/').pop().split('?')[0];
+            const fileUri = FileSystem.documentDirectory + filename;
+
+            const { uri } = await FileSystem.downloadAsync(url, fileUri);
+            const asset = await MediaLibrary.createAssetAsync(uri);
+            await MediaLibrary.createAlbumAsync('CityFix', asset, false);
+
+            return { success: true };
+        } catch (error) {
+            console.error("Download Error:", error);
+            return { success: false, error: error.message };
+        }
     }
 };

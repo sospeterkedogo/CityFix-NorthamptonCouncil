@@ -25,7 +25,8 @@ export default function ExpandableTicketCard({ ticket }) {
     const statusColor = getStatusColor(ticket.status);
     const isResolved = ticket.status === 'resolved' || ticket.status === 'verified';
     // Robustly find the image source
-    const beforePhoto = ticket.photos?.[0] || ticket.image || ticket.photoUrl;
+    const firstPhoto = Array.isArray(ticket.photos) ? ticket.photos[0] : ticket.photos;
+    const beforePhoto = firstPhoto || ticket.image || ticket.photoUrl;
     const afterPhoto = ticket.afterPhoto;
     const [imageLoadingError, setImageLoadingError] = useState(false);
 

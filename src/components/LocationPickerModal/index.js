@@ -76,7 +76,7 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
 
                         {/* The "Center" Pin Overlay */}
                         <View style={styles.pinOverlay} pointerEvents="none">
-                            <Text style={{ fontSize: 40 }}>📍</Text>
+                            <Ionicons name="location-sharp" size={40} color={COLORS.primary} />
                             {/* Note: In a real app, use an Image or Icon here for better alignment */}
                         </View>
 
