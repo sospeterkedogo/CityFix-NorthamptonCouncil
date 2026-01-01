@@ -13,14 +13,25 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cityfix.cityfix"
+      "bundleIdentifier": "com.cityfix.cityfix",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2C3E50"
       },
-      "package": "com.cityfix.cityfix"
+      "package": "com.cityfix.cityfix",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "NOTIFICATIONS"
+      ]
     },
     "scheme": "city-fix",
     "plugins": [
@@ -28,9 +39,7 @@
     ],
     "notification": {
       "icon": "./assets/icon.png",
-      "color": "#ffffff",
-      "vapidPublicKey": "BPfiypc72CFrBdkgMDPLDzy-fijbHD2-W371DyWFmHjzqyfq7hRlsH3za49JvdFlHGsjJcW2L_1ln1GRj7kz2Xg",
-      "serviceWorkerPath": "firebase-messaging-sw.js"
+      "color": "#ffffff"
     },
     "web": {
       "favicon": "./assets/splash.png",
@@ -40,6 +49,14 @@
       "description": "City Fix - Report and Resolve Issues",
       "themeColor": "#2C3E50",
       "startUrl": "/"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1b864f57-1b8d-46cd-a3d7-d9ecf82c93dc"
+      },
+      "vapidPublicKey": "BPfiypc72CFrBdkgMDPLDzy-fijbHD2-W371DyWFmHjzqyfq7hRlsH3za49JvdFlHGsjJcW2L_1ln1GRj7kz2Xg",
+      "serviceWorkerPath": "firebase-messaging-sw.js"
     }
   }
 }
