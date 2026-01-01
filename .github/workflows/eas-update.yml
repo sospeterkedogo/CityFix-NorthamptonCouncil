@@ -26,6 +26,11 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: 🔐 Create Firebase Config
+        run: |
+          mkdir -p src/config
+          echo "${{ secrets.FIREBASE_CONFIG_BASE64 }}" | base64 -d > src/config/firebase.js
+
       - name: 📦 Install dependencies
         run: npm ci
 
