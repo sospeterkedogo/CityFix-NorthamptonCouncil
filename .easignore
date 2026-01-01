@@ -38,7 +38,7 @@ yarn-error.*
 app-example
 
 # firebase config
-firebase.js
+# firebase.js (Uncommented for EAS build)
 firebase-messaging-sw.js
     
 
