@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { COLORS, SPACING, STYLES } from '../constants/theme';
+import { COLORS, SPACING, STYLES } from '../../constants/theme';
 
 export default function LocationPickerModal({ visible, onClose, onSelectLocation }) {
     const [region, setRegion] = useState(null);
