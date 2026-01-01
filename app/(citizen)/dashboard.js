@@ -158,8 +158,16 @@ export default function Dashboard() {
                 <Text style={styles.welcomeText}>Hello, {user?.displayName || 'Citizen'}!</Text>
                 <Text style={styles.subText}>Here is your impact overview</Text>
               </View>
-              <TouchableOpacity onPress={() => router.push('/profile')} style={styles.profileIcon}>
-                <Text style={styles.profileInitial}>{(user?.email || 'U').charAt(0).toUpperCase()}</Text>
+              <TouchableOpacity onPress={() => router.push('/profile')}>
+                {user?.photoURL ? (
+                  <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarText}>
+                      {(user?.displayName?.trim() || user?.email || '?').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -275,8 +283,9 @@ const styles = StyleSheet.create({
   },
   welcomeText: { fontSize: 22, fontWeight: 'bold', color: '#202124' },
   subText: { fontSize: 14, color: '#5f6368' },
-  profileIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
-  profileInitial: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: 'white' },
+  avatarPlaceholder: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
 
   // Stats
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },

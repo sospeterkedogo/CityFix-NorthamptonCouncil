@@ -124,8 +124,8 @@ export default function ResolveJobScreen() {
           </View>
         </View>
 
-        {/* STEP 1: REVIEW EVIDENCE */}
-        <Text style={styles.stepTitle}>STEP 1: Review Issue</Text>
+        {/* REVIEW EVIDENCE */}
+        <Text style={styles.stepTitle}>Review Issue</Text>
         <Text style={styles.stepSub}>Check the original report photos.</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.evidenceScroll}>

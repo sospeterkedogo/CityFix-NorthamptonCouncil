@@ -45,14 +45,23 @@ export default function QADashboard() {
 
   const loadQAQueue = async () => {
     const allData = await TicketService.getAllTickets();
+    const allEngineers = await UserService.getAllEngineers(); // Fetch all engineers to map IDs
 
-    // 1. Pending Verification
-    const pending = allData.filter(t => t.status === 'verified');
-    setTickets(pending);
+    // Helper to add engineer name
+    const enrichWithEngineer = (list) => {
+      return list.map(t => {
+        const eng = allEngineers.find(e => e.id === t.assignedTo);
+        return { ...t, engineerName: eng ? (eng.name || eng.email) : 'Unknown' };
+      });
+    };
 
-    // 2. Verified History (Resolved tickets)
-    const history = allData.filter(t => t.status === 'resolved');
-    setHistoryTickets(history);
+    // 1. Pending Verification (Status: RESOLVED)
+    const pending = allData.filter(t => t.status === 'resolved');
+    setTickets(enrichWithEngineer(pending));
+
+    // 2. Verified History (Status: VERIFIED)
+    const history = allData.filter(t => t.status === 'verified');
+    setHistoryTickets(enrichWithEngineer(history));
 
     setLoading(false);
 
@@ -101,7 +110,7 @@ export default function QADashboard() {
       <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{item.title}</Text>
-        <Text style={styles.rowSub}>Resolved by Eng. #{item.assignedTo}</Text>
+        <Text style={styles.rowSub}>Resolved by: {item.engineerName}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color="#ccc" />
     </TouchableOpacity>

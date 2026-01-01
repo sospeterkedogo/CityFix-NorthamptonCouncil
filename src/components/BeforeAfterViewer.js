@@ -21,8 +21,8 @@ export default function BeforeAfterViewer({ beforeMedia = [], afterMedia, onOpen
     return (
       <View style={styles.mediaContainer}>
         <Text style={styles.label}>{label}</Text>
-        <TouchableOpacity 
-          style={styles.touchable} 
+        <TouchableOpacity
+          style={styles.touchable}
           onPress={() => onOpenMedia(url)}
         >
           {isVideo ? (
@@ -43,22 +43,22 @@ export default function BeforeAfterViewer({ beforeMedia = [], afterMedia, onOpen
 
   return (
     <View style={styles.container}>
-      
-      {/* LEFT SIDE: BEFORE (Citizen) */}
+
+      {/* LEFT SIDE: BEFORE */}
       <View style={styles.half}>
-        {renderMedia(beforeMedia[beforeIndex], "BEFORE (Citizen)")}
-        
+        {renderMedia(beforeMedia[beforeIndex], "BEFORE")}
+
         {/* Simple pagination for multiple before photos */}
         {beforeMedia.length > 1 && (
           <View style={styles.pagination}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setBeforeIndex(i => Math.max(0, i - 1))}
               disabled={beforeIndex === 0}
             >
               <Text style={styles.arrow}>‹</Text>
             </TouchableOpacity>
             <Text style={styles.pageText}>{beforeIndex + 1}/{beforeMedia.length}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setBeforeIndex(i => Math.min(beforeMedia.length - 1, i + 1))}
               disabled={beforeIndex === beforeMedia.length - 1}
             >
@@ -71,9 +71,9 @@ export default function BeforeAfterViewer({ beforeMedia = [], afterMedia, onOpen
       {/* DIVIDER */}
       <View style={styles.divider} />
 
-      {/* RIGHT SIDE: AFTER (Engineer) */}
+      {/* RIGHT SIDE: AFTER */}
       <View style={styles.half}>
-        {renderMedia(afterMedia, "AFTER (Engineer)")}
+        {renderMedia(afterMedia, "AFTER")}
       </View>
 
     </View>
@@ -83,50 +83,57 @@ export default function BeforeAfterViewer({ beforeMedia = [], afterMedia, onOpen
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    height: 400, // Fixed height for the viewer area
-    backgroundColor: '#000',
-    borderRadius: 12,
+    height: 400,
+    backgroundColor: 'transparent', // Blend in
     overflow: 'hidden',
-    marginBottom: SPACING.m,
+    // marginBottom: SPACING.m, // Removed to tighten layout
   },
   half: {
     flex: 1,
-    padding: 10,
+    padding: 0, // No padding
     justifyContent: 'center',
   },
   divider: {
     width: 2,
-    backgroundColor: '#333',
+    backgroundColor: '#fff', // White divider if background is white/light
   },
   mediaContainer: {
     flex: 1,
     width: '100%',
+    overflow: 'hidden',
   },
   label: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 10,
     marginBottom: 5,
     textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 4,
+    position: 'absolute', // Overlay properly
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 4,
-    alignSelf: 'center',
+    zIndex: 10,
   },
   touchable: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   media: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#222',
+    backgroundColor: '#f0f0f0', // Light placeholder
   },
   emptyBox: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#222',
+    backgroundColor: '#f9f9f9',
+  },
+  emptyText: {
+    color: '#ccc',
+    fontSize: 12,
   },
   emptyText: {
     color: '#666',

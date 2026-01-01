@@ -3,6 +3,8 @@ import { db } from '../config/firebase';
 import { createTicket, TICKET_STATUS } from '../constants/models';
 import { canAssign } from '../constants/workflow';
 import { notifyUser, notifyRole } from '../utils/notifications';
+import { UserService } from './userService';
+import { isPointInPolygon, getDistanceKm } from '../utils/geo';
 
 
 const TICKET_COLLECTION = 'tickets';
@@ -62,8 +64,8 @@ export const TicketService = {
 
       if (includeMerged) return allDocs;
 
-      // GRACEFUL HANDLING: Filter out merged tickets
-      return allDocs.filter(t => t.status !== 'merged');
+      // GRACEFUL HANDLING: Filter out merged tickets AND social posts
+      return allDocs.filter(t => t.status !== 'merged' && t.type !== 'social');
     } catch (error) {
       console.error('Error fetching tickets:', error);
       return [];
@@ -103,7 +105,8 @@ export const TicketService = {
     try {
       const q = query(collection(db, TICKET_COLLECTION), where("userId", "==", userId));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      const allDocs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      return allDocs.filter(t => t.type !== 'social');
     } catch (e) {
       return [];
     }
@@ -148,6 +151,61 @@ export const TicketService = {
   },
 
   /**
+   * Automatically assign ticket to the best engineer
+   * 1. Check Zones (Polygon)
+   * 2. Fallback to Nearest Distance
+   */
+  autoAssign: async (ticketId) => {
+    try {
+      // 1. Get Ticket
+      const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
+      const ticketSnap = await getDoc(ticketRef);
+      if (!ticketSnap.exists()) throw new Error("Ticket not found");
+      const ticket = { ...ticketSnap.data(), id: ticketSnap.id };
+
+      if (!canAssign(ticket.status)) throw new Error("Ticket cannot be assigned (already resolved/assigned).");
+
+      // 2. Get All Engineers
+      const engineers = await UserService.getAllEngineers();
+      const availableEngineers = engineers.filter(e => e.status === 'Available');
+
+      if (availableEngineers.length === 0) throw new Error("No available engineers found.");
+
+      let bestEngineer = null;
+      let minDist = Infinity;
+      const { latitude, longitude } = ticket.location;
+
+      // 3. Find Best Match
+      for (const eng of availableEngineers) {
+        // Priority A: Inside Zone
+        if (eng.zone && isPointInPolygon({ latitude, longitude }, eng.zone)) {
+          bestEngineer = eng;
+          break; // Found one in zone!
+        }
+
+        // Priority B: Distance (Fallback)
+        if (eng.lastKnownLocation) {
+          const dist = getDistanceKm(latitude, longitude, eng.lastKnownLocation.latitude, eng.lastKnownLocation.longitude);
+          if (dist < minDist) {
+            minDist = dist;
+            if (!bestEngineer) bestEngineer = eng;
+          }
+        }
+      }
+
+      // Fallback
+      if (!bestEngineer) bestEngineer = availableEngineers[0];
+
+      // 4. Assign
+      return await TicketService.assignTicket(ticket.id, bestEngineer.id);
+
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+
+  /**
    * Get a single ticket by ID
    */
   getTicketById: async (ticketId) => {
@@ -182,7 +240,7 @@ export const TicketService = {
 
       // CREATE NOTIFICATION (This is what triggers the Context listener)
       await addDoc(collection(db, 'users', ticketData.userId, 'notifications'), {
-        title: "Issue Resolved ✅",
+        title: "Issue Resolved",
         body: `Good news! "${ticketData.title}" has been fixed.`,
         read: false,
         createdAt: Date.now(),
@@ -193,7 +251,7 @@ export const TicketService = {
 
       // NOTIFICATION: To Citizen
       if (ticketData.userId) {
-        await notifyUser(ticketData.userId, "Issue Resolved! ✅", `Good news! "${ticketData.title}" has been fixed.`);
+        await notifyUser(ticketData.userId, "Issue Resolved!", `Good news! "${ticketData.title}" has been fixed.`);
       }
 
       // NOTIFICATION: To QA
@@ -224,6 +282,11 @@ export const TicketService = {
         await notifyUser(ticketData.userId, "Case Closed", `Your report "${ticketData.title}" has been verified and closed.`);
       }
 
+      // NOTIFICATION: To Engineer
+      if (ticketData.assignedTo) {
+        await notifyUser(ticketData.assignedTo, "Work Verified", `Great job! Your fix for "${ticketData.title}" has been verified.`);
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -252,7 +315,7 @@ export const TicketService = {
 
       // NOTIFICATION: To Engineer
       if (ticketData.assignedTo) {
-        await notifyUser(ticketData.assignedTo, "Ticket Reopened ⚠️", `Ticket "${ticketData.title}" was reopened. Reason: ${reason}`);
+        await notifyUser(ticketData.assignedTo, "Ticket Reopened", `Ticket "${ticketData.title}" was reopened. Reason: ${reason}`);
       }
 
       // NOTIFICATION: To Citizen

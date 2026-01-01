@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, Modal, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform, SafeAreaView 
+import {
+  View, Text, Modal, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform, SafeAreaView
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../constants/theme';
@@ -37,7 +37,7 @@ export default function MediaGalleryModal({ visible, onClose, mediaUrls = [], in
   return (
     <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
-        
+
         {/* --- TOP TOOLBAR (Controls at the Top) --- */}
         <View style={styles.topToolbar}>
           <Text style={styles.counterText}>
@@ -45,13 +45,13 @@ export default function MediaGalleryModal({ visible, onClose, mediaUrls = [], in
           </Text>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.controlText}>✕ Close</Text>
+            <Ionicons name="close" size={24} color="white" />
           </TouchableOpacity>
         </View>
 
         {/* --- MIDDLE CONTENT AREA --- */}
         <View style={styles.contentArea}>
-          
+
           {/* Left Arrow (Fixed to Edge) */}
           {mediaUrls.length > 1 && (
             <TouchableOpacity style={[styles.navBtn, styles.leftBtn]} onPress={handlePrev}>
@@ -73,14 +73,14 @@ export default function MediaGalleryModal({ visible, onClose, mediaUrls = [], in
                 onLoad={() => setLoading(false)}
               />
             ) : (
-              <Image 
-                source={{ uri: currentUrl }} 
-                style={styles.media} 
+              <Image
+                source={{ uri: currentUrl }}
+                style={styles.media}
                 resizeMode="contain"
                 onLoadEnd={() => setLoading(false)}
               />
             )}
-             
+
             {loading && (
               <View style={styles.loader}>
                 <ActivityIndicator size="large" color={COLORS.action} />
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     justifyContent: 'space-between', // Pushes Header to top, Spacer to bottom
   },
-  
+
   // TOP BAR
   topToolbar: {
     height: 60,
@@ -148,8 +148,8 @@ const styles = StyleSheet.create({
   },
   mediaWrapper: {
     flex: 1, // Takes up center space between arrows
-    height: '100%', 
-    justifyContent: 'center', 
+    height: '100%',
+    justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 10, // Prevent touching arrows
   },
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'black', // Visual check for boundaries
   },
-  
+
   // NAVIGATION ARROWS
   navBtn: {
     width: 50,

@@ -160,11 +160,13 @@ export const SocialService = {
     },
 
     // 2. NEW: Create a Social Post
-    createPost: async (userId, userAvatar, userName, userEmail, text, photoUrl, locationCoords, mediaType = 'image') => {
+    createPost: async (userId, userAvatar, userName, userEmail, text, photoUrl, locationCoords, mediaType = 'image', manualAddress = null) => {
         let streetName = "Unknown Location selected";
 
         try {
-            if (locationCoords && locationCoords.latitude && locationCoords.longitude) {
+            if (manualAddress) {
+                streetName = manualAddress;
+            } else if (locationCoords && locationCoords.latitude && locationCoords.longitude) {
                 const reverseGeocode = await Location.reverseGeocodeAsync({
                     latitude: locationCoords.latitude,
                     longitude: locationCoords.longitude

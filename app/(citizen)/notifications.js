@@ -30,7 +30,7 @@ export default function NotificationsScreen() {
 
     const renderItem = ({ item }) => {
         const isUnread = !item.read;
-        const date = item.createdAt ? item.createdAt.toDate() : new Date();
+        const date = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || Date.now());
 
         return (
             <TouchableOpacity

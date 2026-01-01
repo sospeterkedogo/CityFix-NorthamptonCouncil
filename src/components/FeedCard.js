@@ -4,8 +4,10 @@ import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, STYLES } from '../constants/theme';
 import { SocialService } from '../services/socialService';
+import { ImageService } from '../services/ImageService';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
+import BeforeAfterViewer from './BeforeAfterViewer';
 
 // Helper for relative time
 // Helper for relative time
@@ -55,6 +57,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [showFullScreen, setShowFullScreen] = useState(false);
+    const [selectedMedia, setSelectedMedia] = useState(null); // Track which image to show
     const [showMenu, setShowMenu] = useState(false);
     const [imageError, setImageError] = useState(false); // Track image loading errors
     const [isDeleted, setIsDeleted] = useState(false); // Local hide state
@@ -124,6 +127,26 @@ export default function FeedCard({ ticket, showDelete = false }) {
         setShowComments(true);
     };
 
+    const handleSaveImage = async () => {
+        const mediaToSave = selectedMedia || config.image;
+        if (!mediaToSave) return;
+
+        // If it's a video, we might need different logic, but for now assuming image
+        const result = await ImageService.downloadImage(mediaToSave);
+
+        if (result.success) {
+            Alert.alert("Success", "Image saved to your gallery!");
+            setShowMenu(false); // Close menu
+        } else {
+            Alert.alert("Error", "Could not save image: " + result.error);
+        }
+    };
+
+    const handleViewMore = () => {
+        // Logic for view more (already placeholder in UI)
+        Alert.alert("Info", "Showing details for Ticket #" + ticket.id);
+    };
+
     const postComment = async () => {
         if (!newComment.trim()) return;
 
@@ -177,30 +200,32 @@ export default function FeedCard({ ticket, showDelete = false }) {
         switch (status) {
             case 'in_progress':
                 return {
-                    icon: '👷',
+                    icon: 'construct-outline',
                     title: 'Work in Progress',
                     subtitle: `Engineer working on ${ticket.title}`,
                     badge: 'IN PROGRESS',
                     badgeColor: '#FFA500', // Orange
                     image: ticket.photos?.[0] // Show BEFORE photo
                 };
-            case 'verified':
-                return {
-                    icon: '✅',
-                    title: 'Fix Deployed',
-                    subtitle: 'Pending final QA check',
-                    badge: 'PENDING QA',
-                    badgeColor: '#3498db', // Blue
-                    image: ticket.afterPhoto || ticket.photos?.[0] // Show AFTER (or fallback)
-                };
             case 'resolved':
                 return {
-                    icon: '🏆',
-                    title: 'Officially Closed',
+                    icon: 'checkmark-circle-outline',
+                    title: 'Northampton Council',
+                    subtitle: 'Fix deployed - Pending QA',
+                    badge: 'PENDING QA',
+                    badgeColor: '#3498db', // Blue
+                    image: ticket.afterPhoto || ticket.photos?.[0],
+                    useCouncilAvatar: true
+                };
+            case 'verified':
+                return {
+                    icon: 'trophy-outline',
+                    title: 'Northampton Council',
                     subtitle: 'Issue resolved & verified',
-                    badge: 'RESOLVED',
+                    badge: 'VERIFIED',
                     badgeColor: COLORS.success, // Green
-                    image: ticket.afterPhoto || ticket.photos?.[0]
+                    image: ticket.afterPhoto || ticket.photos?.[0],
+                    useCouncilAvatar: true
                 };
             default:
                 // Check if it's a social post
@@ -215,7 +240,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                     };
                 }
                 return {
-                    icon: '🔧',
+                    icon: 'build-outline',
                     title: 'Status Update',
                     subtitle: ticket.title,
                     badge: status?.toUpperCase(),
@@ -236,15 +261,23 @@ export default function FeedCard({ ticket, showDelete = false }) {
                     onPress={() => ticket.userId && router.push(`/(citizen)/(user)/${ticket.userId}`)}
                 >
                     <View style={styles.avatar}>
-                        {ticket.userAvatar && ticket.userAvatar !== '👤' ? (
-                            <Image source={{ uri: ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                        {config.useCouncilAvatar ? (
+                            <Image
+                                source={require('../../assets/splash.png')}
+                                style={{ width: 32, height: 32, borderRadius: 16 }}
+                                resizeMode="cover"
+                            />
                         ) : (
-                            // Fallback to first letter if social, or icon if official
-                            config.icon ? (
-                                <Text style={{ fontSize: 18 }}>{config.icon}</Text>
-                            ) : (
-                                <AvatarFallback name={ticket.userName} email={ticket.userEmail} />
-                            )
+                            <>
+                                {config.icon && ticket.type !== 'social' && (
+                                    <Ionicons name={config.icon} size={14} color={COLORS.text.secondary} style={{ marginRight: 4 }} />
+                                )}
+                                {ticket.userAvatar && ticket.userAvatar !== '👤' ? (
+                                    <Image source={{ uri: ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                ) : (
+                                    <AvatarFallback name={ticket.userName} email={ticket.userEmail} />
+                                )}
+                            </>
                         )}
                     </View>
                     <View>
@@ -263,26 +296,36 @@ export default function FeedCard({ ticket, showDelete = false }) {
                 )}
             </View >
 
-            {/* Image Section */}
-            < TouchableOpacity onPress={() => setShowFullScreen(true)
-            } activeOpacity={0.9} style={{ position: 'relative' }}>
-                {/* Image/Video Section */}
-                {config.image && (ticket.mediaType === 'video' ? (
-                    <Video
-                        style={styles.image}
-                        source={{ uri: config.image }}
-                        useNativeControls
-                        resizeMode={ResizeMode.COVER}
-                        isLooping
-                    />
+            {/* Image Section - Logic Split */}
+            <TouchableOpacity onPress={() => { setSelectedMedia(config.image); setShowFullScreen(true); }} activeOpacity={0.9} style={{ position: 'relative' }}>
+                {/* 1. BEFORE / AFTER COMPARISON (For Resolved/Verified) */}
+                {ticket.afterPhoto ? (
+                    <View style={{ height: 400 }}>
+                        <BeforeAfterViewer
+                            beforeMedia={ticket.photos || []}
+                            afterMedia={ticket.afterPhoto}
+                            onOpenMedia={(url) => { setSelectedMedia(url); setShowFullScreen(true); }}
+                        />
+                    </View>
                 ) : (
-                    <Image
-                        source={imageError || !config.image ? { uri: 'https://picsum.photos/seed/picsum/600/400' } : { uri: config.image }}
-                        style={styles.image}
-                        resizeMode="cover"
-                        onError={() => setImageError(true)}
-                    />
-                ))}
+                    /* 2. STANDARD SINGLE MEDIA */
+                    config.image && (ticket.mediaType === 'video' ? (
+                        <Video
+                            style={styles.image}
+                            source={{ uri: config.image }}
+                            useNativeControls
+                            resizeMode={ResizeMode.COVER}
+                            isLooping
+                        />
+                    ) : (
+                        <Image
+                            source={imageError || !config.image ? { uri: 'https://picsum.photos/seed/picsum/600/400' } : { uri: config.image }}
+                            style={styles.image}
+                            resizeMode="cover"
+                            onError={() => setImageError(true)}
+                        />
+                    ))
+                )}
 
                 {/* Status Badge Overlay - Only if badge exists */}
                 {config.badge && (
@@ -399,7 +442,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                                         <Image source={{ uri: item.userAvatar }} style={{ width: 30, height: 30, borderRadius: 15, marginRight: 10 }} />
                                     ) : (
                                         <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', marginRight: 10, justifyContent: 'center', alignItems: 'center' }}>
-                                            <Text style={{ fontSize: 12 }}>{item.userName?.charAt(0).toUpperCase() || '👤'}</Text>
+                                            <Ionicons name="person-circle-outline" size={14} color={COLORS.text.secondary} />
                                         </View>
                                     )}
                                     <View style={{ flex: 1 }}>
@@ -424,7 +467,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                             {user?.photoURL ? (
                                 <Image source={{ uri: user.photoURL }} style={styles.avatarSmall} />
                             ) : (
-                                <View style={styles.avatarSmall}><Text>{user?.displayName?.charAt(0).toUpperCase() || '😎'}</Text></View>
+                                <View style={styles.avatarSmall}><Ionicons name="person" size={16} color={COLORS.text.secondary} /></View>
                             )}
                             <TextInput
                                 style={styles.input}
@@ -471,7 +514,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                     {/* Main Image */}
                     <View style={styles.fsImageWrapper}>
                         <Image
-                            source={{ uri: config.image }}
+                            source={{ uri: selectedMedia || config.image }}
                             style={styles.fsImage}
                             resizeMode="contain"
                         />
@@ -481,7 +524,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                     <View style={styles.fsBottomBar}>
                         {/* Like */}
                         <TouchableOpacity style={styles.fsActionBtn} onPress={handleLike}>
-                            <Text style={{ fontSize: 24 }}>{isLiked ? '❤️' : '🤍'}</Text>
+                            <Ionicons name={isLiked ? "heart" : "heart-outline"} size={26} color={isLiked ? "#ED4956" : "white"} />
                             <Text style={styles.fsActionText}>{likes}</Text>
                         </TouchableOpacity>
 
@@ -522,15 +565,17 @@ const styles = StyleSheet.create({
     // Status Badge
     statusBadge: {
         position: 'absolute',
-        top: 15,
-        right: 15,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        elevation: 5,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84,
+        bottom: 10, // Moved to bottom
+        right: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12, // Softer radius
+        // Keep elevation low or remove for "less pop"
+        // elevation: 2, 
+        // shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
+        opacity: 0.9, // Slight transparency
     },
-    statusBadgeText: { color: 'white', fontWeight: 'bold', fontSize: 10, letterSpacing: 1 },
+    statusBadgeText: { color: 'white', fontWeight: 'bold', fontSize: 10, letterSpacing: 0.5 },
 
     // Modal / Bottom Sheet
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

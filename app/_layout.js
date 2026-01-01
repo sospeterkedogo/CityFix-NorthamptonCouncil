@@ -7,7 +7,7 @@ import { COLORS } from '../src/constants/theme';
 
 // --- Configuration ---
 const ROLE_PATHS = {
-  citizen: '/(citizen)/dashboard', // Default to Dashboard
+  citizen: '/(citizen)', // Default to Index (Feed)
   dispatcher: '/(dispatcher)',
   engineer: '/(engineer)/dashboard',
   qa: '/(qa)/dashboard',
@@ -27,7 +27,7 @@ function useWebConfig() {
     style.textContent = `
       @font-face {
         font-family: 'Ionicons';
-        src: url('https://unpkg.com/@expo/vector-icons@13.0.0/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
+        src: url('https://unpkg.com/@expo/vector-icons@15.0.0/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
       }
     `;
     document.head.appendChild(style);
@@ -35,7 +35,7 @@ function useWebConfig() {
     // Inject CSP to allow blob: images (Fixes Security Error)
     const meta = document.createElement('meta');
     meta.httpEquiv = "Content-Security-Policy";
-    meta.content = "img-src * 'self' blob: data:;";
+    meta.content = "default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' blob: data: gap:; frame-src * 'self' blob: data: gap:;";
     document.head.appendChild(meta);
   }, []);
 }
