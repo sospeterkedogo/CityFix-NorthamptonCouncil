@@ -4,6 +4,8 @@
 
 **City Fix** is a secure, role-based mobile and web solution designed for Northampton Council to streamline the lifecycle of civic maintenance. It replaces fragmented reporting channels with a unified, geospatial workflow engine connecting Citizens, Dispatchers, Field Engineers, and Quality Auditors.
 
+**Android app:** https://expo.dev/artifacts/eas/46f419QKa92uwuYUcJjDQu.apk
+
 ```mermaid
 graph TD
     subgraph "Clients (React Native/Expo)"
