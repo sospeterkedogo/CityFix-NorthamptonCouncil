@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, SectionList, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform
+  View, Text, SectionList, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform, Image
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -131,7 +132,7 @@ export default function Dashboard() {
   };
 
   return (
-    <View style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+    <SafeAreaView style={[STYLES.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
 
       <SectionList
         ref={sectionListRef}
@@ -269,7 +270,7 @@ export default function Dashboard() {
         onHide={() => setToastVisible(false)}
       />
 
-    </View >
+    </SafeAreaView >
   );
 }
 
@@ -279,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    marginTop: Platform.OS === 'android' ? 50 : 10,
+    // marginTop handled by SafeAreaView
   },
   welcomeText: { fontSize: 22, fontWeight: 'bold', color: '#202124' },
   subText: { fontSize: 14, color: '#5f6368' },
