@@ -7,6 +7,7 @@ import { COLORS } from '../src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { MediaService } from '../src/services/mediaService';
 import { UserService } from '../src/services/userService';
 
@@ -47,15 +48,26 @@ export default function UserProfile() {
     const pickImage = async () => {
         if (!isEditing) return;
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-        });
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 1, // Start high, let manipulator handle compression
+            });
 
-        if (!result.canceled) {
-            setPhoto(result.assets[0].uri);
+            if (!result.canceled) {
+                // Compress & Resize to 500px
+                const manipResult = await ImageManipulator.manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 500 } }],
+                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                );
+                setPhoto(manipResult.uri);
+            }
+        } catch (error) {
+            console.error("Image Picker Error:", error);
+            Alert.alert("Error", "Failed to process image");
         }
     };
 
