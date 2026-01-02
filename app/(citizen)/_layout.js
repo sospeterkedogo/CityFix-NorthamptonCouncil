@@ -102,9 +102,9 @@ export default function CitizenTabsLayout() {
             {/* HIDE ALL OTHER ROUTES STRICTLY */}
             <Tabs.Screen name="report" options={{ href: null }} />
             <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
-            <Tabs.Screen name="(user)" options={{ href: null }} />
+
             <Tabs.Screen name="(user)/[uid]" options={{ href: null }} />
-            <Tabs.Screen name="ticket" options={{ href: null }} />
+
         </Tabs>
     );
 }
