@@ -3,22 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, LayoutAnimation, Modal
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, STYLES } from '../constants/theme';
 
-// Helper for relative time
-const timeAgo = (date) => {
-    if (!date) return '';
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + "y ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + "mo ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + "d ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + "h ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + "m ago";
-    return "just now";
-};
+import { formatRelativeTime } from '../utils/dateUtils';
 
 export default function SimpleExpandableRow({ ticket }) {
     const [expanded, setExpanded] = useState(false);
@@ -52,7 +37,7 @@ export default function SimpleExpandableRow({ ticket }) {
                 <View style={styles.infoCol}>
                     <Text style={styles.title} numberOfLines={1}>{ticket.title}</Text>
                     <Text style={styles.meta}>
-                        {timeAgo(ticket.createdAt)} • {ticket.status.replace('_', ' ').toUpperCase()}
+                        {formatRelativeTime(ticket.createdAt)} • {ticket.status.replace('_', ' ').toUpperCase()}
                     </Text>
                 </View>
                 <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={20} color="#ccc" />

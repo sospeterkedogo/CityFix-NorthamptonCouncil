@@ -10,38 +10,60 @@ export default function SignupScreen() {
     const { registerCitizen, login } = useAuth();
 
     const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleDemoLogin = async (role) => {
-        const credentials = {
-            citizen: { email: 'citizen@cityfix.com', pass: 'password123' },
-            dispatcher: { email: 'dispatcher@cityfix.com', pass: 'password123' },
-            engineer: { email: 'eng@cityfix.com', pass: 'password123' },
-            qa: { email: 'qa@cityfix.com', pass: 'password123' },
-        };
+        let demoEmail = '';
+        let demoPass = 'password123'; // Default from dev-seed
 
-        const creds = credentials[role];
-        if (creds) {
-            setLoading(true);
-            try {
-                await login(creds.email, creds.pass);
-            } catch (e) {
-                Alert.alert("Demo Failed", "Ensure the seed script has been executed. Details: " + e.message);
-                setLoading(false);
-            }
-        }
-    };
-
-    const handleSignup = async () => {
-        if (!name || !email || !password) {
-            return Alert.alert("Missing Info", "Please fill in all fields.");
+        switch (role) {
+            case 'citizen': demoEmail = 'citizen@cityfix.com'; break;
+            case 'dispatcher': demoEmail = 'dispatcher@cityfix.com'; break;
+            case 'engineer': demoEmail = 'eng@cityfix.com'; break;
+            case 'qa': demoEmail = 'qa@cityfix.com'; break;
+            default: return;
         }
 
         setLoading(true);
         try {
-            await registerCitizen(email, password, name);
+            await login(demoEmail, demoPass);
+        } catch (e) {
+            setLoading(false);
+            console.error("Demo Login Failed:", e);
+            Alert.alert(
+                "Demo Account Not Found",
+                "It looks like the demo accounts haven't been seeded yet.\n\nTap 'Log in' -> '[Dev Seed]' to generate them.",
+                [{ text: "OK" }]
+            );
+        }
+    };
+
+    const handleSignup = async () => {
+        if (!name || !email || !password || !username) {
+            return Alert.alert("Missing Info", "Please fill in all fields.");
+        }
+
+        // 1. Validate Username Format
+        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+        if (!usernameRegex.test(username)) {
+            return Alert.alert("Invalid Username", "Username must be 3-20 characters long and can only contain letters, numbers, and underscores.");
+        }
+
+        setLoading(true);
+        try {
+            // 2. Check Uniqueness
+            const { UserService } = require('../../src/services/userService'); // Lazy import to avoid cycle if any
+            const isUnique = await UserService.isUsernameUnique(username);
+
+            if (!isUnique) {
+                setLoading(false);
+                return Alert.alert("Unavailable", "That username is already taken. Please choose another.");
+            }
+
+            await registerCitizen(email, password, name, username);
         } catch (e) {
             setLoading(false);
             Alert.alert("Registration Failed", e.message);
@@ -131,6 +153,16 @@ export default function SignupScreen() {
                                 style={styles.input} placeholder="John Doe"
                                 placeholderTextColor="#94a3b8"
                                 value={name} onChangeText={setName}
+                            />
+                        </View>
+
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.inputLabel}>Username</Text>
+                            <TextInput
+                                style={styles.input} placeholder="john_doe_123"
+                                placeholderTextColor="#94a3b8"
+                                value={username} onChangeText={setUsername}
+                                autoCapitalize="none"
                             />
                         </View>
 

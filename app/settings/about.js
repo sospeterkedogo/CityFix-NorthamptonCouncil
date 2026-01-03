@@ -29,7 +29,7 @@ export default function AboutCityFix() {
                 <ScrollView contentContainerStyle={styles.content}>
                     <View style={styles.hero}>
                         <Image
-                            source={require('../../assets/splash.png')}
+                            source={require('../../assets/splash2.png')}
                             style={styles.logoImage}
                             resizeMode="contain"
                         />

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { TicketService } from '../../src/services/ticketService';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TicketService } from '../../services/ticketService';
 // LEAFLET IMPORTS (Web Only)
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // Fix for missing marker icons in Leaflet
 const icon = L.icon({
@@ -15,7 +16,7 @@ const icon = L.icon({
     popupAnchor: [1, -34],
 });
 
-export default function DispatcherMapWeb() {
+export default function DispatcherMap() {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,9 +32,6 @@ export default function DispatcherMapWeb() {
 
     return (
         <View style={styles.container}>
-            {/* height: '100vh' ensures it takes full screen on mobile web 
-        zIndex: 0 ensures it sits behind any absolute UI elements
-      */}
             <View style={{ height: '100%', width: '100%' }}>
                 <MapContainer
                     center={[52.2405, -0.9027]} // Northampton
@@ -62,7 +60,6 @@ export default function DispatcherMapWeb() {
                 </MapContainer>
             </View>
 
-            {/* Optional: Floating Title Box */}
             <View style={styles.overlay}>
                 <Text style={styles.overlayText}>Live Dispatch Map</Text>
             </View>

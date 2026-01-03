@@ -1,6 +1,8 @@
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db } from '../config/firebase'; // Access app via db.app
 import { Platform } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 
 const storage = getStorage(db.app);
 
