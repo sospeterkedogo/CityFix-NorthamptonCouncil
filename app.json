@@ -56,7 +56,7 @@
         "projectId": "1b864f57-1b8d-46cd-a3d7-d9ecf82c93dc"
       },
       "vapidPublicKey": "BPfiypc72CFrBdkgMDPLDzy-fijbHD2-W371DyWFmHjzqyfq7hRlsH3za49JvdFlHGsjJcW2L_1ln1GRj7kz2Xg",
-      "serviceWorkerPath": "firebase-messaging-sw.js"
+      "googleMapsApiKey": "AIzaSyD0rsv_41gTeOGCsveFnir9BSioxsR5wP4"
     },
     "updates": {
       "url": "https://u.expo.dev/1b864f57-1b8d-46cd-a3d7-d9ecf82c93dc"
