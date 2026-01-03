@@ -13,19 +13,23 @@ export default function MapPreview({ location }) {
     return (
         <View style={{ flex: 1 }} pointerEvents="none">
             <MapView
-                provider={PROVIDER_GOOGLE}
                 style={styles.mapBackground}
-                region={location ? {
+                initialRegion={location ? {
                     latitude: location.latitude,
                     longitude: location.longitude,
                     latitudeDelta: 0.005,
                     longitudeDelta: 0.005,
                 } : DEFAULT_REGION}
+                region={location ? {
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                } : null}
                 scrollEnabled={false}
                 zoomEnabled={false}
                 pitchEnabled={false}
                 rotateEnabled={false}
-                liteMode={true}
             >
                 {location && (
                     <Marker
