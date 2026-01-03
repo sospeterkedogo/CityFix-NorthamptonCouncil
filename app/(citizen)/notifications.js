@@ -5,28 +5,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
 import { useNotifications } from '../../src/context/NotificationContext';
 
-// Simple time-ago formatter to avoid heavy dependencies
-const formatTimeAgo = (date) => {
-    if (!date) return 'Just now';
-    const seconds = Math.floor((new Date() - date) / 1000);
-
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-
-    return "Just now";
-};
+import { formatRelativeTime } from '../../src/utils/dateUtils';
 
 export default function NotificationsScreen() {
     const router = useRouter();
     const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
+
+    const handleNotificationPress = (item) => {
+        markAsRead(item.id);
+
+        // Deep Linking Logic
+        if (item.type === 'chat' && item.partnerId) {
+            router.push({
+                pathname: '/(citizen)/chat/[id]',
+                params: {
+                    id: item.partnerId,
+                    name: item.name || 'Neighbor',
+                    lastActive: Date.now() // rough fallback
+                }
+            });
+        }
+        else if (item.title?.includes('Accepted') || item.body?.includes('accepted')) {
+            router.push('/(citizen)/social');
+        }
+        else if (item.type === 'request') {
+            router.push('/(citizen)/social'); // Go to requests tab (default or switch?) 
+            // Ideally social page handles tab switching if needed, 
+            // but 'social' default is fine or user manually clicks 'Requests'
+        }
+    };
 
     const renderItem = ({ item }) => {
         const isUnread = !item.read;
@@ -35,7 +42,7 @@ export default function NotificationsScreen() {
         return (
             <TouchableOpacity
                 style={[styles.card, isUnread ? styles.unreadCard : styles.readCard]}
-                onPress={() => markAsRead(item.id)}
+                onPress={() => handleNotificationPress(item)}
                 activeOpacity={0.7}
             >
                 <View style={[styles.iconContainer, !isUnread && styles.readIconContainer]}>
@@ -52,7 +59,7 @@ export default function NotificationsScreen() {
                             {item.title}
                         </Text>
                         <Text style={styles.time}>
-                            {formatTimeAgo(date)}
+                            {formatRelativeTime(date)}
                         </Text>
                     </View>
                     <Text style={[styles.body, isUnread && styles.unreadBody]} numberOfLines={2}>

@@ -213,6 +213,19 @@ export const SocialService = {
 
         // NOTIFICATION: Confirm Post
         await notifyUser(userId, "Post Published", "Your community post is now live at " + streetName);
+
+        // NOTIFICATION: Broadcast to Neighbors
+        try {
+            const neighborsSnap = await getDocs(collection(db, 'users', userId, 'neighbors'));
+            const neighbors = neighborsSnap.docs.map(d => d.id);
+
+            // In a real app, use a Cloud Function for fan-out. For MVP, loop here.
+            for (const neighborId of neighbors) {
+                await notifyUser(neighborId, `New Post from ${userName}`, text);
+            }
+        } catch (e) {
+            console.warn("Error broadcasting post notification:", e);
+        }
     },
 
     // 3. NEW: Fetch Specific User's Social Posts

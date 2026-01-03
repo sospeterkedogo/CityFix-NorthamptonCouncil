@@ -1,7 +1,27 @@
-import { collection, query, where, getDocs, orderBy, limit, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export const NotificationService = {
+    /**
+     * Send a notification to a specific user
+     */
+    sendNotification: async (userId, title, body, type = 'alert', data = {}) => {
+        try {
+            await addDoc(collection(db, 'users', userId, 'notifications'), {
+                title,
+                body,
+                type,
+                read: false,
+                createdAt: serverTimestamp(),
+                ...data
+            });
+            return { success: true };
+        } catch (error) {
+            console.error("Error sending notification:", error);
+            return { success: false, error: error.message };
+        }
+    },
+
     /**
      * Fetch user notifications
      */

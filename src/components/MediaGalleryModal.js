@@ -24,6 +24,7 @@ export default function MediaGalleryModal({ visible, onClose, mediaUrls = [], in
   if (!visible || mediaUrls.length === 0) return null;
 
   const currentUrl = mediaUrls[currentIndex];
+  if (!currentUrl) return null; // Safe guard
   const isVideo = currentUrl.includes('video') || currentUrl.includes('.mp4') || currentUrl.includes('.mov');
 
   const handleNext = () => {
