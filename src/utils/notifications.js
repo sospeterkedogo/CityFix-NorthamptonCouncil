@@ -25,6 +25,17 @@ export async function registerForPushNotificationsAsync() {
         } catch (e) { console.log("Perm error", e) }
     }
 
+    // Android Channel Setup for Sound
+    if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF231F7C',
+            sound: true, // Plays default sound
+        });
+    }
+
     // On Web, manually request browser permission so Alerts work
     if (Platform.OS === 'web' && 'Notification' in window) {
         if (Notification.permission !== 'granted') {

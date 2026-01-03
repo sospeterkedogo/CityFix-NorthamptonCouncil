@@ -5,14 +5,7 @@ import { auth, db } from '../config/firebase';
 import { registerForPushNotificationsAsync, saveUserToken } from '../utils/notifications';
 import * as Notifications from 'expo-notifications';
 
-// This controls what happens when a notification comes in
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true, // Show the banner (Pop-up)
-        shouldPlaySound: true, // Play the "Ding"
-        shouldSetBadge: false,
-    }),
-});
+// Notification Handler is configured in utils/notifications.js
 
 const AuthContext = createContext({});
 
