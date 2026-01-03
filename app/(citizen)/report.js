@@ -220,14 +220,14 @@ export default function ReportIssueScreen() {
 
       if (media.length > 0) {
         setUploading(true);
-        console.log("Starting Upload for", media.length, "files...");
+        // Log removed
 
         const uploadPromises = media.map(file =>
           MediaService.uploadFile(file.uri, `users/${user.uid}/reports`)
         );
 
         uploadedUrls = await Promise.all(uploadPromises);
-        console.log("Uploads complete");
+        // Log removed
         setUploading(false);
       }
       // ---------------------------

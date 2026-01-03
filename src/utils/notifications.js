@@ -22,7 +22,7 @@ export async function registerForPushNotificationsAsync() {
         try {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
-        } catch (e) { console.log("Perm error", e) }
+        } catch (e) { /* silent catch */ }
     }
 
     // Android Channel Setup for Sound
@@ -62,7 +62,7 @@ export const sendAppNotification = async (userId, title, body, data = {}) => {
             read: false,
             createdAt: serverTimestamp()
         });
-        console.log(`Virtual Notification sent to ${userId}:`, title);
+        // Log removed
     } catch (e) {
         console.error("Error sending virtual notification:", e);
     }
@@ -71,7 +71,7 @@ export const sendAppNotification = async (userId, title, body, data = {}) => {
 export const sendPushNotification = async (token, title, body, data) => {
     // Deprecated for direct token send, but if used, we can't easily map token -> userId here.
     // Ideally we use notifyUser/notifyRole instead.
-    console.log("Direct sendPushNotification called (Deprecated for Virtual Push)");
+    // Log removed
 }
 
 // 5. Notify by ID
@@ -87,7 +87,7 @@ export const notifyRole = async (role, title, body) => {
         snapshot.forEach(doc => {
             sendAppNotification(doc.id, title, body);
         });
-        console.log(`Notified all ${role}s`);
+        // Log removed
     } catch (e) {
         console.error("Notify Role Error:", e);
     }
@@ -98,7 +98,7 @@ export const useNotificationListener = (user) => {
     useEffect(() => {
         if (!user?.uid) return;
 
-        console.log("Listening for notifications for:", user.uid);
+        // Log removed
         const q = query(
             collection(db, 'users', user.uid, 'notifications'),
             where('read', '==', false)

@@ -74,7 +74,7 @@ export default function QADashboard() {
   const handleVerify = async () => {
     if (!selectedTicket) return;
 
-    console.log("Verify button pressed. Proceeding directly...");
+    // Log removed
     const res = await TicketService.verifyTicket(selectedTicket.id);
 
     if (res.success) {
