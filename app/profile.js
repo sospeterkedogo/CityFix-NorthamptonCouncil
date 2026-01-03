@@ -14,7 +14,7 @@ import { UserService } from '../src/services/userService';
 export default function UserProfile() {
     const { user, userRole, logout } = useAuth();
     const router = useRouter();
-    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
 
     // Profile State
     const [isEditing, setIsEditing] = useState(false);
@@ -132,15 +132,7 @@ export default function UserProfile() {
     };
 
     // ... (Toggle Notifications logic remains)
-    const toggleNotifications = async (value) => {
-        setNotificationsEnabled(value);
-        if (value) {
-            const { registerForPushNotificationsAsync } = require('../src/utils/notifications');
-            try {
-                await registerForPushNotificationsAsync();
-            } catch (e) { console.log(e); }
-        }
-    };
+    // Notifications logic moved to /settings/notifications
 
     const SettingsItem = ({ icon, label, onPress, showChevron = true, color = '#333' }) => (
         <TouchableOpacity style={styles.itemRow} onPress={onPress}>
@@ -291,24 +283,18 @@ export default function UserProfile() {
                     <View style={styles.sectionCard}>
                         <SettingsItem icon="person-outline" label="Personal Information" onPress={() => router.push('/settings/personal-info')} />
                         <View style={styles.divider} />
-                        <SettingsItem icon="lock-closed-outline" label="Security & Password" />
+                        <SettingsItem icon="lock-closed-outline" label="Security & Password" onPress={() => router.push('/settings/security')} />
                         <View style={styles.divider} />
-                        <SettingsItem icon="location-outline" label="Saved Locations" />
+                        <SettingsItem icon="location-outline" label="Saved Locations" onPress={() => router.push('/settings/saved-locations')} />
                     </View>
 
                     {/* Preferences */}
                     <SectionHeader title="Preferences" />
                     <View style={styles.sectionCard}>
-                        <SettingsToggle
-                            icon="notifications-outline"
-                            label="Push Notifications"
-                            value={notificationsEnabled}
-                            onValueChange={toggleNotifications}
-                        />
+                        <SettingsItem icon="notifications-outline" label="Notification Settings" onPress={() => router.push('/settings/notifications')} />
                         <View style={styles.divider} />
                         <SettingsItem icon="moon-outline" label="Dark Mode (Coming Soon)" showChevron={false} color="#999" />
-                        <View style={styles.divider} />
-                        <SettingsItem icon="language-outline" label="Language" />
+                        {/* Toggle would go here, simplified for now as requested 'keep dark mode as is' (which is just a placeholder row currently) */}
                     </View>
 
                     {/* Support & Legal */}

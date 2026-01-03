@@ -1,92 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-// LEAFLET IMPORTS (Web Only)
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, FlatList } from 'react-native';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, STYLES } from '../../constants/theme';
+import { getPlacePredictions, getPlaceDetails, reverseGeocodeGoogle } from '../../services/GoogleMapsService';
 
-// Fix for missing marker icons in Leaflet
-const icon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
-
-function DraggableMarker({ position, setPosition }) {
-  const map = useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      map.flyTo(e.latlng, map.getZoom());
-    },
-  });
-
-  return position === null ? null : (
-    <Marker
-      position={position}
-      icon={icon}
-      draggable={true}
-      eventHandlers={{
-        dragend: (e) => {
-          setPosition(e.target.getLatLng());
-        },
-      }}
-    />
-  );
-}
+// ... (leaflet icons & subcomponents)
 
 export default function LocationPickerModal({ visible, onClose, onSelectLocation }) {
-  const [position, setPosition] = useState(null); // { lat, lng }
-  const [loading, setLoading] = useState(true);
+  // ... (state)
 
-  useEffect(() => {
-    if (visible) {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setPosition({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude
-            });
-            setLoading(false);
-          },
-          (error) => {
-            console.error("Location error:", error);
-            // Default to Northampton
-            setPosition({ lat: 52.2405, lng: -0.9027 });
-            setLoading(false);
-          }
-        );
-      } else {
-        setPosition({ lat: 52.2405, lng: -0.9027 });
-        setLoading(false);
-      }
+  // ... (useEffect for navigator.geolocation)
+
+  // ... (handleSearchChange)
+
+  const handleSelectPrediction = async (placeId, description) => {
+    setSearchText(description);
+    setShowPredictions(false);
+    const details = await getPlaceDetails(placeId);
+    if (details) {
+      const newPos = { lat: details.latitude, lng: details.longitude };
+      setPosition(newPos);
     }
-  }, [visible]);
+  };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (position) {
+      // Reverse Geocode the pinned position
+      let finalAddress = searchText;
+      // If we differ from search?
+      // Just fetch fresh for accuracy
+      const fetched = await reverseGeocodeGoogle(position.lat, position.lng);
+      if (fetched && fetched.address) finalAddress = fetched.address;
+
       onSelectLocation({
         latitude: position.lat,
         longitude: position.lng,
+        address: finalAddress || "Pinned Location"
       });
       onClose();
     }
   };
 
   return (
-    <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <View style={{ flex: 1 }}>
+    <Modal animationType="slide" visible={visible} onRequestClose={onClose} transparent>
+      <View style={{ flex: 1, backgroundColor: 'white', maxWidth: 600, width: '100%', alignSelf: 'center' }}>
+
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Click map to pin location</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.closeText}>Cancel</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={styles.headerTitle}>Click Map or Search</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchBox}>
+            <Ionicons name="search" size={20} color="#999" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search address..."
+              value={searchText}
+              onChangeText={handleSearchChange}
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchText(''); setPredictions([]); setShowPredictions(false) }}>
+                <Ionicons name="close-circle" size={18} color="#ccc" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        {/* Predictions Overlay */}
+        {showPredictions && predictions.length > 0 && (
+          <View style={styles.predictionsContainer}>
+            {predictions.map(item => (
+              <TouchableOpacity
+                key={item.place_id}
+                style={styles.predictionItem}
+                onPress={() => handleSelectPrediction(item.place_id, item.description)}
+              >
+                <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 14 }}>{item.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {loading || !position ? (
           <View style={styles.loadingContainer}>
@@ -98,18 +99,17 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
             <View style={{ height: '100%', width: '100%' }}>
               <MapContainer
                 center={[position.lat, position.lng]}
-                zoom={15}
+                zoom={13}
                 style={{ height: '100%', width: '100%' }}
               >
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  attribution='&copy; OpenStreetMap'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <DraggableMarker position={position} setPosition={setPosition} />
+                <MapFlyTo position={position} />
               </MapContainer>
             </View>
-
-            {/* Confirm Button */}
             <View style={styles.footer}>
               <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
                 <Text style={styles.confirmText}>CONFIRM LOCATION</Text>
@@ -124,46 +124,45 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
 
 const styles = StyleSheet.create({
   header: {
-    padding: SPACING.l,
-    paddingTop: 20,
-    backgroundColor: COLORS.background,
+    padding: 20,
+    backgroundColor: 'white',
+    ...STYLES.shadowSmall,
+    zIndex: 1000
+  },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
+  searchBox: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: '#E0E0E0',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  closeText: {
-    color: COLORS.action,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footer: {
+  searchInput: { flex: 1, marginLeft: 10, outlineStyle: 'none', fontSize: 16 },
+
+  predictionsContainer: {
     position: 'absolute',
-    bottom: 30,
+    top: 100,
     left: 20,
     right: 20,
-    zIndex: 9999
-  },
-  confirmButton: {
-    backgroundColor: COLORS.primary,
-    padding: SPACING.m,
-    borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
     ...STYLES.shadow,
+    zIndex: 2000,
+    maxHeight: 200,
+    overflow: 'hidden' // for scrolling if needed, but map helps
   },
-  confirmText: {
-    color: COLORS.text.light,
-    fontWeight: 'bold',
-    fontSize: 16,
-  }
+  predictionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    cursor: 'pointer' // web specific
+  },
+
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  footer: { position: 'absolute', bottom: 30, left: 20, right: 20, zIndex: 1000 },
+  confirmButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center', ...STYLES.shadow },
+  confirmText: { color: 'white', fontWeight: 'bold' }
 });

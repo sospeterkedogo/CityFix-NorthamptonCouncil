@@ -235,11 +235,18 @@ export default function Dashboard() {
         contentContainerStyle={{ paddingBottom: 100 }} // padding for tab bar
       />
 
-      {/* Drafts Modal (Preserved) */}
-      <Modal visible={showDraftsModal} animationType="slide" transparent={true}>
+      {/* Drafts Modal */}
+      <Modal visible={showDraftsModal} animationType="slide" transparent={true} onRequestClose={() => setShowDraftsModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Draft</Text>
+          <View style={[styles.modalContent, Platform.OS === 'web' && { maxWidth: 500, width: '100%', alignSelf: 'center' }]}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+              <Text style={styles.modalTitle}>Select Draft</Text>
+              <TouchableOpacity onPress={() => setShowDraftsModal(false)} style={{ padding: 5 }}>
+                <Ionicons name="close" size={24} color="#999" />
+              </TouchableOpacity>
+            </View>
+
             <FlatList
               data={drafts}
               keyExtractor={item => item.id}
@@ -251,14 +258,17 @@ export default function Dashboard() {
                     router.push({ pathname: '/(citizen)/report', params: { draftId: item.id } });
                   }}
                 >
-                  <Text style={styles.draftItemTitle}>{item.title || "Untitled Report"}</Text>
-                  <Text style={styles.draftItemDate}>{new Date(item.updatedAt).toLocaleString()}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.draftItemTitle} numberOfLines={1}>{item.title || "Untitled Report"}</Text>
+                      <Text style={styles.draftItemDate}>{new Date(item.updatedAt).toLocaleString()}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                  </View>
                 </TouchableOpacity>
               )}
+              ListEmptyComponent={<Text style={{ textAlign: 'center', color: '#999', marginVertical: 20 }}>No drafts found.</Text>}
             />
-            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowDraftsModal(false)}>
-              <Text style={{ color: COLORS.text.light, fontWeight: 'bold' }}>Close</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>

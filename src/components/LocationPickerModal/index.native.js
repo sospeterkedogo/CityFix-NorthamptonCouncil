@@ -1,63 +1,134 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, TextInput, FlatList, SafeAreaView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, STYLES } from '../../constants/theme';
+import { getPlacePredictions, getPlaceDetails, reverseGeocodeGoogle } from '../../services/GoogleMapsService';
 
 export default function LocationPickerModal({ visible, onClose, onSelectLocation }) {
-    const [region, setRegion] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // ... (state)
 
-    // 1. Get User's Current Location on Mount
-    useEffect(() => {
-        if (visible) {
-            (async () => {
-                let { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') {
-                    Alert.alert('Permission to access location was denied');
-                    setLoading(false);
-                    return;
-                }
+    // ... (useEffect for existing location)
 
-                let location = await Location.getCurrentPositionAsync({});
-                setRegion({
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    latitudeDelta: 0.005, // High zoom level for accuracy
-                    longitudeDelta: 0.005,
-                });
-                setLoading(false);
-            })();
+    // ... (handleSearchChange)
+
+    const handleSelectPrediction = async (placeId, description) => {
+        setSearchText(description);
+        setShowPredictions(false);
+        const details = await getPlaceDetails(placeId);
+        if (details) {
+            setRegion({
+                latitude: details.latitude,
+                longitude: details.longitude,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
+            });
         }
-    }, [visible]);
-
-    // 2. Handle Map Dragging
-    const handleRegionChange = (newRegion) => {
-        setRegion(newRegion);
     };
 
-    // 3. Confirm Selection
-    const handleConfirm = () => {
-        if (region) {
+    const handleRegionChange = (newRegion) => {
+        setRegion(newRegion);
+        // Clear search text if user moves map manually, to forcefully re-geocode on confirm
+        // Or keep it? If they move it, the text "10 Downing St" is likely wrong now.
+        // Let's clear it if the movement is significant?
+        // For now, simpler: If they confirm, we check if search text matches current region? 
+        // Actually, easiest is: If they search, we rely on that address. 
+        // If they drag, we wipe the search text so we know to reverse geocode.
+        // But `onRegionChangeComplete` fires on mount and search select too.
+        // We can track if it was user initiated? Hard.
+
+        // Strategy: Only reverse geocode on CONFIRM if we don't have a valid "selected" status?
+        // Let's just do it on confirm for now to be safe and save API calls.
+    };
+
+    // 4. Confirm Selection
+    const handleConfirm = async () => {
+        if (!region) return;
+
+        setLoading(true);
+        try {
+            let finalAddress = searchText;
+
+            // If we don't have search text (user dragged pin) OR user dragged away
+            // (Naive check: we should probably always reverse geocode if they touched the map, 
+            // but let's assume if searchText is empty/generic, we fetch)
+
+            // Allow "Pinned Location" fallback fallback, but try to fetch real address first
+            // We'll fetch if it looks like a coordinate setting
+
+            const fetched = await reverseGeocodeGoogle(region.latitude, region.longitude);
+            if (fetched && fetched.address) {
+                finalAddress = fetched.address;
+            }
+
             onSelectLocation({
                 latitude: region.latitude,
                 longitude: region.longitude,
+                address: finalAddress || "Pinned Location"
             });
             onClose();
+        } catch (e) {
+            console.error(e);
+            onSelectLocation({
+                latitude: region.latitude,
+                longitude: region.longitude,
+                address: searchText || "Pinned Location"
+            });
+            onClose();
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-            <View style={{ flex: 1 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
 
-                {/* Header */}
+                {/* Header & Search */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Drag map to pin location</Text>
-                    <TouchableOpacity onPress={onClose}>
-                        <Text style={styles.closeText}>Cancel</Text>
-                    </TouchableOpacity>
+                    <View style={styles.headerTop}>
+                        <Text style={styles.headerTitle}>Pin Location</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Ionicons name="close" size={24} color={COLORS.text.primary} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.searchBox}>
+                        <Ionicons name="search" size={20} color="#999" />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search address..."
+                            value={searchText}
+                            onChangeText={handleSearchChange}
+                        />
+                        {searchText.length > 0 && (
+                            <TouchableOpacity onPress={() => { setSearchText(''); setPredictions([]); setShowPredictions(false) }}>
+                                <Ionicons name="close-circle" size={18} color="#ccc" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
+
+                {/* Predictions Dropdown (Absolute) */}
+                {showPredictions && predictions.length > 0 && (
+                    <View style={styles.predictionsContainer}>
+                        <FlatList
+                            data={predictions}
+                            keyExtractor={item => item.place_id}
+                            keyboardShouldPersistTaps="handled"
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.predictionItem}
+                                    onPress={() => handleSelectPrediction(item.place_id, item.description)}
+                                >
+                                    <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 10 }} />
+                                    <Text style={styles.predictionText}>{item.description}</Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
+                )}
 
                 {loading || !region ? (
                     <View style={styles.loadingContainer}>
@@ -66,21 +137,17 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
                     </View>
                 ) : (
                     <View style={{ flex: 1 }}>
-                        {/* The Map */}
                         <MapView
                             style={{ flex: 1 }}
-                            initialRegion={region}
-                            onRegionChangeComplete={handleRegionChange} // Updates state when drag ends
+                            region={region}
+                            onRegionChangeComplete={handleRegionChange}
                             showsUserLocation={true}
                         />
 
-                        {/* The "Center" Pin Overlay */}
                         <View style={styles.pinOverlay} pointerEvents="none">
-                            <Ionicons name="location-sharp" size={40} color={COLORS.primary} />
-                            {/* Note: In a real app, use an Image or Icon here for better alignment */}
+                            <Ionicons name="location-sharp" size={40} color={COLORS.primary} style={{ marginBottom: 40 }} />
                         </View>
 
-                        {/* Confirm Button */}
                         <View style={styles.footer}>
                             <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
                                 <Text style={styles.confirmText}>CONFIRM LOCATION</Text>
@@ -88,43 +155,65 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
                         </View>
                     </View>
                 )}
-            </View>
+            </SafeAreaView>
         </Modal>
     );
 }
 
 const styles = StyleSheet.create({
     header: {
-        padding: SPACING.l,
-        paddingTop: 50, // Safe area for top notch
-        backgroundColor: COLORS.background,
+        paddingHorizontal: 20,
+        paddingBottom: 15,
+        backgroundColor: 'white',
+        zIndex: 10,
+        ...STYLES.shadowSmall
+    },
+    headerTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottomWidth: 1,
-        borderColor: '#E0E0E0',
+        marginBottom: 10
     },
-    headerTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.primary,
-    },
-    closeText: {
-        color: COLORS.action,
-        fontWeight: '600',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
+    headerTitle: { fontSize: 18, fontWeight: 'bold' },
+
+    searchBox: {
+        flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10
     },
-    pinOverlay: {
+    searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
+
+    predictionsContainer: {
         position: 'absolute',
-        top: 0, bottom: 0, left: 0, right: 0,
+        top: 100, // Adjust based on header height
+        left: 20,
+        right: 20,
+        backgroundColor: 'white',
+        borderRadius: 8,
+        ...STYLES.shadow,
+        zIndex: 20,
+        maxHeight: 200
+    },
+    predictionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee'
+    },
+    predictionText: { color: '#333' },
+
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    pinOverlay: {
+        ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: 40, // Offset to make the pin point exactly at center
     },
+
     footer: {
         position: 'absolute',
         bottom: 30,
@@ -133,14 +222,10 @@ const styles = StyleSheet.create({
     },
     confirmButton: {
         backgroundColor: COLORS.primary,
-        padding: SPACING.m,
+        padding: 15,
         borderRadius: 12,
         alignItems: 'center',
-        ...STYLES.shadow,
+        ...STYLES.shadow
     },
-    confirmText: {
-        color: COLORS.text.light,
-        fontWeight: 'bold',
-        fontSize: 16,
-    }
+    confirmText: { color: 'white', fontWeight: 'bold' }
 });
