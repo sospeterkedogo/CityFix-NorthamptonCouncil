@@ -25,6 +25,11 @@ export default {
                 foregroundImage: "./assets/adaptive-icon.png",
                 backgroundColor: "#2C3E50"
             },
+            config: {
+                googleMaps: {
+                    apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+                }
+            },
             package: "com.cityfix.cityfix",
             permissions: [
                 "ACCESS_COARSE_LOCATION",
