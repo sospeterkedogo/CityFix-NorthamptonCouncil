@@ -4,31 +4,15 @@ import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, STYLES } from '../constants/theme';
 import { SocialService } from '../services/socialService';
+import { UserService } from '../services/userService';
 import { ImageService } from '../services/ImageService';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
+import { formatRelativeTime } from '../utils/dateUtils';
 import BeforeAfterViewer from './BeforeAfterViewer';
 
 // Helper for relative time
-// Helper for relative time
-const timeAgo = (date) => {
-    // ... existing implementation ...
-    if (!date) return '';
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    // ... (abbreviated for brevity, assuming tool keeps context if I just prepend)
-    // Actually, I should just insert the component here.
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + "y ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + "mo ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + "d ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + "h ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + "m ago";
-    return "just now";
-};
+
 
 const AvatarFallback = ({ name, email }) => {
     // Priority: Name -> Email -> "?"
@@ -63,11 +47,23 @@ export default function FeedCard({ ticket, showDelete = false }) {
     const [isDeleted, setIsDeleted] = useState(false); // Local hide state
     const router = useRouter();
 
+    // Local state for avatar to allow background updates
+    const [latestAvatar, setLatestAvatar] = useState(ticket.userAvatar);
+
     useEffect(() => {
         if (user && ticket.id) {
             SocialService.checkUserLiked(ticket.id, user.uid).then(setIsLiked);
             SocialService.checkUserUpvoted(ticket.id, user.uid).then(setIsUpvoted);
             fetchComments(); // Fetch comments on mount for inline display
+
+            // Fetch latest avatar
+            if (ticket.userId) {
+                UserService.getUserCached(ticket.userId).then(u => {
+                    if (u && u.photoURL && u.photoURL !== latestAvatar) {
+                        setLatestAvatar(u.photoURL);
+                    }
+                });
+            }
         }
     }, [ticket.id, user]);
 
@@ -143,8 +139,11 @@ export default function FeedCard({ ticket, showDelete = false }) {
     };
 
     const handleViewMore = () => {
-        // Logic for view more (already placeholder in UI)
-        Alert.alert("Info", "Showing details for Ticket #" + ticket.id);
+        if (ticket.id) {
+            setShowFullScreen(false); // Close modal
+            setShowMenu(false);
+            router.push(`/(citizen)/ticket/${ticket.id}`);
+        }
     };
 
     const postComment = async () => {
@@ -273,9 +272,13 @@ export default function FeedCard({ ticket, showDelete = false }) {
                                     <Ionicons name={config.icon} size={14} color={COLORS.text.secondary} style={{ marginRight: 4 }} />
                                 )}
                                 {ticket.userAvatar && ticket.userAvatar !== '👤' ? (
-                                    <Image source={{ uri: ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                    <Image source={{ uri: latestAvatar || ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
                                 ) : (
-                                    <AvatarFallback name={ticket.userName} email={ticket.userEmail} />
+                                    latestAvatar ? (
+                                        <Image source={{ uri: latestAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                    ) : (
+                                        <AvatarFallback name={ticket.userName} email={ticket.userEmail} />
+                                    )
                                 )}
                             </>
                         )}
@@ -283,7 +286,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                     <View>
                         <Text style={styles.username}>{config.title}</Text>
                         <Text style={styles.location}>
-                            {config.subtitle} • {timeAgo(ticket.updatedAt || ticket.createdAt)}
+                            {config.subtitle} • {formatRelativeTime(ticket.updatedAt || ticket.createdAt)}
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -296,9 +299,9 @@ export default function FeedCard({ ticket, showDelete = false }) {
                 )}
             </View >
 
-            {/* Image Section - Logic Split */}
+            {/* Image Section */}
             <TouchableOpacity onPress={() => { setSelectedMedia(config.image); setShowFullScreen(true); }} activeOpacity={0.9} style={{ position: 'relative' }}>
-                {/* 1. BEFORE / AFTER COMPARISON (For Resolved/Verified) */}
+                {/* Before/After Comparison */}
                 {ticket.afterPhoto ? (
                     <View style={{ height: 400 }}>
                         <BeforeAfterViewer
@@ -308,7 +311,7 @@ export default function FeedCard({ ticket, showDelete = false }) {
                         />
                     </View>
                 ) : (
-                    /* 2. STANDARD SINGLE MEDIA */
+                    /* Standard User Media */
                     config.image && (ticket.mediaType === 'video' ? (
                         <Video
                             style={styles.image}

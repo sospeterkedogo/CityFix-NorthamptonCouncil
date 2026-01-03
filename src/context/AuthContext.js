@@ -3,6 +3,16 @@ import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndP
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { registerForPushNotificationsAsync, saveUserToken } from '../utils/notifications';
+import * as Notifications from 'expo-notifications';
+
+// This controls what happens when a notification comes in
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true, // Show the banner (Pop-up)
+        shouldPlaySound: true, // Play the "Ding"
+        shouldSetBadge: false,
+    }),
+});
 
 const AuthContext = createContext({});
 
@@ -43,6 +53,26 @@ export const AuthProvider = ({ children }) => {
         return unsubscribe;
     }, []);
 
+    // SEPARATE HEARTBEAT EFFECT
+    useEffect(() => {
+        if (!user) return;
+
+        const updateHeartbeat = async () => {
+            try {
+                await setDoc(doc(db, 'users', user.uid), {
+                    lastActive: Date.now()
+                }, { merge: true });
+            } catch (e) {
+                console.log("Heartbeat failed", e);
+            }
+        };
+
+        updateHeartbeat(); // Immediate
+        const interval = setInterval(updateHeartbeat, 60000); // Every 1 minute
+
+        return () => clearInterval(interval);
+    }, [user]);
+
     const fetchUserRole = async (uid) => {
         try {
             const docRef = doc(db, 'users', uid);
@@ -62,12 +92,13 @@ export const AuthProvider = ({ children }) => {
         await signInWithEmailAndPassword(auth, email, password);
     };
 
-    const registerCitizen = async (email, password, fullName) => {
+    const registerCitizen = async (email, password, fullName, username) => {
         const response = await createUserWithEmailAndPassword(auth, email, password);
         // Create the User Document in Firestore immediately
         await setDoc(doc(db, 'users', response.user.uid), {
             email,
             name: fullName,
+            username: username || '', // Save username
             role: 'citizen',
             createdAt: Date.now()
         });

@@ -4,6 +4,7 @@ import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
 import { useNotifications } from '../../src/context/NotificationContext';
+import { SocialBadgeProvider, useSocialBadge } from '../../src/context/SocialBadgeContext'; // Import
 
 // Custom "+" Button Component
 const CustomAddButton = ({ onPress }) => (
@@ -16,9 +17,11 @@ const CustomAddButton = ({ onPress }) => (
     </TouchableOpacity>
 );
 
-export default function CitizenTabsLayout() {
+// Inner component to access context
+function CitizenTabs() {
     const router = useRouter();
-    const { unreadCount } = useNotifications();
+    const { unreadCount } = useNotifications(); // Notifications badge
+    const { socialBadgeCount } = useSocialBadge(); // Social badge
 
     return (
         <Tabs
@@ -86,6 +89,16 @@ export default function CitizenTabsLayout() {
                 }}
             />
 
+            <Tabs.Screen
+                name="social"
+                options={{
+                    title: "Neighbors",
+                    tabBarIcon: ({ color }) => <Ionicons name="people" size={28} color={color} />,
+                    tabBarBadge: socialBadgeCount > 0 ? socialBadgeCount : null,
+                    tabBarBadgeStyle: { backgroundColor: COLORS.error, fontSize: 10, minWidth: 16, height: 16 },
+                }}
+            />
+
             {/* 4. NOTIFICATIONS */}
             <Tabs.Screen
                 name="notifications"
@@ -102,10 +115,20 @@ export default function CitizenTabsLayout() {
             {/* HIDE ALL OTHER ROUTES STRICTLY */}
             <Tabs.Screen name="report" options={{ href: null }} />
             <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
+            <Tabs.Screen name="chat/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
 
             <Tabs.Screen name="(user)/[uid]" options={{ href: null }} />
 
         </Tabs>
+    );
+}
+
+// Wrapper export
+export default function CitizenTabsLayout() {
+    return (
+        <SocialBadgeProvider>
+            <CitizenTabs />
+        </SocialBadgeProvider>
     );
 }
 

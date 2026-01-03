@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 const TUTORIAL_STEPS = {
     citizen: [
         { text: "Welcome, Citizen! This is your feed of local community posts, issues and fixes.", target: "feed" },
-        { text: "Tap the big (+) button on the dashboard to Report a new issue.", target: "fab" },
+        { text: "Tap the (+) button on the dashboard to Report a new issue.", target: "fab" },
     ],
     dispatcher: [
         { text: "Welcome, Dispatcher! These are tickets needing attention.", target: "list" },
