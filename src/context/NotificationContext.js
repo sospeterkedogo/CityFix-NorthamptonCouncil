@@ -56,15 +56,27 @@ export function NotificationProvider({ children }) {
                     // Only alert if it's reasonably new (to avoid alerting for old stuff on reload)
                     // Here we just alert everything coming in as "added" on the stream if it's unread
                     const notif = change.doc.data();
-                    if (!notif.read && Platform.OS !== 'web') {
-                        Notifications.scheduleNotificationAsync({
-                            content: {
-                                title: notif.title,
-                                body: notif.body,
-                                data: notif.data,
-                            },
-                            trigger: null,
-                        });
+                    if (!notif.read) {
+                        // A. MOBILE STRATEGY
+                        if (Platform.OS !== 'web') {
+                            Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title: notif.title,
+                                    body: notif.body,
+                                    data: notif.data,
+                                },
+                                trigger: null,
+                            });
+                        }
+                        // B. WEB STRATEGY (Native Browser API)
+                        else {
+                            if (Notification.permission === "granted") {
+                                new Notification(notif.title, {
+                                    body: notif.body,
+                                    icon: '/icon.png' // Ensure you have an icon in your public folder
+                                });
+                            }
+                        }
                     }
                 }
             });
