@@ -5,13 +5,15 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp
 import { useEffect } from 'react';
 
 // 1. Configure Notification Handler (Visuals)
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    }),
-});
+if (Platform.OS !== 'web') {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+        }),
+    });
+}
 
 // 2. Register (kept for compatibility)
 export async function registerForPushNotificationsAsync() {

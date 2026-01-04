@@ -11,7 +11,7 @@ const DEFAULT_REGION = {
 
 export default function MapPreview({ location }) {
     return (
-        <View style={{ flex: 1 }} pointerEvents="none">
+        <View style={{ flex: 1, pointerEvents: 'none' }}>
             <MapView
                 style={styles.mapBackground}
                 initialRegion={location ? {

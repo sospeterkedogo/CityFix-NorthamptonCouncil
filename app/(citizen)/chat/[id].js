@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, SafeAreaView, Image } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -73,12 +74,12 @@ export default function ChatScreen() {
     };
 
     return (
-        <SafeAreaView style={STYLES.container}>
+        <SafeAreaView style={[STYLES.container, { padding: 0 }]}>
             <View style={styles.webContainer}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={{ padding: 10 }}>
-                        <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+                    <TouchableOpacity onPress={() => router.push('/(citizen)/social')}>
+                        <Ionicons name="arrow-back" size={24} color={COLORS.primary} style={{ float: 'left' }} />
                     </TouchableOpacity>
                     <View style={styles.headerInfo}>
                         <View>
