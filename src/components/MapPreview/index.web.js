@@ -21,7 +21,7 @@ export default function MapPreview({ location }) {
         : DEFAULT_CENTER;
 
     return (
-        <View style={{ flex: 1, overflow: 'hidden' }} pointerEvents="none">
+        <View style={{ flex: 1, overflow: 'hidden', pointerEvents: 'none' }}>
             {/* Styles for this component's map */}
             <style>
                 {`

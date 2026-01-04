@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform, useWindowDimensions
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, Platform, useWindowDimensions, ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -230,7 +230,7 @@ export default function QADashboard() {
               )}
 
               {selectedTicket ? (
-                <View style={{ flex: 1 }}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
                   <Text style={styles.detailTitle}>{selectedTicket.title}</Text>
 
                   <Text style={styles.sectionHeader}>Visual Verification</Text>
@@ -297,7 +297,7 @@ export default function QADashboard() {
                     </View>
                   )}
 
-                </View>
+                </ScrollView>
               ) : (
                 <View style={styles.emptyState}>
                   <Ionicons name="search-outline" size={48} color="#ccc" style={{ marginBottom: 10 }} />

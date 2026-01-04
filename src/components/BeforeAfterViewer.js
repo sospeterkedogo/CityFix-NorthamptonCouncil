@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS, SPACING, STYLES } from '../constants/theme';
 
@@ -34,7 +35,7 @@ export default function BeforeAfterViewer({ beforeMedia = [], afterMedia, onOpen
               shouldPlay={false} // Don't auto-play in comparison mode
             />
           ) : (
-            <Image source={{ uri: url }} style={styles.media} resizeMode="contain" />
+            <ExpoImage source={{ uri: url }} style={styles.media} contentFit="contain" transition={200} />
           )}
         </TouchableOpacity>
       </View>

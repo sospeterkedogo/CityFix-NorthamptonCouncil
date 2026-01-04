@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, Modal, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform, SafeAreaView
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { COLORS } from '../constants/theme';
 
@@ -74,10 +75,11 @@ export default function MediaGalleryModal({ visible, onClose, mediaUrls = [], in
                 onLoad={() => setLoading(false)}
               />
             ) : (
-              <Image
+              <ExpoImage
                 source={{ uri: currentUrl }}
                 style={styles.media}
-                resizeMode="contain"
+                contentFit="contain"
+                transition={200}
                 onLoadEnd={() => setLoading(false)}
               />
             )}

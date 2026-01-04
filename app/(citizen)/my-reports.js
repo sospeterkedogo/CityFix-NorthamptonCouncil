@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, Text, StyleSheet, RefreshControl, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { View, FlatList, Text, StyleSheet, RefreshControl, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { TicketService } from '../../src/services/ticketService';
 import ExpandableTicketCard from '../../src/components/ExpandableTicketCard';

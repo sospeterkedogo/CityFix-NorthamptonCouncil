@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, TextInput, FlatList, SafeAreaView } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, TextInput, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +8,73 @@ import { COLORS, SPACING, STYLES } from '../../constants/theme';
 import { getPlacePredictions, getPlaceDetails, reverseGeocodeGoogle } from '../../services/GoogleMapsService';
 
 export default function LocationPickerModal({ visible, onClose, onSelectLocation }) {
-    // ... (state)
+    const [region, setRegion] = useState(null);
+    const [searchText, setSearchText] = useState('');
+    const [predictions, setPredictions] = useState([]);
+    const [showPredictions, setShowPredictions] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // ... (useEffect for existing location)
+    const mapRef = useRef(null);
 
-    // ... (handleSearchChange)
+    // Default to Northampton if location fails
+    const DEFAULT_REGION = {
+        latitude: 52.2405,
+        longitude: -0.9027,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+    };
+
+    useEffect(() => {
+        if (visible) {
+            (async () => {
+                setLoading(true);
+                try {
+                    // 1. Request Permission
+                    let { status } = await Location.requestForegroundPermissionsAsync();
+                    if (status !== 'granted') {
+                        Alert.alert('Permission Denied', 'Permission to access location was denied. Defaulting to Northampton.');
+                        setRegion(DEFAULT_REGION);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // 2. Get Location (with timeout to prevent hang)
+                    // We use "LOW" accuracy for speed to prevent freezing, then we can refine if needed? 
+                    // Actually, let's try balanced.
+                    let location = await Promise.race([
+                        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+                    ]);
+
+                    setRegion({
+                        latitude: location.coords.latitude,
+                        longitude: location.coords.longitude,
+                        latitudeDelta: 0.005,
+                        longitudeDelta: 0.005,
+                    });
+
+                } catch (error) {
+                    console.log("Location Error:", error);
+                    // Fallback
+                    setRegion(DEFAULT_REGION);
+                } finally {
+                    setLoading(false);
+                }
+            })();
+        }
+    }, [visible]);
+
+    const handleSearchChange = async (text) => {
+        setSearchText(text);
+        if (text.length > 2) {
+            const results = await getPlacePredictions(text);
+            setPredictions(results);
+            setShowPredictions(true);
+        } else {
+            setPredictions([]);
+            setShowPredictions(false);
+        }
+    };
 
     const handleSelectPrediction = async (placeId, description) => {
         setSearchText(description);
@@ -27,19 +90,12 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
         }
     };
 
-    const handleRegionChange = (newRegion) => {
+    const handleRegionChange = (newRegion, details) => {
         setRegion(newRegion);
-        // Clear search text if user moves map manually, to forcefully re-geocode on confirm
-        // Or keep it? If they move it, the text "10 Downing St" is likely wrong now.
-        // Let's clear it if the movement is significant?
-        // For now, simpler: If they confirm, we check if search text matches current region? 
-        // Actually, easiest is: If they search, we rely on that address. 
-        // If they drag, we wipe the search text so we know to reverse geocode.
-        // But `onRegionChangeComplete` fires on mount and search select too.
-        // We can track if it was user initiated? Hard.
-
-        // Strategy: Only reverse geocode on CONFIRM if we don't have a valid "selected" status?
-        // Let's just do it on confirm for now to be safe and save API calls.
+        // Only clear search text if the user manually dragged the map
+        if (details?.isGesture) {
+            setSearchText('');
+        }
     };
 
     // 4. Confirm Selection
@@ -139,12 +195,12 @@ export default function LocationPickerModal({ visible, onClose, onSelectLocation
                     <View style={{ flex: 1 }}>
                         <MapView
                             style={{ flex: 1 }}
-                            region={region}
+                            region={region || DEFAULT_REGION}
                             onRegionChangeComplete={handleRegionChange}
                             showsUserLocation={true}
                         />
 
-                        <View style={styles.pinOverlay} pointerEvents="none">
+                        <View style={[styles.pinOverlay, { pointerEvents: 'none' }]}>
                             <Ionicons name="location-sharp" size={40} color={COLORS.primary} style={{ marginBottom: 40 }} />
                         </View>
 
