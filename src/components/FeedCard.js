@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList, Alert } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, STYLES } from '../constants/theme';
@@ -261,10 +262,10 @@ export default function FeedCard({ ticket, showDelete = false }) {
                 >
                     <View style={styles.avatar}>
                         {config.useCouncilAvatar ? (
-                            <Image
+                            <ExpoImage
                                 source={require('../../assets/splash.png')}
                                 style={{ width: 32, height: 32, borderRadius: 16 }}
-                                resizeMode="cover"
+                                contentFit="cover"
                             />
                         ) : (
                             <>
@@ -272,10 +273,10 @@ export default function FeedCard({ ticket, showDelete = false }) {
                                     <Ionicons name={config.icon} size={14} color={COLORS.text.secondary} style={{ marginRight: 4 }} />
                                 )}
                                 {ticket.userAvatar && ticket.userAvatar !== '👤' ? (
-                                    <Image source={{ uri: latestAvatar || ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                    <ExpoImage source={{ uri: latestAvatar || ticket.userAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} contentFit="cover" />
                                 ) : (
                                     latestAvatar ? (
-                                        <Image source={{ uri: latestAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                        <ExpoImage source={{ uri: latestAvatar }} style={{ width: 32, height: 32, borderRadius: 16 }} contentFit="cover" />
                                     ) : (
                                         <AvatarFallback name={ticket.userName} email={ticket.userEmail} />
                                     )
@@ -321,10 +322,11 @@ export default function FeedCard({ ticket, showDelete = false }) {
                             isLooping
                         />
                     ) : (
-                        <Image
-                            source={imageError || !config.image ? { uri: 'https://picsum.photos/seed/picsum/600/400' } : { uri: config.image }}
+                        <ExpoImage
+                            source={imageError || !config.image ? 'https://picsum.photos/seed/picsum/600/400' : config.image}
                             style={styles.image}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            transition={500}
                             onError={() => setImageError(true)}
                         />
                     ))

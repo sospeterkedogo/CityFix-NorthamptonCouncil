@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, SectionList, Text, StyleSheet, SafeAreaView, TouchableOpacity, Modal, TextInput, Image, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, SectionList, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Image, Alert, Platform, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';

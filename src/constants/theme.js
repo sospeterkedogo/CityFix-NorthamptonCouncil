@@ -1,4 +1,4 @@
-
+import { Platform } from 'react-native';
 export const COLORS = {
   primary: '#2C3E50',    // Deep Slate Blue (Trust)
   action: '#3498DB',     // Electric Blue (Buttons)
@@ -26,11 +26,20 @@ export const SPACING = {
 export const STYLES = {
   // Common shadow style for cards (iOS & Android)
   shadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   container: {
     flex: 1,
