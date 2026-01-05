@@ -1,0 +1,264 @@
+diff --git a/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/bell.js b/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/bell.js
+index d7191f2..fcad558 100644
+--- a/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/bell.js
++++ b/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/bell.js
+@@ -1,105 +1,12 @@
+-import { NativeModules, Vibration } from 'react-native';
+-import Sound from 'react-native-sound';
+-import { zloginfo, zlogerror, zlogwarning } from '../../utils/logger';
+-const {
+-  ZegoUIKitPrebuiltCallRNModule
+-} = NativeModules;
+-
+-// console.warn('Sound', Sound);
+-// console.warn('Vibration', Vibration);
+-
+-const BellManage = {
+-  _incomingCallFileName: '',
+-  _outgoingCallFileName: '',
+-  _whooshIncoming: null,
+-  _whooshOutgoing: null,
+-  vibrate: () => {
+-    Vibration.vibrate([0, 500, 1000, 500], true);
+-  },
+-  cancleVirate: () => {
+-    Vibration.cancel();
+-  },
+-  initRingtoneConfig: ringtoneConfig => {
+-    BellManage._incomingCallFileName = ringtoneConfig.incomingCallFileName;
+-    BellManage._outgoingCallFileName = ringtoneConfig.outgoingCallFileName;
+-  },
+-  initIncomingSound: () => {
+-    zloginfo('[BellManage][initIncomingSound]');
+-    // Sound.setCategory('Playback');
+-    return new Promise((resolve, reject) => {
+-      BellManage._whooshIncoming = new Sound(BellManage._incomingCallFileName, Sound.MAIN_BUNDLE, error => {
+-        if (error) {
+-          zlogerror('Failed to load the sound of zego_incoming', error);
+-          reject();
+-        } else {
+-          zloginfo('Load the sound of zego_incoming successfully');
+-          BellManage._whooshIncoming.setNumberOfLoops(-1);
+-          resolve(BellManage._whooshIncoming);
+-        }
+-      });
+-    });
+-  },
+-  initOutgoingSound: () => {
+-    return new Promise((resolve, reject) => {
+-      BellManage._whooshOutgoing = new Sound(BellManage._outgoingCallFileName, Sound.MAIN_BUNDLE, error => {
+-        if (error) {
+-          zlogerror('Failed to load the sound of zego_outgoing', error);
+-          reject();
+-        } else {
+-          zloginfo('Load the sound of zego_outgoing successfully');
+-          BellManage._whooshOutgoing.setNumberOfLoops(-1);
+-          resolve(BellManage._whooshOutgoing);
+-        }
+-      });
+-    });
+-  },
+-  playIncomingSound: () => {
+-    ZegoUIKitPrebuiltCallRNModule.changeToSpeaker();
+-    BellManage._whooshIncoming.play(success => {
+-      if (success) {
+-        zloginfo('successfully finished playing zego_incoming');
+-      } else {
+-        zloginfo('playback zego_incoming failed due to audio decoding errors');
+-      }
+-    });
+-    zloginfo('successfully playing zego_incoming');
+-  },
+-  stopIncomingSound: () => {
+-    if (!BellManage._whooshIncoming) {
+-      zloginfo('[BellManage][stopOutgoingSound] _whooshIncoming is null');
+-      return;
+-    }
+-    BellManage._whooshIncoming.stop(() => {
+-      zloginfo('successfully stop playing zego_incoming');
+-    });
+-  },
+-  playOutgoingSound: () => {
+-    ZegoUIKitPrebuiltCallRNModule.changeToReceiver();
+-    BellManage._whooshOutgoing.play(success => {
+-      if (success) {
+-        zloginfo('successfully finished playing zego_outgoing');
+-      } else {
+-        zloginfo('playback zego_outgoing failed due to audio decoding errors');
+-      }
+-    });
+-    zloginfo('successfully playing zego_outgoing');
+-  },
+-  stopOutgoingSound: () => {
+-    BellManage._whooshOutgoing.stop(() => {
+-      zloginfo('successfully stop playing zego_outgoing');
+-    });
+-  },
+-  releaseIncomingSound: () => {
+-    zloginfo('[BellManage][releaseIncomingSound]');
+-    BellManage._whooshIncoming.release();
+-    BellManage._whooshIncoming = null;
+-    zloginfo('successfully release the audio player resource');
+-  },
+-  releaseOutgoingSound: () => {
+-    BellManage._whooshOutgoing.release();
+-    BellManage._whooshOutgoing = null;
+-    zloginfo('successfully release the audio player resource');
+-  }
++export default {
++    setCategory: () => {},
++    setMode: () => {},
++    setActive: () => {},
++    start: () => {},
++    stop: () => {},
++    release: () => {},
++    setVolume: () => {},
++    setNumberOfLoops: () => {},
++    play: (cb) => { if(cb) cb(true); },
++    setSpeakerphoneOn: () => {}
+ };
+\ No newline at end of file
+-export default BellManage;
+-//# sourceMappingURL=bell.js.map
+\ No newline at end of file
+diff --git a/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/notification_helper.js b/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/notification_helper.js
+new file mode 100644
+index 0000000..1a1cc6d
+--- /dev/null
++++ b/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/notification_helper.js
+@@ -0,0 +1,15 @@
++export default class NotificationHelper {
++    static _instance;
++    static getInstance() {
++        if (!NotificationHelper._instance) {
++            NotificationHelper._instance = new NotificationHelper();
++        }
++        return NotificationHelper._instance;
++    }
++    notify() { console.log('NotificationHelper.notify (web stub)'); }
++    cancel() {}
++    updateCallID() {}
++    destroy() {}
++    onCallKitAnswerCall() {}
++    getCurrentInCallID() { return ''; }
++}
+\ No newline at end of file
+diff --git a/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/plugins.js b/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/plugins.js
+index ad7d158..bec82cc 100644
+--- a/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/plugins.js
++++ b/node_modules/@zegocloud/zego-uikit-prebuilt-call-rn/lib/module/call_invitation/services/plugins.js
+@@ -1,107 +1,6 @@
+-import ZegoUIKit, { ZegoInvitationConnectionState, ZegoUIKitLogger } from '@zegocloud/zego-uikit-rn';
+-import { zlogerror, zloginfo } from '../../utils/logger';
+-import EncryptedStorage from 'react-native-encrypted-storage';
+-import { eventEmitter, EventName } from '../../utils/EventEmitter';
+-const _appInfo = {};
+-const _localUser = {};
+-let _pluginConnectionState;
+-let ZIMKitPlugin = null;
+-const _install = plugins => {
+-  ZegoUIKit.installPlugins(plugins);
+-  plugins.forEach(plugin => {
+-    if (plugin.ZIMKit) {
+-      zloginfo('[Plugins] install ZIMKit success.');
+-      ZIMKitPlugin = plugin;
+-    } else if (plugin.default && typeof plugin.default.getModuleName === 'function') {
+-      const temp = plugin.default.getModuleName();
+-      if (temp === 'ZIMKit') {
+-        zloginfo('[Plugins] install ZIMKit success.');
+-        ZIMKitPlugin = plugin;
+-      }
+-    }
+-  });
++export default {
++    setItem: async () => {},
++    getItem: async () => null,
++    removeItem: async () => {},
++    clear: async () => {}
+ };
+\ No newline at end of file
+-const _storeLoginInfo = async () => {
+-  try {
+-    await EncryptedStorage.setItem("_ZegoUIKitPrebuiltCallLoginInfo", JSON.stringify({
+-      userID: _localUser.userID,
+-      userName: _localUser.userName,
+-      appID: _appInfo.appID,
+-      appSign: _appInfo.appSign
+-    }));
+-  } catch (error) {
+-    zlogerror('[Plugins] _storeLoginInfo error', error);
+-  }
+-};
+-const ZegoPrebuiltPlugins = {
+-  init: (appID, appSign, userID, userName, plugins) => {
+-    ZegoUIKitLogger.logSetUserID(userID);
+-    zloginfo('[ZegoPrebuiltPlugins] init', {
+-      appID,
+-      userID,
+-      userName
+-    });
+-    const callbackID = 'ZegoPrebuiltPlugins' + String(Math.floor(Math.random() * 10000));
+-    _install(plugins);
+-    ZegoUIKit.getSignalingPlugin().init(appID, appSign);
+-    ZegoUIKit.getSignalingPlugin().onConnectionStateChanged(callbackID, ({
+-      state
+-    }) => {
+-      _pluginConnectionState = state;
+-    });
+-    _appInfo.appID = appID;
+-    _appInfo.appSign = appSign;
+-    _localUser.userID = userID;
+-    _localUser.userName = userName;
+-    _storeLoginInfo();
+-    return ZegoUIKit.getSignalingPlugin().login(userID, userName).then(() => {
+-      zloginfo(`[Plugins] login success. userID: ${userID}, userName: ${userName}`);
+-      eventEmitter.emit(EventName.LOGINED, {
+-        userID,
+-        userName
+-      });
+-    });
+-  },
+-  reconnectIfDisconnected: () => {
+-    zloginfo('[Plugins] reconnectIfDisconnected', _pluginConnectionState, ZegoInvitationConnectionState.disconnected);
+-    if (_pluginConnectionState === ZegoInvitationConnectionState.disconnected) {
+-      ZegoUIKit.getSignalingPlugin().logout().then(() => {
+-        zloginfo('[Plugins] auto logout success.');
+-        ZegoUIKit.getSignalingPlugin().login(_localUser.userID, _localUser.userName).then(() => {
+-          zloginfo('[Plugins] auto reconnect success.');
+-        });
+-      });
+-    }
+-  },
+-  uninit: () => {
+-    zloginfo('[ZegoPrebuiltPlugins] uninit');
+-    delete _appInfo.appID;
+-    delete _appInfo.appSign;
+-    delete _localUser.userID;
+-    delete _localUser.userName;
+-    ZegoUIKit.getSignalingPlugin().logout();
+-    ZegoUIKit.getSignalingPlugin().uninit();
+-  },
+-  getLocalUser: () => {
+-    return _localUser;
+-  },
+-  getAppInfo: () => {
+-    return _appInfo;
+-  },
+-  getZIMKitPlugin: () => {
+-    return ZIMKitPlugin;
+-  },
+-  loadLoginInfoFromLocalEncryptedStorage: async () => {
+-    try {
+-      const loginInfoStr = await EncryptedStorage.getItem("_ZegoUIKitPrebuiltCallLoginInfo");
+-      if (loginInfoStr) {
+-        return JSON.parse(loginInfoStr);
+-      }
+-    } catch (error) {
+-      zlogerror('[Plugins] getAppInfoFromLocalEncryptedStorage error', error);
+-      return Promise.resolve(undefined);
+-    }
+-  }
+-};
+-export default ZegoPrebuiltPlugins;
+-//# sourceMappingURL=plugins.js.map
+\ No newline at end of file

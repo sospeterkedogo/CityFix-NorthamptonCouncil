@@ -1,0 +1,71 @@
+diff --git a/node_modules/zego-express-engine-reactnative/lib/ZegoRenderView.js b/node_modules/zego-express-engine-reactnative/lib/ZegoRenderView.js
+index e3cf450..8cb2cfc 100644
+--- a/node_modules/zego-express-engine-reactnative/lib/ZegoRenderView.js
++++ b/node_modules/zego-express-engine-reactnative/lib/ZegoRenderView.js
+@@ -1,22 +1,30 @@
+ //@ts-expect-error
+ import React, { Component } from 'react'
+ //@ts-expect-error
+-import { requireNativeComponent, Platform } from 'react-native'
+-const ZegoView = requireNativeComponent('RCTZegoView')
++import { requireNativeComponent, Platform, View } from 'react-native'
++
++// Patched for Web Support
++const ZegoView = Platform.OS === 'web' ? View : requireNativeComponent('RCTZegoView')
++
+ const ZegoSurfaceViewManager = Platform.select({
+-  ios: ZegoView, // UIView
+-  android: requireNativeComponent('RCTZegoSurfaceView'), // * android.view.SurfaceView
++  ios: ZegoView,
++  android: Platform.OS === 'web' ? View : requireNativeComponent('RCTZegoSurfaceView'),
++  web: View
+ })
++
+ const ZegoTextureViewManager = Platform.select({
+-  ios: ZegoView, // UIView
+-  android: requireNativeComponent('RCTZegoTextureView'), // * android.view.TextureView
++  ios: ZegoView,
++  android: Platform.OS === 'web' ? View : requireNativeComponent('RCTZegoTextureView'),
++  web: View
+ })
++
+ export class ZegoSurfaceView extends Component {
+   render() {
+     //@ts-expect-error
+     return <ZegoSurfaceViewManager {...this.props} />
+   }
+ }
++
+ export class ZegoTextureView extends Component {
+   render() {
+     //@ts-expect-error
+diff --git a/node_modules/zego-express-engine-reactnative/lib/impl/ZegoExpressEngineImpl.js b/node_modules/zego-express-engine-reactnative/lib/impl/ZegoExpressEngineImpl.js
+index 08b3dd1..987ee5c 100644
+--- a/node_modules/zego-express-engine-reactnative/lib/impl/ZegoExpressEngineImpl.js
++++ b/node_modules/zego-express-engine-reactnative/lib/impl/ZegoExpressEngineImpl.js
+@@ -1,8 +1,23 @@
+ //@ts-expect-error
+ import { NativeModules, NativeEventEmitter } from 'react-native'
+ import * as zego from '../ZegoExpressDefines'
+-const { ZegoExpressNativeModule } = NativeModules
+-const Prefix = ZegoExpressNativeModule.prefix
++
++// Patched for Web Support
++const { ZegoExpressNativeModule: _nativeModule } = NativeModules;
++const ZegoExpressNativeModule = _nativeModule || {
++    prefix: '',
++    createEngine: async () => console.warn('ZegoEngine: createEngine is mocked on web'),
++    createEngineWithProfile: async () => console.warn('ZegoEngine: createEngineWithProfile is mocked on web'),
++    destroyEngine: async () => console.warn('ZegoEngine: destroyEngine is mocked on web'),
++    setEngineConfig: () => {},
++    on: () => {},
++    addListener: () => {},
++    removeListeners: () => {},
++    removeAllListeners: () => {},
++    destroyMediaPlayer: () => {},
++}; // Mock for web
++
++const Prefix = (ZegoExpressNativeModule && ZegoExpressNativeModule.prefix) || "Active"; // PATCHED
+ const ZegoEvent = new NativeEventEmitter(ZegoExpressNativeModule)
+ let engine
+ export class ZegoExpressEngineImpl {
