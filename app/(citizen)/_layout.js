@@ -4,7 +4,11 @@ import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
 import { useNotifications } from '../../src/context/NotificationContext';
-import { SocialBadgeProvider, useSocialBadge } from '../../src/context/SocialBadgeContext'; // Import
+import { SocialBadgeProvider, useSocialBadge } from '../../src/context/SocialBadgeContext';
+import IncomingCallModal from '../../src/components/IncomingCallModal';
+import { useAuth } from '../../src/context/AuthContext';
+import { db } from '../../src/config/firebase';
+import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
 
 // Custom "+" Button Component
 const CustomAddButton = ({ onPress }) => (
@@ -117,6 +121,7 @@ function CitizenTabs() {
             <Tabs.Screen name="referrals" options={{ href: null }} />
             <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
             <Tabs.Screen name="chat/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+            <Tabs.Screen name="call" options={{ href: null, tabBarStyle: { display: 'none' } }} />
 
             <Tabs.Screen name="(user)/[uid]" options={{ href: null }} />
 
@@ -129,7 +134,87 @@ export default function CitizenTabsLayout() {
     return (
         <SocialBadgeProvider>
             <CitizenTabs />
+            <CallListener />
         </SocialBadgeProvider>
+    );
+}
+
+// Separate component to handle the listener logic inside the provider/auth context
+function CallListener() {
+    const router = useRouter();
+    const { user } = useAuth();
+    const [incomingCall, setIncomingCall] = React.useState(null); // { id, callerName, callType, callId }
+
+    React.useEffect(() => {
+        if (!user) return;
+
+        // Listen for "notifications" collection where type == 'call_invite'
+        // and read == false.
+        // NOTE: In a real app, you might delete the doc after handling.
+        const q = query(
+            collection(db, 'users', user.uid, 'notifications'),
+            where('type', '==', 'call_invite'),
+            where('read', '==', false),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const docSnap = snapshot.docs[0];
+                const data = docSnap.data();
+
+                // Check if it's recent (e.g. within 60 seconds)
+                const isRecent = (Date.now() - data.createdAt) < 60000;
+
+                if (isRecent) {
+                    setIncomingCall({
+                        id: docSnap.id,
+                        ...data
+                    });
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
+    const handleAccept = async () => {
+        if (incomingCall) {
+            // Mark as read
+            await updateDoc(doc(db, 'users', user.uid, 'notifications', incomingCall.id), { read: true });
+
+            // Update Call Status
+            await updateDoc(doc(db, 'calls', incomingCall.callId), { status: 'accepted' });
+
+            const { callId, callMode, fromId } = incomingCall;
+            setIncomingCall(null);
+
+            // Navigate to Call Page
+            router.push({
+                pathname: '/(citizen)/call',
+                params: { callId, name: 'Caller', type: callMode }
+            });
+        }
+    };
+
+    const handleDecline = async () => {
+        if (incomingCall) {
+            await updateDoc(doc(db, 'users', user.uid, 'notifications', incomingCall.id), { read: true });
+            // Signal Rejection
+            await updateDoc(doc(db, 'calls', incomingCall.callId), { status: 'rejected' });
+            setIncomingCall(null);
+        }
+    };
+
+    return (
+        <IncomingCallModal
+            visible={!!incomingCall}
+            callerName={incomingCall?.body?.split(' ')[0] || "Unknown"}
+            callType={incomingCall?.callMode || 'voice'}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+        />
     );
 }
 

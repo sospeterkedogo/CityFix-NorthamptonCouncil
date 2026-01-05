@@ -37,12 +37,14 @@ export default {
                 "CAMERA",
                 "READ_EXTERNAL_STORAGE",
                 "WRITE_EXTERNAL_STORAGE",
-                "NOTIFICATIONS"
+                "NOTIFICATIONS",
+                "RECORD_AUDIO"
             ]
         },
         scheme: "city-fix",
         plugins: [
-            "expo-router"
+            "expo-router",
+
         ],
         notification: {
             icon: "./assets/icon.png",
