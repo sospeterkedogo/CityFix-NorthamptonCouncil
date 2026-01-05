@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { db } from '../config/firebase';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import * as Notifications from 'expo-notifications';
 
@@ -115,12 +115,22 @@ export function NotificationProvider({ children }) {
         }
     };
 
+    const deleteNotification = async (id) => {
+        if (!user?.uid) return;
+        try {
+            await deleteDoc(doc(db, 'users', user.uid, 'notifications', id));
+        } catch (error) {
+            console.error("Error deleting notification:", error);
+        }
+    };
+
     const value = {
         notifications,
         unreadCount,
         loading,
         markAsRead,
-        markAllAsRead
+        markAllAsRead,
+        deleteNotification
     };
 
     return (

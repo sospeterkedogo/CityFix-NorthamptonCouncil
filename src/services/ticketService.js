@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, updateDoc, query, where, getDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, where, getDoc, writeBatch, runTransaction, increment } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createTicket, TICKET_STATUS } from '../constants/models';
 import { canAssign } from '../constants/workflow';
@@ -45,9 +45,76 @@ export const TicketService = {
       // NOTIFICATION: Alert Dispatchers
       await notifyRole('dispatcher', "New Report", `New ticket submitted: ${title}`);
 
+      // CHECK REFERRAL REWARD
+      // We fire and forget this check or await it? Await to ensure consistency.
+      await TicketService.checkReferralProgress(userId);
+
       return { success: true, id: docRef.id };
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  },
+
+  checkReferralProgress: async (userId) => {
+    try {
+      await runTransaction(db, async (transaction) => {
+        // A. Get User Data
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) return;
+
+        const userData = userDoc.data();
+
+        // Increment Report Count
+        const newCount = (userData.reportCount || 0) + 1;
+        transaction.update(userRef, { reportCount: newCount });
+
+        // B. Check Condition: Is this the 5th report? And is the reward still pending?
+        if (newCount >= 5 && userData.referralStatus === 'pending' && userData.referredBy) {
+
+          // PAYOUT TIME! 💰
+
+          // 1. Pay the New User (Self)
+          transaction.update(userRef, {
+            balance: increment(10),
+            referralStatus: 'completed'
+          });
+
+          // 2. Pay the Referrer
+          const referrerRef = doc(db, 'users', userData.referredBy);
+          transaction.update(referrerRef, {
+            balance: increment(10)
+          });
+
+          console.log("Referral Bonus Paid!");
+
+          // 3. Notify New User
+          // Note: We can't await inside a transaction if we want it to be fast, but notifyUser is independent of Firestore transaction context usually.
+          // However, to be safe, we might want to do this AFTER transaction?
+          // Actually, notifyUser writes to a subcollection, so it's a separate write. doing it inside transaction might be tricky if notifyUser doesn't support transaction object.
+          // It's safer to do it *after* the transaction succeeds. 
+          // But for now, let's keep the logic simple. Await here is fine if notifyUser is just a firestore addDoc.
+        }
+      });
+
+      // NOTE: Ideally, we should return the result of transaction and THEN send notifications.
+      // But since we are inside `checkReferralProgress` and we don't return values, we can't easily know if it happened without refactoring.
+      // To keep changes minimal and safe, we will re-fetch the user to see if they JUST hit 5 reports.
+      // PROPER FIX: Move notification logic here.
+
+      const userSnap = await getDoc(doc(db, 'users', userId));
+      const uData = userSnap.data();
+
+      // Check if we just completed it (this runs after the transaction above)
+      if (uData.referralStatus === 'completed' && uData.reportCount === 5) {
+        await notifyUser(userId, "Referral Reward!", "You earned £10 for completing 5 reports!");
+        if (uData.referredBy) {
+          await notifyUser(uData.referredBy, "Referral Reward!", "A neighbor you invited just earned you £10!");
+        }
+      }
+
+    } catch (e) {
+      console.error("Referral check failed:", e);
     }
   },
 

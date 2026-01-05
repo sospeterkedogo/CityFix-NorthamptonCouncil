@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import GetAppModal from '../../src/components/GetTheApp';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -14,7 +15,9 @@ export default function SignupScreen() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [referralCode, setReferralCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showAppModal, setShowAppModal] = useState(false);
 
     const handleDemoLogin = async (role) => {
         let demoEmail = '';
@@ -42,6 +45,25 @@ export default function SignupScreen() {
         }
     };
 
+    const [usernameAvailable, setUsernameAvailable] = useState(null); // null, true, false
+    const [checkingUsername, setCheckingUsername] = useState(false);
+
+    // Debounced check
+    React.useEffect(() => {
+        const timeoutId = setTimeout(async () => {
+            if (username.length >= 3) {
+                setCheckingUsername(true);
+                const { UserService } = require('../../src/services/userService');
+                const isUnique = await UserService.isUsernameUnique(username);
+                setUsernameAvailable(isUnique);
+                setCheckingUsername(false);
+            } else {
+                setUsernameAvailable(null);
+            }
+        }, 500); // 500ms debounce
+        return () => clearTimeout(timeoutId);
+    }, [username]);
+
     const handleSignup = async () => {
         if (!name || !email || !password || !username) {
             return Alert.alert("Missing Info", "Please fill in all fields.");
@@ -53,18 +75,19 @@ export default function SignupScreen() {
             return Alert.alert("Invalid Username", "Username must be 3-20 characters long and can only contain letters, numbers, and underscores.");
         }
 
+        if (usernameAvailable === false) {
+            return Alert.alert("Unavailable", "That username is taken. Please choose another.");
+        }
+
         setLoading(true);
         try {
-            // 2. Check Uniqueness
-            const { UserService } = require('../../src/services/userService'); // Lazy import to avoid cycle if any
-            const isUnique = await UserService.isUsernameUnique(username);
-
-            if (!isUnique) {
-                setLoading(false);
-                return Alert.alert("Unavailable", "That username is already taken. Please choose another.");
+            await registerCitizen(email, password, name, username, referralCode);
+            // Success
+            if (Platform.OS === 'web') {
+                setShowAppModal(true);
+            } else {
+                router.replace('/(citizen)/dashboard'); // Or home
             }
-
-            await registerCitizen(email, password, name, username);
         } catch (e) {
             setLoading(false);
             Alert.alert("Registration Failed", e.message);
@@ -159,12 +182,19 @@ export default function SignupScreen() {
 
                         <View style={styles.inputWrapper}>
                             <Text style={styles.inputLabel}>Username</Text>
-                            <TextInput
-                                style={styles.input} placeholder="john_doe_123"
-                                placeholderTextColor="#94a3b8"
-                                value={username} onChangeText={setUsername}
-                                autoCapitalize="none"
-                            />
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <TextInput
+                                    style={[styles.input, { flex: 1, borderColor: usernameAvailable === false ? '#EF9A9A' : (usernameAvailable === true ? '#A5D6A7' : '#E2E8F0') }]}
+                                    placeholder="john_doe_123"
+                                    placeholderTextColor="#94a3b8"
+                                    value={username} onChangeText={setUsername}
+                                    autoCapitalize="none"
+                                />
+                                {checkingUsername && <ActivityIndicator size="small" color="#94a3b8" style={{ marginLeft: 10 }} />}
+                                {!checkingUsername && usernameAvailable === true && <Ionicons name="checkmark-circle" size={24} color="#4CAF50" style={{ marginLeft: 10 }} />}
+                                {!checkingUsername && usernameAvailable === false && <Ionicons name="close-circle" size={24} color="#F44336" style={{ marginLeft: 10 }} />}
+                            </View>
+                            {!checkingUsername && usernameAvailable === false && <Text style={{ color: '#F44336', fontSize: 12, marginTop: 4 }}>Username taken</Text>}
                         </View>
 
                         <View style={styles.inputWrapper}>
@@ -186,6 +216,16 @@ export default function SignupScreen() {
                             />
                         </View>
 
+                        <View style={styles.inputWrapper}>
+                            <Text style={styles.inputLabel}>Referral Code (Optional)</Text>
+                            <TextInput
+                                style={styles.input} placeholder="e.g. JOH123"
+                                placeholderTextColor="#94a3b8"
+                                value={referralCode} onChangeText={setReferralCode}
+                                autoCapitalize="characters"
+                            />
+                        </View>
+
                         <TouchableOpacity style={styles.btn} onPress={handleSignup} disabled={loading}>
                             {loading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>Create Account</Text>}
                         </TouchableOpacity>
@@ -199,7 +239,12 @@ export default function SignupScreen() {
 
                 </View>
             </ScrollView>
-        </View>
+            <GetAppModal
+                visible={showAppModal}
+                onClose={() => router.replace('/(citizen)/dashboard')}
+                userEmail={email}
+            />
+        </View >
     );
 }
 
@@ -243,7 +288,12 @@ const styles = StyleSheet.create({
         color: '#1E293B', borderWidth: 1, borderColor: '#E2E8F0',
     },
     btn: {
-        backgroundColor: COLORS.action, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10,
+        backgroundColor: COLORS.action,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 10,
         shadowColor: COLORS.action, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
     },
     btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },

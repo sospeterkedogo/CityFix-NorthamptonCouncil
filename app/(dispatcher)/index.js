@@ -14,6 +14,9 @@ import { getDistanceKm } from '../../src/utils/geo';
 import { Ionicons } from '@expo/vector-icons';
 import TutorialOverlay from '../../src/components/TutorialOverlay';
 
+import { useClientSearch } from '../../src/hooks/useClientSearch';
+import SearchBar from '../../src/components/SearchBar';
+
 export default function DispatcherInbox() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -28,17 +31,26 @@ export default function DispatcherInbox() {
 
   const DUPLICATE_THRESHOLD_KM = 0.02; // 20 meters
 
-  const filteredTickets = tickets.filter(t => {
-    const status = t.status?.toLowerCase() || '';
-    const isResolvedOrVerified = status === 'resolved' || status === 'verified';
+  // 1. Status Filter
+  const statusFiltered = React.useMemo(() => {
+    return tickets.filter(t => {
+      const status = t.status?.toLowerCase() || '';
+      const isResolvedOrVerified = status === 'resolved' || status === 'verified';
+      if (filter === 'resolved') return isResolvedOrVerified;
+      return !isResolvedOrVerified;
+    });
+  }, [tickets, filter]);
 
-    if (filter === 'resolved') return isResolvedOrVerified;
-    return !isResolvedOrVerified;
-  });
+  // 2. Search Filter (Chained)
+  const { searchQuery, setSearchQuery, filteredData: finalFilteredTickets, performManualSearch } = useClientSearch(statusFiltered, [
+    'title', 'description', 'category', 'id'
+  ]);
 
   useEffect(() => {
     loadTickets();
   }, []);
+
+  // ... (rest of methods: loadTickets, isVideo, galleries, openExternalMap)
 
   const loadTickets = async () => {
     const data = await TicketService.getAllTickets();
@@ -399,8 +411,15 @@ export default function DispatcherInbox() {
               </TouchableOpacity>
             </View>
 
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSearch={performManualSearch}
+              placeholder="Search tickets..."
+            />
+
             <FlatList
-              data={filteredTickets}
+              data={finalFilteredTickets}
               renderItem={({ item }) => <TicketRow item={item} />}
               keyExtractor={(item, index) => item.id || String(index)}
               ListEmptyComponent={<Text style={{ padding: 20, color: '#999', textAlign: 'center' }}>No tickets in this section.</Text>}

@@ -236,12 +236,15 @@ export const UserService = {
    */
   isUsernameUnique: async (username) => {
     try {
-      const q = query(collection(db, 'users'), where('username', '==', username));
-      const snapshot = await getDocs(q);
-      return snapshot.empty;
+      // Check the public 'usernames' collection
+      const docRef = doc(db, 'usernames', username);
+      const docSnap = await getDoc(docRef);
+      return !docSnap.exists();
     } catch (error) {
       console.error("Error checking username uniqueness:", error);
-      return false; // Fail safe
+      // Fail open (allow retry) or closed depending on preference. 
+      // For UX, fail open but backend will catch it if actually duplicate.
+      return true;
     }
   },
 

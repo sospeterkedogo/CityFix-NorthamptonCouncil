@@ -4,28 +4,66 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
+import { useAuth } from '../../src/context/AuthContext';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../src/config/firebase';
+
+import Toast from '../../src/components/Toast';
+
+const FORMSPREE_URL = 'https://formspree.io/f/mwvpaaqd';
 
 export default function HelpSupport() {
     const router = useRouter();
-    const [concern, setConcern] = useState('');
-    const [loading, setLoading] = useState(false);
     const [expandedFaq, setExpandedFaq] = useState(null);
 
+    const { user } = useAuth();
+    const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '' });
+
     const handleSubmit = async () => {
-        if (!concern.trim()) {
-            Alert.alert("Empty Field", "Please enter your concern before submitting.");
+        if (!message.trim()) {
+            setToast({ visible: true, message: "Please enter your concern." });
             return;
         }
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            // 1. Save to Firestore (Permanent Record)
+            await addDoc(collection(db, 'feedback'), {
+                userId: user.uid,
+                userEmail: user.email,
+                subject: 'General Support',
+                message,
+                createdAt: serverTimestamp(),
+                status: 'new'
+            });
+
+            // 2. Send Email via Formspree (Notification)
+            const response = await fetch(FORMSPREE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    subject: 'City Fix Feedback: General Support',
+                    message: message,
+                    userId: user.uid
+                })
+            });
+
+            if (response.ok) {
+                setToast({ visible: true, message: "Feedback sent successfully!" });
+                setMessage('');
+            } else {
+                throw new Error("Email service failed");
+            }
+
+        } catch (error) {
+            console.error(error);
+            setToast({ visible: true, message: "Failed to send. Please try again." });
+        } finally {
             setLoading(false);
-            setConcern('');
-            Alert.alert("Received", "Thank you for your feedback. We will look into it shortly.", [
-                { text: "OK" }
-            ]);
-        }, 1500);
+        }
     };
 
     const toggleFaq = (index) => {
@@ -81,13 +119,15 @@ export default function HelpSupport() {
                     <Text style={styles.sectionTitle}>Contact Us / Report a Concern</Text>
                     <View style={styles.card}>
                         <Text style={styles.label}>How can we help you?</Text>
+
                         <TextInput
                             style={styles.textArea}
                             multiline
                             numberOfLines={5}
                             placeholder="Describe your issue or feedback here..."
-                            value={concern}
-                            onChangeText={setConcern}
+                            placeholderTextColor="#999"
+                            value={message}
+                            onChangeText={setMessage}
                             textAlignVertical="top"
                         />
                         <TouchableOpacity
@@ -106,6 +146,11 @@ export default function HelpSupport() {
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </View>
+            <Toast
+                visible={toast.visible}
+                message={toast.message}
+                onHide={() => setToast({ ...toast, visible: false })}
+            />
         </SafeAreaView>
     );
 }
