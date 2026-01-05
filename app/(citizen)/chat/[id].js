@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, setDoc } from 'firebase/firestore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
@@ -17,6 +17,39 @@ export default function ChatScreen() {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [roomId, setRoomId] = useState(null);
+
+    // Generic Function to start either call type
+    const startCall = async (callType) => {
+        const callId = [user.uid, friendId].sort().join('_');
+
+        // 1. Create Call Signal Document (Shared State)
+        await setDoc(doc(db, 'calls', callId), {
+            callerId: user.uid,
+            callerName: user.name || user.email,
+            receiverId: friendId,
+            status: 'ringing', // ringing, accepted, rejected, ended
+            callType: callType,
+            createdAt: Date.now()
+        });
+
+        // 2. Send Notification (Trigger Receiver)
+        await addDoc(collection(db, 'users', friendId, 'notifications'), {
+            title: callType === 'voice' ? "Incoming Voice Call" : "Incoming Video Call",
+            body: `${user.email} is calling...`,
+            type: 'call_invite', // We can use one type and pass mode in data
+            callId: callId,
+            callMode: callType, // 'voice' or 'video'
+            fromId: user.uid,
+            read: false,
+            createdAt: Date.now()
+        });
+
+        // 2. Join the room yourself
+        router.push({
+            pathname: '/(citizen)/call',
+            params: { callId, name: friendName, type: callType } // <--- Pass the type
+        });
+    };
 
     useEffect(() => {
         setupChat();
@@ -77,42 +110,56 @@ export default function ChatScreen() {
         <SafeAreaView style={[STYLES.container, { padding: 0 }]}>
             <View style={styles.webContainer}>
                 {/* Header */}
+                {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.push('/(citizen)/social')}>
-                        <Ionicons name="arrow-back" size={24} color={COLORS.primary} style={{ float: 'left' }} />
+                    <TouchableOpacity onPress={() => router.push('/(citizen)/social')} style={{ marginRight: 10 }}>
+                        <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
                     </TouchableOpacity>
-                    <View style={styles.headerInfo}>
+
+                    {/* User Info - Inline */}
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                         <View>
                             <View style={[styles.avatarSmall, friendPhoto ? { backgroundColor: 'transparent' } : { backgroundColor: COLORS.primary }]}>
                                 {friendPhoto ? (
                                     <Image source={{ uri: friendPhoto }} style={{ width: 30, height: 30, borderRadius: 15 }} />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>
-                                        {(friendName || 'User').charAt(0).toUpperCase()}
+                                        {(friendName ? friendName.charAt(0).toUpperCase() : '?')}
                                     </Text>
                                 )}
                             </View>
-
-                            {/* Online Dot */}
                             {friendLastActive && (
                                 <View style={[styles.onlineDotHeader, {
                                     backgroundColor: (Date.now() - Number(friendLastActive) < 300000) ? COLORS.success : '#ccc'
                                 }]} />
                             )}
                         </View>
-                        <View>
-                            <Text style={styles.headerTitle}>{friendName || 'Neighbor'}</Text>
+
+                        <View style={{ marginLeft: 10 }}>
+                            <Text style={[styles.headerTitle, { fontSize: 16, marginBottom: 0 }]}>{friendName || 'Neighbor'}</Text>
                             {friendLastActive && (
-                                <Text style={styles.headerSub}>
+                                <Text style={{ fontSize: 10, color: '#666' }}>
                                     {(Date.now() - Number(friendLastActive) < 300000) ? 'Online' : 'Offline'}
                                 </Text>
                             )}
                         </View>
                     </View>
+
+                    {/* Call Buttons */}
+                    <View style={{ flexDirection: 'row', gap: 15 }}>
+                        <TouchableOpacity onPress={() => startCall('voice')}>
+                            <Ionicons name="call" size={24} color="#22c55e" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => startCall('video')}>
+                            <Ionicons name="videocam" size={24} color="#22c55e" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Messages Area */}
                 <FlatList
+                    style={{ flex: 1 }}
                     data={messages}
                     renderItem={renderMessage}
                     keyExtractor={item => item._id}
@@ -158,7 +205,6 @@ const styles = StyleSheet.create({
         })
     },
     header: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: 'white', borderBottomWidth: 1, borderColor: '#eee' },
-    headerInfo: { flexDirection: 'row', alignItems: 'center', marginLeft: 10 },
     avatarSmall: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
     headerTitle: { fontWeight: 'bold', fontSize: 16 },
 
