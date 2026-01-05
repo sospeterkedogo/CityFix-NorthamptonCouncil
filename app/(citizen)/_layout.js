@@ -179,13 +179,32 @@ function CallListener() {
         return () => unsubscribe();
     }, [user]);
 
+    // Listener for Active Call Status (Remote Cancellation)
+    React.useEffect(() => {
+        if (!incomingCall) return;
+
+        const unsubCall = onSnapshot(doc(db, 'calls', incomingCall.callId), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.status === 'ended' || data.status === 'rejected' || data.status === 'canceled') {
+                    setIncomingCall(null);
+                }
+            }
+        });
+
+        return () => unsubCall();
+    }, [incomingCall]);
+
     const handleAccept = async () => {
         if (incomingCall) {
             // Mark as read
             await updateDoc(doc(db, 'users', user.uid, 'notifications', incomingCall.id), { read: true });
 
-            // Update Call Status
-            await updateDoc(doc(db, 'calls', incomingCall.callId), { status: 'accepted' });
+            // Update Call Status and Set Start Time
+            await updateDoc(doc(db, 'calls', incomingCall.callId), {
+                status: 'accepted',
+                startedAt: Date.now()
+            });
 
             const { callId, callMode, fromId } = incomingCall;
             setIncomingCall(null);

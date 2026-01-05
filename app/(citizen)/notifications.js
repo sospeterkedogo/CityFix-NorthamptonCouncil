@@ -5,48 +5,161 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../src/constants/theme';
 import { useNotifications } from '../../src/context/NotificationContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { query, collection, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '../../src/config/firebase';
 
 import { formatRelativeTime } from '../../src/utils/dateUtils';
 
 export default function NotificationsScreen() {
     const router = useRouter();
-    const { notifications, loading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+    const { user } = useAuth(); // Need user for call query
+    const { notifications, loading: notifLoading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
 
-    const handleNotificationPress = (item) => {
-        markAsRead(item.id);
+    const [calls, setCalls] = React.useState([]);
+    const [callsLoading, setCallsLoading] = React.useState(true);
 
-        // Deep Linking Logic
-        if (item.type === 'chat' && item.partnerId) {
+    // Fetch Call History
+    React.useEffect(() => {
+        if (!user) return;
+
+        // Query: Calls where I am caller OR receiver
+        // Firestore OR queries are separate, so we combine client-side or listen to both
+        // Simpler: Listen to one "unified" logic if possible, but here we'll listen to receiver queries primarily 
+        // as user asked for "Missed and Received" (Incoming). 
+        // We will add Outgoing for completeness if simple, but focus on Incoming.
+
+        const q = query(
+            collection(db, 'calls'),
+            where('receiverId', '==', user.uid),
+            orderBy('createdAt', 'desc'),
+            limit(20)
+        );
+
+        const unsub = onSnapshot(q, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                isCall: true // Flag to distinguish
+            }));
+            setCalls(list);
+            setCallsLoading(false);
+        }, (err) => {
+            // Index might be missing for composite query, handle graceful fallbacks if needed? 
+            // "receiverId" + "createdAt" usually requires index
+            console.error(err);
+            setCallsLoading(false);
+        });
+
+        return () => unsub();
+    }, [user]);
+
+    // Merge and Sort
+    const feed = React.useMemo(() => {
+        // Filter out "Active" call invites from notifications array
+        // The user only wants HISTORY (the 'calls' collection), not the alerts
+        const historyOnlyNotifs = notifications.filter(n => n.type !== 'call_invite');
+
+        const combined = [...historyOnlyNotifs, ...calls];
+        return combined.sort((a, b) => {
+            const tA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+            const tB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+            return tB - tA; // Descending
+        });
+    }, [notifications, calls]);
+
+    const handleItemPress = (item) => {
+        if (item.isCall) {
+            // Navigate to chat with that person
+            const otherId = item.callerId === user.uid ? item.receiverId : item.callerId;
+            const otherName = item.callerId === user.uid ? 'User' : item.callerName; // Fallback
             router.push({
                 pathname: '/(citizen)/chat/[id]',
-                params: {
-                    id: item.partnerId,
-                    name: item.name || 'Neighbor',
-                    lastActive: Date.now() // rough fallback
-                }
+                params: { id: otherId, name: otherName }
             });
-        }
-        else if (item.title?.includes('Accepted') || item.body?.includes('accepted')) {
-            router.push('/(citizen)/social');
-        }
-        else if (item.type === 'request') {
-            router.push('/(citizen)/social'); // Go to requests tab (default or switch?) 
-            // Ideally social page handles tab switching if needed, 
-            // but 'social' default is fine or user manually clicks 'Requests'
+        } else {
+            // Standard Notification Handler
+            markAsRead(item.id);
+            if (item.type === 'chat' && item.partnerId) {
+                router.push({ pathname: '/(citizen)/chat/[id]', params: { id: item.partnerId, name: item.name || 'Neighbor' } });
+            } else if (item.title?.includes('Accepted') || item.body?.includes('accepted') || item.type === 'request') {
+                router.push('/(citizen)/social');
+            }
         }
     };
 
+    const getDurationText = (call) => {
+        if (!call.startedAt || !call.endedAt) return null;
+        const diff = call.endedAt - call.startedAt;
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        return `${mins}m ${secs}s`;
+    };
+
     const renderItem = ({ item }) => {
+        // CALL ITEM RENDERER
+        if (item.isCall) {
+            // Priority Logic:
+            // 1. Rejected -> Declined
+            // 2. Accepted/Started -> Received
+            // 3. Else -> Missed
+
+            let type = 'missed';
+            if (item.status === 'rejected') type = 'declined';
+            else if (item.status === 'accepted' || (item.status === 'ended' && item.startedAt)) type = 'received';
+
+            const duration = getDurationText(item);
+
+            let iconName = 'call';
+            let iconColor = '#5f6368';
+            let titleText = `Call from ${item.callerName || 'Unknown'}`;
+            let subText = '';
+
+            if (type === 'declined') {
+                iconName = 'close-circle';
+                iconColor = '#FF4444'; // Red
+                subText = 'Declined';
+                titleText = `Call from ${item.callerName || 'Unknown'}`;
+            } else if (type === 'received') {
+                iconName = 'call';
+                iconColor = COLORS.success; // Green
+                titleText = `Received call from ${item.callerName || 'Unknown'}`;
+                subText = duration ? `Duration: ${duration}` : 'Connected';
+            } else { // Missed
+                iconName = 'warning';
+                iconColor = '#FF4444';
+                titleText = `Missed call from ${item.callerName || 'Unknown'}`;
+                subText = 'Missed';
+            }
+
+            return (
+                <TouchableOpacity style={styles.card} onPress={() => handleItemPress(item)}>
+                    <View style={styles.cardMain}>
+                        <View style={[styles.iconContainer, { backgroundColor: '#F1F3F4' }]}>
+                            <Ionicons name={iconName} size={20} color={iconColor} />
+                        </View>
+                        <View style={styles.contentContainer}>
+                            <View style={styles.headerRow}>
+                                <Text style={[styles.title, { fontWeight: type === 'missed' ? 'bold' : '600' }]}>{titleText}</Text>
+                                <Text style={styles.time}>{formatRelativeTime(new Date(item.createdAt))}</Text>
+                            </View>
+                            <Text style={[styles.body, { color: iconColor, fontWeight: '500' }]}>{subText}</Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            );
+        }
+
+        // STANDARD NOTIFICATION RENDERER
         const isUnread = !item.read;
         const date = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || Date.now());
 
         return (
             <TouchableOpacity
                 style={[styles.card, isUnread ? styles.unreadCard : styles.readCard]}
-                onPress={() => handleNotificationPress(item)}
+                onPress={() => handleItemPress(item)}
                 activeOpacity={0.7}
             >
-                {/* Main Content Area */}
                 <View style={styles.cardMain}>
                     <View style={[styles.iconContainer, !isUnread && styles.readIconContainer]}>
                         <Ionicons
@@ -71,7 +184,6 @@ export default function NotificationsScreen() {
                     </View>
                 </View>
 
-                {/* Delete Button */}
                 <TouchableOpacity
                     style={styles.deleteBtn}
                     onPress={() => deleteNotification(item.id)}
@@ -83,7 +195,7 @@ export default function NotificationsScreen() {
         );
     };
 
-    if (loading) {
+    if (notifLoading || callsLoading) {
         return (
             <View style={styles.center}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
@@ -105,7 +217,7 @@ export default function NotificationsScreen() {
                 </View>
 
                 <FlatList
-                    data={notifications}
+                    data={feed}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.listContent}
@@ -114,7 +226,7 @@ export default function NotificationsScreen() {
                         <View style={styles.emptyContainer}>
                             <Ionicons name="notifications-off-outline" size={80} color="#e0e0e0" />
                             <Text style={styles.emptyText}>All caught up</Text>
-                            <Text style={styles.emptySubtext}>You have no new notifications at this time. Enjoy your day!</Text>
+                            <Text style={styles.emptySubtext}>You have no new notifications at this time.</Text>
                         </View>
                     }
                 />

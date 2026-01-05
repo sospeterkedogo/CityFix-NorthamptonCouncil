@@ -13,6 +13,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import MapPreview from '../../src/components/MapPreview';
+import Toast from '../../src/components/Toast';
 
 const DRAFTS_KEY = 'report_drafts';
 
@@ -34,6 +35,9 @@ export default function ReportIssueScreen() {
   const [customCategory, setCustomCategory] = useState('');
   const [location, setLocation] = useState(null);
   const [showMap, setShowMap] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
 
   // Media State
   const [media, setMedia] = useState([]); // Array of local URIs
@@ -104,12 +108,20 @@ export default function ReportIssueScreen() {
 
       await AsyncStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
 
-      Alert.alert("Saved", "Draft saved to 'my drafts'.", [
-        { text: "OK", onPress: () => router.back() }
-      ]);
+      setToastMessage("Draft saved to 'my drafts'");
+      setToastType("success");
+      setToastVisible(true);
+
+      // Delay back navigation slightly so user sees toast
+      setTimeout(() => {
+        router.replace('/(citizen)/dashboard');
+      }, 1500);
 
     } catch (e) {
       console.log("Error saving draft", e);
+      setToastMessage("Failed to save draft");
+      setToastType("error");
+      setToastVisible(true);
     }
   };
 
@@ -239,7 +251,8 @@ export default function ReportIssueScreen() {
       const result = await TicketService.submitTicket(
         user.uid, title, desc, finalCategory,
         location.latitude, location.longitude,
-        uploadedUrls
+        uploadedUrls,
+        location.address // PASS ADDRESS
       );
 
       setLoading(false);
@@ -455,6 +468,13 @@ export default function ReportIssueScreen() {
           visible={showMap}
           onClose={() => setShowMap(false)}
           onSelectLocation={setLocation}
+        />
+
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
         />
       </ScrollView>
     </SafeAreaView>

@@ -323,7 +323,11 @@ export default function FeedCard({ ticket, showDelete = false }) {
                         />
                     ) : (
                         <ExpoImage
-                            source={imageError || !config.image ? 'https://picsum.photos/seed/picsum/600/400' : config.image}
+                            source={
+                                (imageError || !config.image || (config.image.startsWith('blob:') && !config.image.includes('localhost')))
+                                    ? 'https://picsum.photos/seed/picsum/600/400'
+                                    : config.image
+                            }
                             style={styles.image}
                             contentFit="cover"
                             transition={500}

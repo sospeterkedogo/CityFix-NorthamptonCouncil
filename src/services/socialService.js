@@ -78,6 +78,32 @@ export const SocialService = {
             // Like
             await setDoc(likeRef, { createdAt: Date.now() });
             await updateDoc(ticketRef, { voteCount: increment(1) });
+
+            // LOG ACTIVITY
+            await SocialService.logUserActivity(userId, 'like', ticketId, { type: 'social' });
+
+            // NOTIFICATION: Notify Post Owner (if not self)
+            try {
+                const ticketSnap = await getDoc(ticketRef);
+                if (ticketSnap.exists()) {
+                    const post = ticketSnap.data();
+                    if (post.userId && post.userId !== userId) {
+                        // We need sender name - but we don't have it here easily without fetching sender
+                        // We can just say "Someone" or pass it in. Ideally pass it in.
+                        // For MVP, just "A neighbor".
+                        await NotificationService.sendNotification(
+                            post.userId,
+                            "New Like",
+                            `A neighbor liked your post: "${post.title || '...'}"`,
+                            'social',
+                            { postId: ticketId }
+                        );
+                    }
+                }
+            } catch (e) {
+                console.warn("Error sending like notification:", e);
+            }
+
             return true; // Liked
         }
     },
@@ -105,6 +131,29 @@ export const SocialService = {
             // Add Upvote
             await setDoc(upvoteRef, { createdAt: Date.now() });
             await updateDoc(ticketRef, { upvoteCount: increment(1) });
+
+            // LOG ACTIVITY
+            await SocialService.logUserActivity(userId, 'upvote', ticketId, { type: 'report' });
+
+            // NOTIFICATION: Notify Reporter (if not self)
+            try {
+                const ticketSnap = await getDoc(ticketRef);
+                if (ticketSnap.exists()) {
+                    const ticket = ticketSnap.data();
+                    if (ticket.userId && ticket.userId !== userId) {
+                        await NotificationService.sendNotification(
+                            ticket.userId,
+                            "New Upvote",
+                            `A neighbor upvoted your report: "${ticket.title || '...'}"`,
+                            'social',
+                            { ticketId: ticketId }
+                        );
+                    }
+                }
+            } catch (e) {
+                console.warn("Error sending upvote notification:", e);
+            }
+
             return true;
         }
     },
@@ -125,6 +174,9 @@ export const SocialService = {
         await updateDoc(doc(db, TICKETS_COL, ticketId), {
             commentCount: increment(1)
         });
+
+        // LOG ACTIVITY
+        await SocialService.logUserActivity(userId, 'comment', ticketId, { text });
     },
 
     getComments: async (ticketId) => {
@@ -244,4 +296,34 @@ export const SocialService = {
     deletePost: async (postId) => {
         await deleteDoc(doc(db, TICKETS_COL, postId));
     },
+
+    // 5. NEW: Log User Activity
+    logUserActivity: async (userId, activityType, relatedId, metadata = {}) => {
+        try {
+            await addDoc(collection(db, 'users', userId, 'recent_activity'), {
+                type: activityType, // 'like', 'comment', 'upvote', 'post'
+                relatedId: relatedId,
+                metadata: metadata,
+                createdAt: Date.now()
+            });
+        } catch (e) {
+            console.warn("Failed to log activity:", e);
+        }
+    },
+
+    // 6. NEW: Fetch User Activity
+    getUserActivity: async (userId) => {
+        try {
+            const q = query(
+                collection(db, 'users', userId, 'recent_activity'),
+                orderBy('createdAt', 'desc'),
+                limit(20)
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data(), isActivity: true }));
+        } catch (e) {
+            console.warn("Error fetching activity:", e);
+            return [];
+        }
+    }
 };

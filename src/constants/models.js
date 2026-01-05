@@ -59,7 +59,7 @@ export const USER_ROLES = {
 };
 
 
-export const createTicket = (userId, title, description, category, lat, lng) => {
+export const createTicket = (userId, title, description, category, lat, lng, address) => {
   return {
     id: '', // Will be set by Firestore
     userId,
@@ -71,6 +71,7 @@ export const createTicket = (userId, title, description, category, lat, lng) => 
     location: {
       latitude: lat,
       longitude: lng,
+      address: address
     },
     photos: [],
     video: null,
