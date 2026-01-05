@@ -20,7 +20,12 @@ export default function ChatScreen() {
 
     // Generic Function to start either call type
     const startCall = async (callType) => {
-        const callId = [user.uid, friendId].sort().join('_');
+        // Use a unique ID for every call to ensure fresh state/listeners
+        const callId = `${[user.uid, friendId].sort().join('_')}_${Date.now()}`;
+
+        // Generate a Stable Session ID for this specific call instance
+        // This persists across refreshes of the call page, preventing "New User" splitting
+        const sessionUid = `${user.uid}_${Math.floor(Math.random() * 10000)}`;
 
         // 1. Create Call Signal Document (Shared State)
         await setDoc(doc(db, 'calls', callId), {
@@ -35,7 +40,7 @@ export default function ChatScreen() {
         // 2. Send Notification (Trigger Receiver)
         await addDoc(collection(db, 'users', friendId, 'notifications'), {
             title: callType === 'voice' ? "Incoming Voice Call" : "Incoming Video Call",
-            body: `${user.email} is calling...`,
+            body: `${user.displayName || user.name || user.email.split('@')[0]} is calling...`,
             type: 'call_invite', // We can use one type and pass mode in data
             callId: callId,
             callMode: callType, // 'voice' or 'video'
@@ -44,11 +49,18 @@ export default function ChatScreen() {
             createdAt: Date.now()
         });
 
-        // 2. Join the room yourself
-        router.push({
-            pathname: '/(citizen)/call',
-            params: { callId, name: friendName, type: callType } // <--- Pass the type
-        });
+        // 3. Join the room yourself
+        if (Platform.OS === 'web') {
+            // HARD RESET ENTRY: Force full browser reload to clear memory/Zego state
+            console.log("Hard Resetting into Call Screen...");
+            const url = `/(citizen)/call?callId=${callId}&name=${encodeURIComponent(friendName || '')}&type=${callType}&sessionUid=${sessionUid}`;
+            window.location.href = url;
+        } else {
+            router.push({
+                pathname: '/(citizen)/call',
+                params: { callId, name: friendName, type: callType, sessionUid }
+            });
+        }
     };
 
     useEffect(() => {

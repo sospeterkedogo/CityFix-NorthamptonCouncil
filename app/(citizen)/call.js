@@ -8,7 +8,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { db } from '../../src/config/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 const AppID = Number(process.env.EXPO_PUBLIC_ZEGO_APP_ID);
 const AppSign = process.env.EXPO_PUBLIC_ZEGO_APP_SIGN;
@@ -20,6 +20,33 @@ export default function CallPage() {
     // 1. Get the 'type' param (video or voice)
     const { callId, name, type } = useLocalSearchParams();
     const [callStatus, setCallStatus] = React.useState('ringing');
+    // Synced Ref for Cleanup Closure
+    const callStatusRef = React.useRef(callStatus);
+    React.useEffect(() => { callStatusRef.current = callStatus; }, [callStatus]);
+    const isEndingRef = React.useRef(false); // Track intentional end
+
+    // Debug & Safeguard
+    React.useEffect(() => {
+        console.log("CallPage Mounted. CallID:", callId, "Type:", type, "User:", user?.uid);
+        if (!callId || !user) {
+            console.warn("Missing callId or user, backing out in 3s...");
+            // setTimeout(() => router.back(), 3000); 
+        }
+
+        // Cleanup on unmount (e.g. back gesture)
+        return () => {
+            // Avoid double-update if we already pressed hangup OR if call is already ended remotely
+            if (!isEndingRef.current && callStatusRef.current !== 'ended') {
+                // We can fire-and-forget this update
+                updateDoc(doc(db, 'calls', callId), { status: 'ended' }).catch(e => console.log("Cleanup error", e));
+            }
+        };
+    }, [callId, user]);
+
+    if (!user) return <View style={styles.center}><Text style={{ color: 'white' }}>Loading User...</Text></View>;
+    if (!callId) return <View style={styles.center}><Text style={{ color: 'white' }}>Initializing Call...</Text></View>;
+
+    const unsubRef = React.useRef(null);
 
     // Listener for Call Status
     React.useEffect(() => {
@@ -28,14 +55,24 @@ export default function CallPage() {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setCallStatus(data.status);
+                callStatusRef.current = data.status; // Sync Ref
 
-                if (data.status === 'rejected') {
-                    // Native Alert
-                    alert('User declined the call.');
+                if (data.status === 'rejected' || data.status === 'ended' || data.status === 'canceled') {
+                    // If we are already ending the call ourselves, DO NOT trigger back() again
+                    if (isEndingRef.current) return;
+
+                    // STOP LISTENING to prevent crash on remote termination
+                    if (unsubRef.current) {
+                        unsubRef.current(); // Unsubscribe immediately
+                        unsubRef.current = null;
+                    }
+
+                    if (data.status === 'rejected') alert('User declined the call.');
                     router.back();
                 }
             }
         });
+        unsubRef.current = unsub;
         return () => unsub();
     }, [callId]);
 
@@ -54,31 +91,55 @@ export default function CallPage() {
 
     return (
         <View style={styles.container}>
-            {callStatus === 'ringing' && (
-                <View style={{ position: 'absolute', zIndex: 999, top: 60, width: '100%', alignItems: 'center' }}>
-                    <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 20 }}>
-                        <Text style={{ color: 'white', fontWeight: 'bold' }}>Calling... Waiting for response</Text>
-                    </View>
+            {callStatus !== 'accepted' ? (
+                <View style={styles.center}>
+                    <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
+                        {callStatus === 'ringing' ? "Calling..." : "Connecting..."}
+                    </Text>
+                    <Text style={{ color: '#aaa' }}>Waiting for response...</Text>
                 </View>
-            )}
-            <ZegoUIKitPrebuiltCall
-                appID={AppID}
-                appSign={AppSign}
-                userID={user.uid}
-                userName={user.email.split('@')[0]}
-                callID={callId}
+            ) : (
+                /* Force component remount on callId change using 'key' */
+                callId && (
+                    <ZegoUIKitPrebuiltCall
+                        key={callId}
+                        appID={AppID}
+                        appSign={AppSign}
+                        userID={user.uid}
+                        userName={user.email.split('@')[0]}
+                        callID={callId}
 
-                config={{
-                    ...callConfig,
-                    onHangUp: () => {
-                        router.back();
-                    },
-                    showLeaveRoomConfirmDialog: true, // UX Improvement
-                    topMenuBarConfig: {
-                        buttons: ['minimizing', 'leave'],
-                    },
-                }}
-            />
+                        config={{
+                            ...callConfig,
+                            // UX: Skip device checks/toggles
+                            turnOnCameraWhenJoining: type !== 'voice',
+                            turnOnMicrophoneWhenJoining: true,
+                            useSpeakerWhenJoining: true,
+
+                            onHangUp: async () => {
+                                // Immediate Termination
+                                isEndingRef.current = true;
+                                try {
+                                    await updateDoc(doc(db, 'calls', callId), { status: 'ended' });
+                                } catch (e) { console.warn("Error ending call", e); }
+                                router.back();
+                            },
+                            showLeaveRoomConfirmDialog: true, // UX Improvement
+                            topMenuBarConfig: {
+                                buttons: ['minimizing', 'leave'],
+                            },
+                            // End call if the other person leaves (1-on-1)
+                            onOnlySelfInRoom: () => {
+                                // Just leave without updating (or maybe update?) 
+                                // Usually auto-handled by 'ended' status elsewhere, but good to be safe.
+                                // But usually onOnlySelfInRoom means the OTHER left.
+                                // We will let the listener handle the 'ended' status for us, or we just back out.
+                                router.back();
+                            },
+                        }}
+                    />
+                )
+            )}
         </View>
     );
 }

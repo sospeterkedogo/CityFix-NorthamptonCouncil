@@ -31,12 +31,26 @@ export default function SimpleExpandableRow({ ticket: item }) {
     const afterPhoto = item.afterPhoto;
 
     // Display Logic
-    const displayName = isSocial ? (item.userName || "Neighbor") : (item.category || "Report");
-    const displayDetail = isSocial ? item.title || item.description : item.title;
+    let displayName = isSocial ? (item.userName || "Neighbor") : (item.category || "Report");
+    let displayDetail = isSocial ? item.title || item.description : item.title;
+
+    if (item.isActivity) {
+        displayName = "You";
+        if (item.type === 'like') displayDetail = "Liked a post";
+        else if (item.type === 'upvote') displayDetail = "Upvoted a report";
+        else if (item.type === 'comment') displayDetail = `Commented: "${item.metadata?.text || '...'}"`;
+    }
+
     const displayDate = formatRelativeTime(item.createdAt);
 
     // Notification Icon
     const getIcon = () => {
+        if (item.isActivity) {
+            if (item.type === 'like') return "heart";
+            if (item.type === 'upvote') return "thumbs-up";
+            if (item.type === 'comment') return "chatbubble";
+            return "time";
+        }
         if (isSocial) return "chatbubble-ellipses";
         if (isResolved) return "checkmark-circle";
         if (item.status === 'in_progress') return "construct";
@@ -78,7 +92,7 @@ export default function SimpleExpandableRow({ ticket: item }) {
                     <View style={styles.metaRow}>
                         <Ionicons name="location-sharp" size={14} color="#666" style={{ marginRight: 4 }} />
                         <Text style={styles.location}>
-                            {item.locationName || item.street || item.locationAddress || "Unknown Location"}
+                            {item.locationName || item.street || item.locationAddress || item.location?.address || "Unknown Location"}
                         </Text>
                     </View>
 

@@ -187,6 +187,17 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
+            // Set Last Active to past to show "Offline" immediately
+            if (auth.currentUser) {
+                try {
+                    await setDoc(doc(db, 'users', auth.currentUser.uid), {
+                        lastActive: Date.now() - 600000 // 10 mins ago
+                    }, { merge: true });
+                } catch (e) {
+                    console.log("Failed to set offline status", e);
+                }
+            }
+
             await signOut(auth);
             setUser(null);
             setUserRole(null);

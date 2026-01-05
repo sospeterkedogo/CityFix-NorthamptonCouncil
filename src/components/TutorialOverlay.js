@@ -32,12 +32,8 @@ export default function TutorialOverlay({ role, page }) {
     }, []);
 
     const checkTutorial = async () => {
-        // Reset logic: We want this to show every time for the demo?
-        // If you want it ONCE per install, uncomment the AsyncStorage check below.
-        /*
         const hasSeen = await AsyncStorage.getItem(`tutorial_${role}`);
         if (hasSeen) return;
-        */
         setVisible(true);
     };
 
@@ -46,10 +42,14 @@ export default function TutorialOverlay({ role, page }) {
         if (stepIndex < steps.length - 1) {
             setStepIndex(stepIndex + 1);
         } else {
-            // Finished
+            // Finished but NOT saved forever
             setVisible(false);
-            await AsyncStorage.setItem(`tutorial_${role}`, 'true');
         }
+    };
+
+    const handleDismissForever = async () => {
+        setVisible(false);
+        await AsyncStorage.setItem(`tutorial_${role}`, 'true');
     };
 
     const steps = TUTORIAL_STEPS[role] || [];
@@ -73,6 +73,10 @@ export default function TutorialOverlay({ role, page }) {
                     <Text style={styles.text}>{currentStep.text}</Text>
 
                     <View style={styles.footer}>
+                        <TouchableOpacity onPress={handleDismissForever}>
+                            <Text style={{ color: '#94A3B8', fontWeight: '600' }}>Don't show again</Text>
+                        </TouchableOpacity>
+
                         <View style={styles.dotsContainer}>
                             {steps.map((_, i) => (
                                 <View key={i} style={[styles.dot, i === stepIndex && styles.activeDot]} />
@@ -81,7 +85,7 @@ export default function TutorialOverlay({ role, page }) {
 
                         <TouchableOpacity onPress={handleNext} style={styles.btn}>
                             <Text style={styles.btnText}>
-                                {stepIndex === steps.length - 1 ? "Start Demo" : "Next Tip"}
+                                {stepIndex === steps.length - 1 ? "Close" : "Next"}
                             </Text>
                             <Ionicons name="arrow-forward" size={16} color="white" style={{ marginLeft: 8 }} />
                         </TouchableOpacity>

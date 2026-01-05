@@ -6,6 +6,7 @@ import { NotificationService } from '../../src/services/notificationService';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import TutorialOverlay from '../../src/components/TutorialOverlay';
+import { formatRelativeTime } from '../../src/utils/dateUtils';
 
 export default function EngineerNotifications() {
     const { user } = useAuth();
@@ -40,11 +41,6 @@ export default function EngineerNotifications() {
 
         // 3. Navigate based on type
         if (item.ticketId) {
-            // Navigate to resolve page if assigned, or just dashboard
-            // For now, let's go to Dashboard or Resolve if it's a new job
-            // If it's "New Job Assigned", maybe go to resolve? 
-            // Actually, just go to history or dashboard.
-            // Let's go to dashboard as a safe default.
             router.push('/(engineer)/dashboard');
         }
     };
@@ -62,43 +58,59 @@ export default function EngineerNotifications() {
         }
     };
 
-    const renderItem = ({ item }) => (
-        <TouchableOpacity
-            style={[styles.row, !item.read && styles.unreadRow]}
-            onPress={() => handlePress(item)}
-        >
-            <View style={[styles.iconCircle, { backgroundColor: item.read ? '#eee' : '#e3f2fd' }]}>
-                <Ionicons
-                    name={item.type === 'status_update' ? "checkmark-done-circle" : "information-circle"}
-                    size={24}
-                    color={item.read ? '#999' : COLORS.primary}
-                />
-            </View>
-            <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={[styles.title, !item.read && styles.unreadTitle]}>{item.title}</Text>
-                    <Text style={styles.time}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+    const renderItem = ({ item }) => {
+        const isUnread = !item.read;
+        // Fix for "Invalid Date"
+        const date = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || Date.now());
+
+        return (
+            <TouchableOpacity
+                style={[styles.card, isUnread ? styles.unreadCard : styles.readCard]}
+                onPress={() => handlePress(item)}
+                activeOpacity={0.7}
+            >
+                {/* Main Content Area */}
+                <View style={styles.cardMain}>
+                    <View style={[styles.iconContainer, !isUnread && styles.readIconContainer]}>
+                        <Ionicons
+                            name={item.type === 'status_update' ? "checkmark-done-circle" : "information-circle"}
+                            size={20}
+                            color={isUnread ? 'white' : '#5f6368'}
+                        />
+                    </View>
+
+                    <View style={styles.contentContainer}>
+                        <View style={styles.headerRow}>
+                            <Text style={[styles.title, isUnread && styles.unreadTitle]} numberOfLines={1}>
+                                {item.title}
+                            </Text>
+                            <Text style={styles.time}>
+                                {formatRelativeTime(date)}
+                            </Text>
+                        </View>
+                        <Text style={[styles.body, isUnread && styles.unreadBody]} numberOfLines={2}>
+                            {item.body}
+                        </Text>
+                    </View>
                 </View>
-                <Text style={[styles.body, !item.read && styles.unreadBody]}>{item.body}</Text>
-            </View>
-            {!item.read && <View style={styles.dot} />}
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
-        <View style={STYLES.container}>
+        <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Notifications</Text>
                 {notifications.some(n => !n.read) && (
-                    <TouchableOpacity onPress={markAllRead}>
-                        <Text style={styles.markRead}>Mark all read</Text>
+                    <TouchableOpacity onPress={markAllRead} style={styles.markAllBtn}>
+                        <Text style={styles.markAllText}>Mark all read</Text>
                     </TouchableOpacity>
                 )}
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" style={{ marginTop: 50 }} />
+                <ActivityIndicator size="large" style={{ marginTop: 50 }} color={COLORS.primary} />
             ) : (
                 <FlatList
                     contentContainerStyle={[
@@ -109,7 +121,7 @@ export default function EngineerNotifications() {
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     ListEmptyComponent={
-                        <View style={styles.empty}>
+                        <View style={styles.emptyContainer}>
                             <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
                             <Text style={styles.emptyText}>No notifications yet.</Text>
                         </View>
@@ -121,40 +133,106 @@ export default function EngineerNotifications() {
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: COLORS.background,
+    },
     header: {
         padding: 20,
         backgroundColor: 'white',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        ...STYLES.shadow
+        ...STYLES.shadow,
+        // Web constraint
+        ...(Platform.OS === 'web' ? {
+            maxWidth: 600,
+            width: '100%',
+            alignSelf: 'center',
+            marginTop: 20,
+            borderTopLeftRadius: 10,
+            borderTopRightRadius: 10
+        } : {})
     },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary },
-    markRead: { color: COLORS.action, fontWeight: '600' },
+    headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#202124' },
+    markAllBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: '#F1F3F4',
+    },
+    markAllText: { fontSize: 12, fontWeight: '600', color: COLORS.primary },
 
-    listContent: { padding: 10 },
-    row: {
+    listContent: { paddingVertical: 10 },
+
+    // Card Styles aligned with Citizen UI
+    card: {
         flexDirection: 'row',
-        backgroundColor: 'white',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 10,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        backgroundColor: '#fff',
         alignItems: 'center',
-        ...STYLES.shadow
+        justifyContent: 'space-between',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0'
     },
-    unreadRow: { backgroundColor: '#f0f9ff', borderColor: '#bae6fd', borderWidth: 1 },
+    cardMain: {
+        flexDirection: 'row',
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    unreadCard: {
+        backgroundColor: '#E8F0FE',
+    },
+    readCard: {
+        backgroundColor: '#fff',
+    },
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+    },
+    readIconContainer: {
+        backgroundColor: '#F1F3F4',
+    },
+    contentContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#202124',
+        flex: 1,
+        marginRight: 10,
+    },
+    unreadTitle: {
+        fontWeight: '700',
+        color: '#202124',
+    },
+    time: {
+        fontSize: 12,
+        color: '#5f6368',
+    },
+    body: {
+        fontSize: 14,
+        color: '#5f6368',
+        lineHeight: 20,
+    },
+    unreadBody: {
+        color: '#3c4043',
+    },
 
-    iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-
-    title: { fontSize: 16, fontWeight: '600', color: '#333' },
-    unreadTitle: { color: COLORS.primary, fontWeight: 'bold' },
-
-    body: { fontSize: 14, color: '#666', marginTop: 2 },
-    unreadBody: { color: '#333' },
-
-    time: { fontSize: 12, color: '#999' },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.action, marginLeft: 10 },
-
-    empty: { alignItems: 'center', marginTop: 100 },
+    emptyContainer: { alignItems: 'center', marginTop: 100 },
     emptyText: { marginTop: 10, color: '#999', fontSize: 16 }
 });

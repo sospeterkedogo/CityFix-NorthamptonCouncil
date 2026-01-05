@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, deleteDoc, increment } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { NotificationService } from './notificationService';
 
@@ -124,6 +124,10 @@ export const UserService = {
     await setDoc(doc(db, 'users', toId, 'neighbors', fromId), {
       since: serverTimestamp()
     });
+    // Increment Count for Self
+    await updateDoc(doc(db, 'users', toId), {
+      neighborCount: increment(1)
+    });
 
     // Update the request status to 'accepted' then delete
     await deleteDoc(doc(db, 'friend_requests', requestId));
@@ -132,6 +136,10 @@ export const UserService = {
     try {
       await setDoc(doc(db, 'users', fromId, 'neighbors', toId), {
         since: serverTimestamp()
+      });
+      // Increment Count for Sender
+      await updateDoc(doc(db, 'users', fromId), {
+        neighborCount: increment(1)
       });
     } catch (e) {
       console.warn("Could not add neighbor to sender's list (permissions?):", e);
@@ -192,10 +200,14 @@ export const UserService = {
   removeNeighbor: async (userId, neighborId, userName) => {
     // Remove from My Neighbors
     await deleteDoc(doc(db, 'users', userId, 'neighbors', neighborId));
+    // Decrement My Count
+    await updateDoc(doc(db, 'users', userId), { neighborCount: increment(-1) });
 
     // Remove from Their Neighbors (Best Effort)
     try {
       await deleteDoc(doc(db, 'users', neighborId, 'neighbors', userId));
+      // Decrement Their Count
+      await updateDoc(doc(db, 'users', neighborId), { neighborCount: increment(-1) });
     } catch (e) {
       console.warn("Could not remove from neighbor's list (permissions?):", e);
     }

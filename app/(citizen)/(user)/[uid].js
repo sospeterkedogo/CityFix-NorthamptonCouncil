@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, onSnapshot, getCountFromServer, updateDoc } from 'firebase/firestore';
 import { db } from '../../../src/config/firebase';
 import { COLORS, STYLES } from '../../../src/constants/theme';
 import FeedCard from '../../../src/components/FeedCard';
 import { useAuth } from '../../../src/context/AuthContext';
 import { UserService } from '../../../src/services/userService';
+import { formatRelativeTime } from '../../../src/utils/dateUtils';
 
 export default function PublicProfile() {
     const { uid } = useLocalSearchParams();
@@ -16,11 +17,38 @@ export default function PublicProfile() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [friendStatus, setFriendStatus] = useState('loading'); // none, friends, pending, sent, self
+    const [realNeighborCount, setRealNeighborCount] = useState(null);
 
     useEffect(() => {
-        fetchProfile();
+        const unsubscribe = setupProfileListener();
+        fetchPosts();
         checkFriendStatus();
-    }, [uid, user]);
+        return () => unsubscribe && unsubscribe();
+    }, [uid, user?.uid]); // Use user.uid for stability
+
+    // Re-fetch accurate count whenever profile updates (or on mount)
+    useEffect(() => {
+        if (user?.uid) {
+            fetchNeighborCount();
+        }
+    }, [uid, user?.uid, profile?.neighborCount]);
+
+    const fetchNeighborCount = async () => {
+        try {
+            const coll = collection(db, 'users', uid, 'neighbors');
+            const snapshot = await getCountFromServer(coll);
+            const count = snapshot.data().count;
+            setRealNeighborCount(count);
+
+            // Self-healing: Update Firestore if desynced AND is owner
+            if (profile && profile.neighborCount !== count && user?.uid === uid) {
+                await updateDoc(doc(db, 'users', uid), { neighborCount: count });
+                console.log("Self-healed neighbor count");
+            }
+        } catch (e) {
+            console.error("Failed to fetch accurate neighbor count", e);
+        }
+    };
 
     const checkFriendStatus = async () => {
         if (!user || !uid) return;
@@ -61,15 +89,23 @@ export default function PublicProfile() {
         }
     };
 
-    const fetchProfile = async () => {
-        try {
-            // Get User Info
-            const userSnap = await getDoc(doc(db, 'users', uid));
-            if (userSnap.exists()) {
-                setProfile(userSnap.data());
+    const setupProfileListener = () => {
+        setLoading(true);
+        const unsubscribe = onSnapshot(doc(db, 'users', uid), (doc) => {
+            if (doc.exists()) {
+                setProfile(doc.data());
+                // Fallback to profile count initially or if fetch fails, but state will override
             }
+            setLoading(false);
+        }, (error) => {
+            console.error("Profile listen error", error);
+            setLoading(false);
+        });
+        return unsubscribe;
+    };
 
-            // Get Their Posts
+    const fetchPosts = async () => {
+        try {
             const q = query(
                 collection(db, 'tickets'),
                 where('userId', '==', uid),
@@ -79,7 +115,6 @@ export default function PublicProfile() {
             const postSnaps = await getDocs(q);
             setPosts(postSnaps.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch (e) { console.error(e); }
-        setLoading(false);
     };
 
     const handleSendRequest = async () => {
@@ -96,6 +131,10 @@ export default function PublicProfile() {
         // Simple confirmation
         await UserService.removeNeighbor(user.uid, uid, user.name || user.email);
         setFriendStatus('none');
+        // Manually decrement local count for immediate feedback
+        if (realNeighborCount !== null) {
+            setRealNeighborCount(prev => Math.max(0, prev - 1));
+        }
         alert("Neighbor Removed.");
     };
 
@@ -109,7 +148,7 @@ export default function PublicProfile() {
                 {profile && (
                     <>
                         <View style={styles.avatarContainer}>
-                            {profile.photoURL ? (
+                            {profile.photoURL && (!profile.photoURL.startsWith('blob:') || profile.photoURL.includes('localhost')) ? (
                                 <Image source={{ uri: profile.photoURL }} style={styles.avatarImage} />
                             ) : (
                                 <View style={styles.avatarPlaceholder}>
@@ -118,12 +157,15 @@ export default function PublicProfile() {
                                     </Text>
                                 </View>
                             )}
-                            {/* Status Badge */}
-                            {friendStatus === 'friends' && (
-                                <View style={styles.connectedBadge}>
-                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' }} />
-                                </View>
+
+                            {/* Online/Offline Indicator */}
+                            {profile.lastActive && (
+                                <View style={[styles.onlineDot, {
+                                    backgroundColor: (Date.now() - Number(profile.lastActive) < 300000) ? COLORS.success : '#94A3B8'
+                                }]} />
                             )}
+
+
                         </View>
 
                         <Text style={styles.name}>{profile.name || profile.displayName || "Citizen"}</Text>
@@ -131,6 +173,13 @@ export default function PublicProfile() {
                         <View style={styles.roleBadge}>
                             <Text style={styles.roleText}>{profile.role || "Community Member"}</Text>
                         </View>
+
+                        {/* Last Seen Text */}
+                        {profile.lastActive && (Date.now() - Number(profile.lastActive) > 300000) && (
+                            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 5, fontWeight: '500' }}>
+                                Last seen {formatRelativeTime(profile.lastActive)}
+                            </Text>
+                        )}
 
                         {/* Stats Row */}
                         <View style={styles.statsRow}>
@@ -140,7 +189,8 @@ export default function PublicProfile() {
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>0</Text>
+                                {/* Use realNeighborCount if available (for self), else fallback to profile.neighborCount */}
+                                <Text style={styles.statNumber}>{Math.max(0, realNeighborCount !== null ? realNeighborCount : (profile.neighborCount || 0))}</Text>
                                 <Text style={styles.statLabel}>Neighbors</Text>
                             </View>
                         </View>
@@ -200,7 +250,7 @@ export default function PublicProfile() {
     );
 
     return (
-        <View style={STYLES.container}>
+        <View style={styles.screenContainer}>
             <View style={{ flex: 1, maxWidth: 600, width: '100%', alignSelf: 'center' }}>
                 <View style={styles.navBar}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 600, alignSelf: 'center' }}>
@@ -214,7 +264,7 @@ export default function PublicProfile() {
                         }} style={styles.backBtn}>
                             <Text style={{ fontSize: 18, color: COLORS.primary }}>←</Text>
                         </TouchableOpacity>
-                        <Text style={styles.navTitle}>Profile</Text>
+                        <Text style={[styles.navTitle, { color: 'white' }]}>Profile</Text>
                         <View style={{ width: 30 }} />
                     </View>
                 </View>
@@ -233,7 +283,7 @@ export default function PublicProfile() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'white' },
+    screenContainer: { flex: 1, backgroundColor: 'white' }, // Custom container, no padding
 
     // Header & Banner
     navBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between' },
@@ -244,10 +294,22 @@ const styles = StyleSheet.create({
     profileContent: { alignItems: 'center', marginTop: -60, paddingBottom: 20 },
     avatarContainer: { marginBottom: 15, alignItems: 'center', position: 'relative' },
     avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: 'white', ...STYLES.shadow },
-    avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: 'white', ...STYLES.shadow, backgroundColor: COLORS.secondary, justifyContent: 'center', alignItems: 'center' },
+    avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: 'white', ...STYLES.shadow, backgroundColor: '#34495E', justifyContent: 'center', alignItems: 'center' },
     avatarText: { fontSize: 40, color: 'white', fontWeight: 'bold' },
 
-    connectedBadge: { position: 'absolute', bottom: 5, right: 5, backgroundColor: COLORS.success, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: 'white' },
+    onlineDot: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: COLORS.success,
+        borderWidth: 3,
+        borderColor: 'white',
+        zIndex: 2
+    },
+
 
     name: { fontSize: 24, fontWeight: 'bold', color: COLORS.text.primary, marginBottom: 5, textAlign: 'center' },
     roleBadge: { backgroundColor: '#E3F2FD', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 20 },
