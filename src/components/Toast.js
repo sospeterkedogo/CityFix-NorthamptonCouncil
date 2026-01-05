@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function Toast({ message, visible, onHide }) {
+export default function Toast({ message, visible, onHide, type = 'info' }) {
     const opacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -38,10 +38,27 @@ export default function Toast({ message, visible, onHide }) {
 
     if (!visible && opacity._value === 0) return null;
 
+    const getBgColor = () => {
+        switch (type) {
+            case 'success': return COLORS.success;
+            case 'error': return COLORS.error;
+            case 'info':
+            default: return 'rgba(0,0,0,0.8)';
+        }
+    };
+
+    const getIcon = () => {
+        switch (type) {
+            case 'success': return "checkmark-circle";
+            case 'error': return "alert-circle";
+            default: return "information-circle";
+        }
+    };
+
     return (
         <Animated.View style={[styles.container, { opacity }]}>
-            <View style={styles.content}>
-                <Ionicons name="checkmark-circle" size={24} color="white" />
+            <View style={[styles.content, { backgroundColor: getBgColor() }]}>
+                <Ionicons name={getIcon()} size={24} color="white" />
                 <Text style={styles.text}>{message}</Text>
             </View>
         </Animated.View>
@@ -59,7 +76,6 @@ const styles = StyleSheet.create({
         pointerEvents: 'none' // Let touches pass through if needed, but we want it visible
     },
     content: {
-        backgroundColor: 'rgba(0,0,0,0.8)',
         borderRadius: 25,
         paddingHorizontal: 20,
         paddingVertical: 12,

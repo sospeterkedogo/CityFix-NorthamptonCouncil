@@ -25,10 +25,10 @@ export const TicketService = {
   /**
    * Submits a new ticket to Firestore
    */
-  submitTicket: async (userId, title, description, category, lat, lng, photos = []) => {
+  submitTicket: async (userId, title, description, category, lat, lng, photos = [], address = null) => {
     try {
       // 1. Use the Factory Function to enforce structure
-      const ticketData = createTicket(userId, title, description, category, lat, lng);
+      const ticketData = createTicket(userId, title, description, category, lat, lng, address);
 
       // 2. Set status to SUBMITTED
       ticketData.status = TICKET_STATUS.SUBMITTED;

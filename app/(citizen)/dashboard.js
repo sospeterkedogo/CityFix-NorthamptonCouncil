@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useClientSearch } from '../../src/hooks/useClientSearch';
 import SearchBar from '../../src/components/SearchBar';
 import GetAppModal from '../../src/components/GetTheApp';
+import { formatRelativeTime } from '../../src/utils/dateUtils';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const [drafts, setDrafts] = useState([]);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('info');
   const [showGetAppModal, setShowGetAppModal] = useState(false);
 
   // Hook for search
@@ -61,11 +64,51 @@ export default function Dashboard() {
     }
   };
 
+  const deleteDraft = (draftId) => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm("Are you sure you want to discard this draft?");
+      if (confirmed) {
+        performDelete(draftId);
+      }
+    } else {
+      Alert.alert(
+        "Delete Draft",
+        "Are you sure you want to discard this draft?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => performDelete(draftId)
+          }
+        ]
+      );
+    }
+  };
+
+  const performDelete = async (draftId) => {
+    try {
+      const updatedDrafts = drafts.filter(d => d.id !== draftId);
+      setDrafts(updatedDrafts);
+      await AsyncStorage.setItem('report_drafts', JSON.stringify(updatedDrafts));
+      // Toast Feedback
+      setToastMessage("Draft deleted");
+      setToastType("success");
+      setToastVisible(true);
+    } catch (e) {
+      console.log("Error deleting draft", e);
+      setToastMessage("Failed to delete draft");
+      setToastType("error");
+      setToastVisible(true);
+    }
+  };
+
   const fetchTickets = async () => {
-    // Parallel Fetch: Tickets & Posts
-    const [ticketData, postData] = await Promise.all([
+    // Parallel Fetch: Tickets, Posts, and Activity
+    const [ticketData, postData, activityData] = await Promise.all([
       TicketService.getCitizenTickets(user.uid),
-      SocialService.getUserSocialPosts(user.uid)
+      SocialService.getUserSocialPosts(user.uid),
+      SocialService.getUserActivity(user.uid)
     ]);
 
     // STRICTLY SEPARATE: Ensure 'tickets' state only contains reports (not social posts)
@@ -75,7 +118,9 @@ export default function Dashboard() {
     const sortedTickets = reportsOnly.sort((a, b) => b.createdAt - a.createdAt);
 
     setTickets(sortedTickets);
-    setSocialPosts(postData);
+    setSocialPosts([...postData, ...activityData]); // Merge posts and activity for now, or keep separate? 
+    // Actually, let's keep them in socialPosts so they get sorted together in 'allItems'
+
     setLoading(false);
     setRefreshing(false);
   };
@@ -292,21 +337,24 @@ export default function Dashboard() {
               data={drafts}
               keyExtractor={item => item.id}
               renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.draftItem}
-                  onPress={() => {
-                    setShowDraftsModal(false);
-                    router.push({ pathname: '/(citizen)/report', params: { draftId: item.id } });
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1 }}>
+                <View style={[styles.draftItem, { flexDirection: 'row', alignItems: 'center' }]}>
+                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    onPress={() => {
+                      setShowDraftsModal(false);
+                      router.push({ pathname: '/(citizen)/report', params: { draftId: item.id } });
+                    }}
+                  >
+                    <View>
                       <Text style={styles.draftItemTitle} numberOfLines={1}>{item.title || "Untitled Report"}</Text>
-                      <Text style={styles.draftItemDate}>{new Date(item.updatedAt).toLocaleString()}</Text>
+                      <Text style={styles.draftItemDate}>Last edited {formatRelativeTime(item.updatedAt)}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => deleteDraft(item.id)} style={{ padding: 10 }}>
+                    <Ionicons name="trash-outline" size={22} color={COLORS.error} />
+                  </TouchableOpacity>
+                </View>
               )}
               ListEmptyComponent={<Text style={{ textAlign: 'center', color: '#999', marginVertical: 20 }}>No drafts found.</Text>}
             />
@@ -317,7 +365,8 @@ export default function Dashboard() {
       {/* TOAST NOTIFICATION */}
       <Toast
         visible={toastVisible}
-        message="You're all caught up!"
+        message={toastMessage || "You're all caught up!"}
+        type={toastType}
         onHide={() => setToastVisible(false)}
       />
 
