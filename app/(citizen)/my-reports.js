@@ -7,6 +7,9 @@ import ExpandableTicketCard from '../../src/components/ExpandableTicketCard';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
 
+import { useClientSearch } from '../../src/hooks/useClientSearch';
+import SearchBar from '../../src/components/SearchBar';
+
 export default function MyReportsScreen() {
     const { user } = useAuth();
     const router = useRouter();
@@ -29,6 +32,11 @@ export default function MyReportsScreen() {
         setLoading(false);
     };
 
+    // Client-side search for My Reports
+    const { searchQuery, setSearchQuery, filteredData, performManualSearch } = useClientSearch(tickets, [
+        'title', 'description', 'category', 'status', 'locationName'
+    ]);
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'resolved': return COLORS.success;
@@ -50,15 +58,23 @@ export default function MyReportsScreen() {
             </View>
 
             <View style={[styles.container, Platform.OS === 'web' && { maxWidth: 600, width: '100%', alignSelf: 'center' }]}>
+
+                <SearchBar
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onSearch={performManualSearch}
+                    placeholder="Search your reports..."
+                />
+
                 <FlatList
-                    data={tickets}
+                    data={filteredData}
                     keyExtractor={item => item.id}
                     renderItem={renderItem}
                     contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
                     refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchMyTickets} />}
                     ListEmptyComponent={
                         <Text style={{ textAlign: 'center', marginTop: 50, color: '#999' }}>
-                            You haven't reported anything yet.
+                            {searchQuery ? "No reports found matching your search." : "You haven't reported anything yet."}
                         </Text>
                     }
                 />
@@ -70,6 +86,5 @@ export default function MyReportsScreen() {
 const styles = StyleSheet.create({
     header: { backgroundColor: 'white', padding: 15, paddingTop: 40, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
     headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
-    container: { flex: 1 },
+    container: { flex: 1, paddingTop: 20 },
 });

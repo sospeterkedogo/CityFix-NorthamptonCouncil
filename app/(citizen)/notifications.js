@@ -10,7 +10,7 @@ import { formatRelativeTime } from '../../src/utils/dateUtils';
 
 export default function NotificationsScreen() {
     const router = useRouter();
-    const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
+    const { notifications, loading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
 
     const handleNotificationPress = (item) => {
         markAsRead(item.id);
@@ -46,27 +46,39 @@ export default function NotificationsScreen() {
                 onPress={() => handleNotificationPress(item)}
                 activeOpacity={0.7}
             >
-                <View style={[styles.iconContainer, !isUnread && styles.readIconContainer]}>
-                    <Ionicons
-                        name={item.type === 'alert' ? 'alert' : 'notifications'}
-                        size={20}
-                        color={isUnread ? 'white' : '#5f6368'}
-                    />
-                </View>
+                {/* Main Content Area */}
+                <View style={styles.cardMain}>
+                    <View style={[styles.iconContainer, !isUnread && styles.readIconContainer]}>
+                        <Ionicons
+                            name={item.type === 'alert' ? 'alert' : 'notifications'}
+                            size={20}
+                            color={isUnread ? 'white' : '#5f6368'}
+                        />
+                    </View>
 
-                <View style={styles.contentContainer}>
-                    <View style={styles.headerRow}>
-                        <Text style={[styles.title, isUnread && styles.unreadTitle]} numberOfLines={1}>
-                            {item.title}
-                        </Text>
-                        <Text style={styles.time}>
-                            {formatRelativeTime(date)}
+                    <View style={styles.contentContainer}>
+                        <View style={styles.headerRow}>
+                            <Text style={[styles.title, isUnread && styles.unreadTitle]} numberOfLines={1}>
+                                {item.title}
+                            </Text>
+                            <Text style={styles.time}>
+                                {formatRelativeTime(date)}
+                            </Text>
+                        </View>
+                        <Text style={[styles.body, isUnread && styles.unreadBody]} numberOfLines={2}>
+                            {item.body}
                         </Text>
                     </View>
-                    <Text style={[styles.body, isUnread && styles.unreadBody]} numberOfLines={2}>
-                        {item.body}
-                    </Text>
                 </View>
+
+                {/* Delete Button */}
+                <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => deleteNotification(item.id)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="trash-outline" size={18} color="#9aa0a6" />
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
@@ -167,8 +179,17 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         backgroundColor: '#fff',
-        // No margin/cards for Google style list, usually separate by border or just space
-        // But for premium feel let's use hover state or subtle bg
+        alignItems: 'center', // Align delete button vertically
+        justifyContent: 'space-between'
+    },
+    cardMain: {
+        flexDirection: 'row',
+        flex: 1, // Take up remaining space
+        alignItems: 'flex-start',
+    },
+    deleteBtn: {
+        padding: 5,
+        marginLeft: 10,
     },
     unreadCard: {
         backgroundColor: '#E8F0FE', // Google Light Blue for unread

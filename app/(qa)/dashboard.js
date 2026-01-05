@@ -13,30 +13,31 @@ import TutorialOverlay from '../../src/components/TutorialOverlay';
 import { Ionicons } from '@expo/vector-icons';
 
 
+import { useClientSearch } from '../../src/hooks/useClientSearch';
+import SearchBar from '../../src/components/SearchBar';
+
 export default function QADashboard() {
   /* State for QA Queue and History */
+  // ... (existing state)
   const [tickets, setTickets] = useState([]);
-  const [historyTickets, setHistoryTickets] = useState([]); // New History State
+  const [historyTickets, setHistoryTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuth();
-
-  // Rejection Handler
+  // ... (rest of state)
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
-
-  // Gallery Logic
   const [galleryUrl, setGalleryUrl] = useState(null);
-
-  // Engineers Logic
-  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'engineers' | 'history'
+  const [activeTab, setActiveTab] = useState('queue');
   const [engineers, setEngineers] = useState([]);
 
   useEffect(() => {
     loadQAQueue();
     loadEngineers();
   }, []);
+
+  // ... (loader functions)
 
   const loadEngineers = async () => {
     const engs = await UserService.getAllEngineers();
@@ -45,9 +46,8 @@ export default function QADashboard() {
 
   const loadQAQueue = async () => {
     const allData = await TicketService.getAllTickets();
-    const allEngineers = await UserService.getAllEngineers(); // Fetch all engineers to map IDs
+    const allEngineers = await UserService.getAllEngineers();
 
-    // Helper to add engineer name
     const enrichWithEngineer = (list) => {
       return list.map(t => {
         const eng = allEngineers.find(e => e.id === t.assignedTo);
@@ -55,26 +55,37 @@ export default function QADashboard() {
       });
     };
 
-    // 1. Pending Verification (Status: RESOLVED)
     const pending = allData.filter(t => t.status === 'resolved');
     setTickets(enrichWithEngineer(pending));
 
-    // 2. Verified History (Status: VERIFIED)
     const history = allData.filter(t => t.status === 'verified');
     setHistoryTickets(enrichWithEngineer(history));
 
     setLoading(false);
 
-    // Clear selection if list refreshed and item gone
     if (selectedTicket && !pending.find(t => t.id === selectedTicket.id) && activeTab === 'queue') {
       setSelectedTicket(null);
     }
   };
 
+  // Search Logic
+  const currentDataset = React.useMemo(() => {
+    if (activeTab === 'queue') return tickets;
+    if (activeTab === 'history') return historyTickets;
+    return engineers;
+  }, [activeTab, tickets, historyTickets, engineers]);
+
+  const searchKeys = React.useMemo(() => {
+    if (activeTab === 'engineers') return ['name', 'email'];
+    return ['title', 'engineerName', 'description', 'id'];
+  }, [activeTab]);
+
+  const { searchQuery, setSearchQuery, filteredData, performManualSearch } = useClientSearch(currentDataset, searchKeys);
+
+  // ... (handlers: handleVerify, etc.)
+
   const handleVerify = async () => {
     if (!selectedTicket) return;
-
-    // Log removed
     const res = await TicketService.verifyTicket(selectedTicket.id);
 
     if (res.success) {
@@ -91,16 +102,14 @@ export default function QADashboard() {
       alert("Please provide a reason for rejection.");
       return;
     }
-
     const res = await TicketService.reopenTicket(selectedTicket.id, rejectReason);
-
     if (res.success) {
       alert("Ticket Reopened. Sent back to Dispatcher.");
       loadQAQueue();
     }
   };
 
-  // --- RENDER HELPERS ---
+  // ... (Rows: TicketRow, EngineerRow)
 
   const TicketRow = ({ item }) => (
     <TouchableOpacity
@@ -120,11 +129,9 @@ export default function QADashboard() {
     const getStatusColor = (status) => {
       if (status === 'Available') return COLORS.success;
       if (status === 'Busy' || status === 'Holiday') return COLORS.error;
-      return '#666'; // Default/Offline
+      return '#666';
     };
-
     const color = getStatusColor(item.status);
-
     return (
       <View style={styles.row}>
         <View style={[styles.avatarCircle, { width: 32, height: 32, marginRight: 10, backgroundColor: COLORS.secondary }]}>
@@ -153,6 +160,7 @@ export default function QADashboard() {
 
       {/* HEADER */}
       <View style={styles.headerContainer}>
+        {/* ... (header content kept same but using existing styles) */}
         <View>
           <Text style={styles.headerTitle}>Quality Assurance</Text>
           <Text style={styles.headerSub}>
@@ -162,12 +170,9 @@ export default function QADashboard() {
           </Text>
         </View>
 
-        {/* Profile / Logout Button */}
-        <TouchableOpacity
-          style={styles.profileBtn}
-          onPress={() => router.push('/profile')}
-        >
+        <TouchableOpacity style={styles.profileBtn} onPress={() => router.push('/profile')}>
           <View style={styles.avatarCircle}>
+            {/* ... */}
             {user?.email ? (
               <Text style={styles.avatarText}>{(user?.displayName || user.email).charAt(0).toUpperCase()}</Text>
             ) : (
@@ -199,6 +204,16 @@ export default function QADashboard() {
         </TouchableOpacity>
       </View>
 
+      {/* SEARCH BAR (New) */}
+      <View style={{ marginBottom: 10 }}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSearch={performManualSearch}
+          placeholder={activeTab === 'engineers' ? "Search engineers..." : "Search tickets..."}
+        />
+      </View>
+
       {/* CONTENT AREA */}
       {activeTab === 'queue' || activeTab === 'history' ? (
         <View style={styles.splitView}>
@@ -206,11 +221,11 @@ export default function QADashboard() {
           {(!isMobile || (isMobile && !selectedTicket)) && (
             <View style={[styles.listColumn, isMobile && { flex: 1 }]}>
               <FlatList
-                data={activeTab === 'history' ? historyTickets : tickets}
+                data={filteredData}
                 renderItem={({ item }) => <TicketRow item={item} />}
                 keyExtractor={(item, index) => item.id || String(index)}
                 ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>
-                  {activeTab === 'history' ? "No history found." : "Queue is empty. Good job!"}
+                  {searchQuery ? "No matches found." : (activeTab === 'history' ? "No history found." : "Queue is empty.")}
                 </Text>}
               />
             </View>
@@ -219,6 +234,7 @@ export default function QADashboard() {
           {/* RIGHT: COMPARISON */}
           {(!isMobile || (isMobile && selectedTicket)) && (
             <View style={[styles.detailColumn, isMobile && { flex: 1 }]}>
+              {/* ... (detail view internals same) */}
               {isMobile && selectedTicket && (
                 <TouchableOpacity
                   style={{ marginBottom: 10, padding: 10, backgroundColor: '#eee', borderRadius: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' }}
@@ -231,11 +247,10 @@ export default function QADashboard() {
 
               {selectedTicket ? (
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+                  {/* ... (render details) */}
                   <Text style={styles.detailTitle}>{selectedTicket.title}</Text>
 
                   <Text style={styles.sectionHeader}>Visual Verification</Text>
-
-                  {/* THE CORE COMPONENT */}
                   <BeforeAfterViewer
                     beforeMedia={selectedTicket.photos}
                     afterMedia={selectedTicket.afterPhoto}
@@ -247,7 +262,7 @@ export default function QADashboard() {
                     <Text style={styles.noteText}>{selectedTicket.resolutionNotes || "No notes provided."}</Text>
                   </View>
 
-                  {/* DECISION AREA - HIDE IF HISTORY */}
+                  {/* Decisions */}
                   {activeTab === 'queue' && (
                     <View style={styles.decisionArea}>
                       {!showRejectInput ? (
@@ -264,6 +279,7 @@ export default function QADashboard() {
                         </>
                       ) : (
                         <View style={styles.rejectForm}>
+                          {/* ... (reject form) */}
                           <Text style={styles.rejectLabel}>Reason for Rejection:</Text>
                           <TextInput
                             style={styles.rejectInput}
@@ -311,7 +327,7 @@ export default function QADashboard() {
         /* ENGINEER LIST VIEW */
         <View style={[styles.listColumn, { flex: 1 }]}>
           <FlatList
-            data={engineers}
+            data={filteredData}
             renderItem={({ item }) => <EngineerRow item={item} />}
             keyExtractor={(item) => item.id}
             ListEmptyComponent={<Text style={{ padding: 20, color: '#999' }}>No engineers found.</Text>}

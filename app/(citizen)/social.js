@@ -6,6 +6,7 @@ import { UserService } from '../../src/services/userService';
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { formatRelativeTime } from '../../src/utils/dateUtils';
+import SearchBar from '../../src/components/SearchBar';
 
 export default function SocialScreen() {
     const { user } = useAuth();
@@ -135,12 +136,6 @@ export default function SocialScreen() {
         </View>
     );
 
-
-
-    // ... (existing imports)
-
-    // ... (inside component)
-
     const renderSentRequest = ({ item }) => {
         let statusColor = '#999';
         if (item.status === 'accepted') statusColor = COLORS.primary;
@@ -187,7 +182,16 @@ export default function SocialScreen() {
     return (
         <View style={STYLES.container}>
             <View style={styles.webContainer}>
-                <Text style={styles.header}>Community</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                    <Text style={styles.header}>Community</Text>
+                    <TouchableOpacity
+                        onPress={() => router.push('/(citizen)/referrals')}
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 }}
+                    >
+                        <Ionicons name="gift-outline" size={18} color={COLORS.primary} style={{ marginRight: 5 }} />
+                        <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 12 }}>Get £10</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* TABS */}
                 <View style={styles.tabs}>
@@ -224,20 +228,14 @@ export default function SocialScreen() {
 
                 {tab === 'search' && (
                     <View style={{ flex: 1 }}>
-                        <View style={styles.searchRow}>
-                            <Ionicons name="search" size={20} color={COLORS.primary} style={{ marginLeft: 10 }} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Search by username..."
-                                value={searchTerm}
-                                onChangeText={setSearchTerm}
-                                autoCapitalize="none"
-                                onSubmitEditing={handleSearch}
-                            />
-                            <TouchableOpacity onPress={handleSearch} style={styles.searchBtn}>
-                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Search</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <SearchBar
+                            value={searchTerm}
+                            onChangeText={setSearchTerm}
+                            onSearch={handleSearch}
+                            placeholder="Search by username..."
+                        />
+                        {loading && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 10 }} />}
+
                         {searchResults.length > 0 && (
                             <Text style={styles.resultLabel}>Suggestions</Text>
                         )}
@@ -273,8 +271,6 @@ const styles = StyleSheet.create({
     empty: { textAlign: 'center', color: '#999', marginTop: 20 },
 
     // Search Styles
-    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#ddd', marginBottom: 20 },
-    input: { flex: 1, padding: 12 },
     resultLabel: { fontSize: 12, fontWeight: 'bold', color: '#999', marginBottom: 10, textTransform: 'uppercase' },
 
     btnSmall: { backgroundColor: COLORS.primary, paddingVertical: 5, paddingHorizontal: 15, borderRadius: 5 },

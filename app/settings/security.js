@@ -7,28 +7,22 @@ import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { sendPasswordResetEmail, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '../../src/config/firebase';
+import Toast from '../../src/components/Toast';
 
 export default function SecuritySettings() {
     const router = useRouter();
     const { user, logout } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '' });
 
     const handleResetPassword = async () => {
         if (!user?.email) return;
         setLoading(true);
         try {
             await sendPasswordResetEmail(auth, user.email);
-            if (Platform.OS === 'web') {
-                window.alert(`Email Sent: A password reset link has been sent to ${user.email}.`);
-            } else {
-                Alert.alert("Email Sent", `A password reset link has been sent to ${user.email}.`);
-            }
+            setToast({ visible: true, message: `Reset link sent to ${user.email}` });
         } catch (error) {
-            if (Platform.OS === 'web') {
-                window.alert("Error: " + error.message);
-            } else {
-                Alert.alert("Error", error.message);
-            }
+            setToast({ visible: true, message: "Error: " + error.message });
         } finally {
             setLoading(false);
         }
@@ -120,7 +114,7 @@ export default function SecuritySettings() {
                     </View>
 
                     {/* Danger Zone */}
-                    <Text style={[styles.sectionTitle, { marginTop: 30, color: COLORS.error }]}>Danger Zone</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 10, color: COLORS.error }]}>Danger Zone</Text>
                     <View style={styles.card}>
                         <SecurityItem
                             title="Delete Account"
@@ -139,7 +133,12 @@ export default function SecuritySettings() {
 
                 </ScrollView>
             </View>
-        </SafeAreaView>
+            <Toast
+                visible={toast.visible}
+                message={toast.message}
+                onHide={() => setToast({ ...toast, visible: false })}
+            />
+        </SafeAreaView >
     );
 }
 

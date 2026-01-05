@@ -6,6 +6,9 @@ import { TicketService } from '../../src/services/ticketService';
 import { COLORS, SPACING, STYLES } from '../../src/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useClientSearch } from '../../src/hooks/useClientSearch';
+import SearchBar from '../../src/components/SearchBar';
+
 export default function EngineerHistory() {
     const { user } = useAuth();
     const router = useRouter();
@@ -34,6 +37,11 @@ export default function EngineerHistory() {
         setHistory(completed);
         setLoading(false);
     };
+
+    // Hook for client-side search
+    const { searchQuery, setSearchQuery, filteredData, performManualSearch } = useClientSearch(history, [
+        'title', 'description', 'resolutionNotes', 'locationName'
+    ]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return 'Recently';
@@ -81,11 +89,18 @@ export default function EngineerHistory() {
                     <Text style={styles.headerSub}>Your history of completed fixes</Text>
                 </View>
 
+                <SearchBar
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onSearch={performManualSearch}
+                    placeholder="Search past jobs..."
+                />
+
                 {loading ? (
                     <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
                 ) : (
                     <FlatList
-                        data={history}
+                        data={filteredData}
                         renderItem={renderHistoryItem}
                         keyExtractor={item => item.id}
                         contentContainerStyle={{ paddingBottom: 20 }}
@@ -93,7 +108,9 @@ export default function EngineerHistory() {
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
                                 <Ionicons name="time-outline" size={48} color={COLORS.text.secondary} />
-                                <Text style={styles.emptyText}>No past jobs yet.</Text>
+                                <Text style={styles.emptyText}>
+                                    {searchQuery ? "No matching jobs found." : "No past jobs yet."}
+                                </Text>
                             </View>
                         }
                     />
