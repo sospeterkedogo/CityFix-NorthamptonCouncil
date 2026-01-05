@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, SectionList, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform, Image
+  View, Text, SectionList, FlatList, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, Platform, Image, TextInput, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -14,18 +14,31 @@ import SimpleExpandableRow from '../../src/components/SimpleExpandableRow';
 import FeedCard from '../../src/components/FeedCard';
 import Toast from '../../src/components/Toast';
 import { Ionicons } from '@expo/vector-icons';
+import { useClientSearch } from '../../src/hooks/useClientSearch';
+import SearchBar from '../../src/components/SearchBar';
+import GetAppModal from '../../src/components/GetTheApp';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [tickets, setTickets] = useState([]);
   const [socialPosts, setSocialPosts] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'active', 'resolved', 'social'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false); // Toast State
+  const [toastVisible, setToastVisible] = useState(false);
+  const [showGetAppModal, setShowGetAppModal] = useState(false);
+
+  // Hook for search
+  const allItems = React.useMemo(() =>
+    [...tickets, ...socialPosts].sort((a, b) => b.createdAt - a.createdAt),
+    [tickets, socialPosts]
+  );
+
+  const { searchQuery, setSearchQuery, filteredData, performManualSearch } = useClientSearch(allItems, [
+    'title', 'description', 'category', 'userName', 'locationName'
+  ]);
 
   // Data refresh handler
   useFocusEffect(
@@ -92,43 +105,56 @@ export default function Dashboard() {
     posts: socialPosts.length
   };
 
-  // Filter Logic
-  const getFilteredContent = () => {
-    switch (filter) {
-      case 'active':
-        // Strict Filter: Status matches AND NOT social
-        return tickets.filter(t => (t.status === 'in_progress' || t.status === 'assigned') && t.type !== 'social');
-      case 'resolved':
-        // Strict Filter: Status matches AND NOT social
-        return tickets.filter(t => (t.status === 'resolved' || t.status === 'verified') && t.type !== 'social');
-      case 'social':
-        return socialPosts;
-      default:
-        // Recent Activity: Mix both
-        return [...tickets, ...socialPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
-    }
+  // Date Grouping Logic
+  const groupItemsByDate = (items) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const grouped = {
+      'Today': [],
+      'Yesterday': [],
+      'This Week': [],
+      'Earlier': []
+    };
+
+    items.forEach(item => {
+      const date = new Date(item.createdAt);
+
+      if (date.toDateString() === today.toDateString()) {
+        grouped['Today'].push(item);
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        grouped['Yesterday'].push(item);
+      } else {
+        const diffTime = Math.abs(today - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays <= 7) {
+          grouped['This Week'].push(item);
+        } else {
+          grouped['Earlier'].push(item);
+        }
+      }
+    });
+
+    // Create SectionList structure
+    const sections = [];
+    if (grouped['Today'].length > 0) sections.push({ title: 'Today', data: grouped['Today'] });
+    if (grouped['Yesterday'].length > 0) sections.push({ title: 'Yesterday', data: grouped['Yesterday'] });
+    if (grouped['This Week'].length > 0) sections.push({ title: 'This Week', data: grouped['This Week'] });
+    if (grouped['Earlier'].length > 0) sections.push({ title: 'Earlier', data: grouped['Earlier'] });
+
+    return sections;
   };
 
-  const filteredData = getFilteredContent();
+  const sections = groupItemsByDate(filteredData);
 
   const sectionListRef = React.useRef(null);
 
   const handleEndReached = () => {
     // Prevent multiple triggers if empty or loading
-    if (loading || filteredData.length === 0) return;
-
-    // Pop up message
+    if (loading || sections.length === 0) return;
+    if (searchQuery.trim() && filteredData.length === 0) return; // Don't toast on empty search
     setToastVisible(true);
-
-    // Jump to top
-    if (sectionListRef.current) {
-      sectionListRef.current.scrollToLocation({
-        sectionIndex: 0,
-        itemIndex: 0,
-        viewOffset: 0,
-        animated: true
-      });
-    }
   };
 
   return (
@@ -136,28 +162,26 @@ export default function Dashboard() {
 
       <SectionList
         ref={sectionListRef}
-        sections={[{ title: filter, data: filteredData }]}
+        sections={sections}
         keyExtractor={(item) => item.id}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.1}
         renderItem={({ item }) => (
-          <FeedCard ticket={item} />
+          <SimpleExpandableRow ticket={item} />
         )}
         renderSectionHeader={({ section: { title } }) => (
-          <Text style={[styles.sectionHeader, { backgroundColor: '#f2f2f2' }]}>
-            {title === 'all' ? 'Recent Activity' :
-              title === 'active' ? 'Active Reports' :
-                title === 'resolved' ? 'Resolved Issues' : 'My Posts'}
-          </Text>
+          <View style={styles.sectionHeaderBox}>
+            <Text style={styles.sectionHeaderTitle}>{title}</Text>
+          </View>
         )}
-        stickySectionHeadersEnabled={true}
+        stickySectionHeadersEnabled={false} // Cleaner notification look
         ListHeaderComponent={
           <>
             {/* --- HEADER --- */}
             <View style={styles.header}>
               <View>
                 <Text style={styles.welcomeText}>Welcome back, {user?.displayName || 'Citizen'}!</Text>
-                <Text style={styles.subText}>Here is your impact overview</Text>
+                <Text style={styles.subText}>Recent updates from your community</Text>
               </View>
               <TouchableOpacity onPress={() => router.push('/profile')}>
                 {user?.photoURL ? (
@@ -172,27 +196,44 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
 
-            {/* --- FILTER TABS --- */}
+            {/* --- SEARCH BAR --- */}
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSearch={performManualSearch}
+              placeholder="Search updates..."
+            />
+
+            {/* --- MOBILE APP BANNER (Web Only) --- */}
+            {Platform.OS === 'web' && (
+              <View style={styles.webBanner}>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity onPress={() => setShowGetAppModal(true)}>
+                    <Text style={styles.bannerLink}>Try our Android App</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.bannerInfo}>iOS version coming soon</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowGetAppModal(true)} style={styles.bannerBtn}>
+                  <Ionicons name="arrow-forward" size={16} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* --- STATS SUMMARY (Optional - kept for context but simplified) --- */}
             <View style={styles.statsRow}>
-              <TouchableOpacity onPress={() => setFilter('all')} style={[styles.statCard, filter === 'all' && styles.activeCard]}>
-                <Text style={[styles.statNumber, filter === 'all' && styles.activeText]}>{stats.total}</Text>
-                <Text style={[styles.statLabel, filter === 'all' && styles.activeText]}>Recent</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setFilter('active')} style={[styles.statCard, filter === 'active' && styles.activeCard]}>
-                <Text style={[styles.statNumber, { color: COLORS.warning }, filter === 'active' && styles.activeText]}>{stats.active}</Text>
-                <Text style={[styles.statLabel, filter === 'active' && styles.activeText]}>Active</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setFilter('resolved')} style={[styles.statCard, filter === 'resolved' && styles.activeCard]}>
-                <Text style={[styles.statNumber, { color: COLORS.success }, filter === 'resolved' && styles.activeText]}>{stats.resolved}</Text>
-                <Text style={[styles.statLabel, filter === 'resolved' && styles.activeText]}>Resolved</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setFilter('social')} style={[styles.statCard, filter === 'social' && styles.activeCard]}>
-                <Text style={[styles.statNumber, { color: COLORS.primary }, filter === 'social' && styles.activeText]}>{stats.posts}</Text>
-                <Text style={[styles.statLabel, filter === 'social' && styles.activeText]}>Posts</Text>
-              </TouchableOpacity>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{stats.total}</Text>
+                <Text style={styles.statLabel}>Updates</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={[styles.statNumber, { color: COLORS.warning }]}>{stats.active}</Text>
+                <Text style={styles.statLabel}>Active</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={[styles.statNumber, { color: COLORS.success }]}>{stats.resolved}</Text>
+                <Text style={styles.statLabel}>Resolved</Text>
+              </View>
             </View>
 
             {/* --- MAIN ACTION --- */}
@@ -228,8 +269,8 @@ export default function Dashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="leaf-outline" size={40} color="#ccc" />
-            <Text style={styles.emptyText}>No items found.</Text>
+            <Ionicons name="notifications-off-outline" size={40} color="#ccc" />
+            <Text style={styles.emptyText}>No recent activity.</Text>
           </View>
         }
         contentContainerStyle={{ paddingBottom: 100 }} // padding for tab bar
@@ -280,6 +321,13 @@ export default function Dashboard() {
         onHide={() => setToastVisible(false)}
       />
 
+      {/* WEB: Get App Modal */}
+      <GetAppModal
+        visible={showGetAppModal}
+        onClose={() => setShowGetAppModal(false)}
+        userEmail={user?.email}
+      />
+
     </SafeAreaView >
   );
 }
@@ -297,6 +345,16 @@ const styles = StyleSheet.create({
   avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: 'white' },
   avatarPlaceholder: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+
+  // Web Banner
+  webBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#f1f5f9', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 10,
+    marginBottom: 20, borderWidth: 1, borderColor: '#e2e8f0'
+  },
+  bannerLink: { fontSize: 14, fontWeight: 'bold', color: COLORS.primary, marginBottom: 2 },
+  bannerInfo: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic' },
+  bannerBtn: { backgroundColor: COLORS.primary, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
 
   // Stats
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
@@ -326,8 +384,24 @@ const styles = StyleSheet.create({
   },
   draftText: { flex: 1, color: '#E65100', fontWeight: '600', marginLeft: 10 },
 
+
   // Recent Activity
-  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+  sectionHeaderBox: {
+    paddingVertical: 15,
+    paddingHorizontal: 0,
+    backgroundColor: '#F2F6F9',
+    marginTop: 10,
+    marginBottom: 5,
+    borderRadius: 8
+  },
+  sectionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+    marginLeft: 10
+  },
+
+  // kept SimpleRow styles if used elsewhere, otherwise they are replaced by SimpleExpandableRow
   simpleRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 10,
     borderBottomWidth: 1, borderColor: '#f0f0f0'
