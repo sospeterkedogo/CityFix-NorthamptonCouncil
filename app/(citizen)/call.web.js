@@ -10,7 +10,7 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 export default function CallScreenWeb() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { user } = useAuth();
+    const { user, userData } = useAuth();
 
     // Params: callId, name (caller/callee name), type ('voice' or 'video')
     const { callId, name, type, sessionUid } = params;
@@ -100,7 +100,7 @@ export default function CallScreenWeb() {
 
             const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
                 appID, serverSecret, callId, mySessionId,
-                user.name || user.displayName || user.email
+                userData?.username || userData?.name || user.displayName || user.email
             );
 
             // 3. Create instance & Assign to Ref

@@ -15,7 +15,7 @@ const AppSign = process.env.EXPO_PUBLIC_ZEGO_APP_SIGN;
 
 export default function CallPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, userData } = useAuth();
 
     // 1. Get the 'type' param (video or voice)
     const { callId, name, type } = useLocalSearchParams();
@@ -106,7 +106,7 @@ export default function CallPage() {
                         appID={AppID}
                         appSign={AppSign}
                         userID={user.uid}
-                        userName={user.email.split('@')[0]}
+                        userName={userData?.username || user.displayName || user.email.split('@')[0]}
                         callID={callId}
 
                         config={{

@@ -13,6 +13,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null); // The Firebase User
+    const [userData, setUserData] = useState(null); // The Firestore User Document
     const [userRole, setUserRole] = useState(null); // 'citizen', 'engineer', etc.
     const [loading, setLoading] = useState(true);
 
@@ -21,7 +22,7 @@ export const AuthProvider = ({ children }) => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 // User is signed in, fetch their Role from Firestore
-                await fetchUserRole(firebaseUser.uid);
+                await fetchUserProfile(firebaseUser.uid);
                 setUser(firebaseUser);
 
                 // WEB-SAFE TOKEN REGISTRATION
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }) => {
             } else {
                 // User is signed out
                 setUser(null);
+                setUserData(null);
                 setUserRole(null);
             }
             setLoading(false);
@@ -66,18 +68,20 @@ export const AuthProvider = ({ children }) => {
         return () => clearInterval(interval);
     }, [user]);
 
-    const fetchUserRole = async (uid) => {
+    const fetchUserProfile = async (uid) => {
         try {
             const docRef = doc(db, 'users', uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setUserRole(docSnap.data().role);
+                const data = docSnap.data();
+                setUserData(data);
+                setUserRole(data.role);
             } else {
                 // Fallback or error handling
                 console.log("User exists in Auth but not in Firestore 'users' collection");
             }
         } catch (e) {
-            console.error("Error fetching role:", e);
+            console.error("Error fetching user profile:", e);
         }
     };
 
@@ -200,6 +204,7 @@ export const AuthProvider = ({ children }) => {
 
             await signOut(auth);
             setUser(null);
+            setUserData(null);
             setUserRole(null);
         } catch (error) {
             console.error("AuthContext: SignOut failed", error);
@@ -209,6 +214,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             user,
+            userData, // Expose full Firestore profile
             userRole,
             loading,
             login,
