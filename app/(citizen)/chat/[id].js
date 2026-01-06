@@ -11,7 +11,7 @@ import { COLORS, STYLES } from '../../../src/constants/theme';
 
 export default function ChatScreen() {
     const { id: friendId, name: friendName, lastActive } = useLocalSearchParams();
-    const { user } = useAuth();
+    const { user, userData } = useAuth();
     const router = useRouter();
 
     const [messages, setMessages] = useState([]);
@@ -30,7 +30,7 @@ export default function ChatScreen() {
         // 1. Create Call Signal Document (Shared State)
         await setDoc(doc(db, 'calls', callId), {
             callerId: user.uid,
-            callerName: user.name || user.email,
+            callerName: userData?.username || userData?.name || user.email,
             receiverId: friendId,
             status: 'ringing', // ringing, accepted, rejected, ended
             callType: callType,
@@ -40,7 +40,7 @@ export default function ChatScreen() {
         // 2. Send Notification (Trigger Receiver)
         await addDoc(collection(db, 'users', friendId, 'notifications'), {
             title: callType === 'voice' ? "Incoming Voice Call" : "Incoming Video Call",
-            body: `${user.displayName || user.name || user.email.split('@')[0]} is calling...`,
+            body: `${userData?.username || userData?.name || user.displayName || user.email.split('@')[0]} is calling...`,
             type: 'call_invite', // We can use one type and pass mode in data
             callId: callId,
             callMode: callType, // 'voice' or 'video'
