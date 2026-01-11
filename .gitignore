@@ -48,7 +48,7 @@ firebase-messaging-sw.js
 /ios
 
 # news-bot
-# /news-bot
-# /news-bot/service-account.json
+/news-bot
+/news-bot/service-account.json
 
 
