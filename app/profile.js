@@ -314,7 +314,6 @@ export default function UserProfile() {
                         <Text style={styles.signOutText}>Sign Out</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.versionText}>Version 1.0.0 (Build 204)</Text>
                     <View style={{ height: 40 }} />
 
                 </ScrollView>

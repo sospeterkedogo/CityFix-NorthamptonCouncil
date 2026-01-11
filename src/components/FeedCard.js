@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, FlatList, Alert, Linking } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { formatRelativeTime } from '../utils/dateUtils';
 import BeforeAfterViewer from './BeforeAfterViewer';
 
-// Helper for relative time
 
 
 const AvatarFallback = ({ name, email }) => {
@@ -252,6 +251,24 @@ export default function FeedCard({ ticket, showDelete = false }) {
 
     const config = getStatusConfig(ticket.status);
 
+    // Override config for News Item
+    const isNews = ticket.type === 'news_item' || ticket.subtype === 'news_item' || ticket.userId === 'BzfOUUNiNLNoyNLBUlqAXbha6TC3';
+
+    if (isNews) {
+        config.title = 'Northampton Council';
+        config.subtitle = 'News Update';
+        config.badge = 'NEWS';
+        config.badgeColor = '#E91E63';
+        config.image = ticket.imageUrl;
+        config.useCouncilAvatar = true;
+    }
+
+    const handleOpenLink = () => {
+        if (ticket.externalLink) {
+            Linking.openURL(ticket.externalLink).catch(err => console.error("Couldn't load page", err));
+        }
+    };
+
     return (
         <View style={styles.card}>
             {/* Header */}
@@ -387,18 +404,59 @@ export default function FeedCard({ ticket, showDelete = false }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Caption - Render HERE if image exists (Standard Post) */}
-            {config.image && (
-                <View style={styles.captionBox}>
-                    <Text numberOfLines={2}>
-                        <Text style={{ fontWeight: 'bold' }}>{config.title} </Text>
-                        {ticket.type === 'social' ? (
-                            <Text>{ticket.title || ticket.description}</Text>
-                        ) : (
-                            <Text>{ticket.description}</Text>
+            {/* Content Body: News Layout OR Standard Caption */}
+            {isNews ? (
+                <View style={{ padding: 15 }}>
+                    {/* Meta: Date | Author */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={{ fontSize: 12, color: '#666', fontWeight: '600', textTransform: 'uppercase' }}>
+                            {new Date(ticket.publishedDate || ticket.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </Text>
+                        {ticket.authorName && (
+                            <>
+                                <Text style={{ fontSize: 12, color: '#ccc', marginHorizontal: 6 }}>|</Text>
+                                <Text style={{ fontSize: 12, color: '#666' }}>{ticket.authorName}</Text>
+                            </>
                         )}
+                    </View>
+
+                    {/* Headline */}
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', lineHeight: 24, marginBottom: 8, color: '#000' }}>
+                        {ticket.title}
                     </Text>
+
+                    {/* First Sentence */}
+                    <Text style={{ fontSize: 15, lineHeight: 22, color: '#333', marginBottom: 12 }}>
+                        {ticket.description}
+                    </Text>
+
+                    {/* View Full Article Button */}
+                    <TouchableOpacity
+                        onPress={handleOpenLink}
+                        style={{
+                            flexDirection: 'row', alignItems: 'center',
+                            backgroundColor: '#f5f5f5', alignSelf: 'flex-start',
+                            paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8,
+                            borderWidth: 1, borderColor: '#eee'
+                        }}
+                    >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.primary, marginRight: 4 }}>Read Full Article</Text>
+                        <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
+                    </TouchableOpacity>
                 </View>
+            ) : (
+                config.image && (
+                    <View style={styles.captionBox}>
+                        <Text numberOfLines={2}>
+                            <Text style={{ fontWeight: 'bold' }}>{config.title} </Text>
+                            {ticket.type === 'social' ? (
+                                <Text>{ticket.title || ticket.description}</Text>
+                            ) : (
+                                <Text>{ticket.description}</Text>
+                            )}
+                        </Text>
+                    </View>
+                )
             )}
 
             {/* INLINE COMMENTS SECTION */}

@@ -15,7 +15,7 @@ export default function SignupScreen() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [referralCode, setReferralCode] = useState('');
+
     const [loading, setLoading] = useState(false);
     const [showAppModal, setShowAppModal] = useState(false);
 
@@ -81,7 +81,7 @@ export default function SignupScreen() {
 
         setLoading(true);
         try {
-            await registerCitizen(email, password, name, username, referralCode);
+            await registerCitizen(email, password, name, username);
             // Success
             if (Platform.OS === 'web') {
                 setShowAppModal(true);
@@ -216,15 +216,7 @@ export default function SignupScreen() {
                             />
                         </View>
 
-                        <View style={styles.inputWrapper}>
-                            <Text style={styles.inputLabel}>Referral Code (Optional)</Text>
-                            <TextInput
-                                style={styles.input} placeholder="e.g. JOH123"
-                                placeholderTextColor="#94a3b8"
-                                value={referralCode} onChangeText={setReferralCode}
-                                autoCapitalize="characters"
-                            />
-                        </View>
+
 
                         <TouchableOpacity style={styles.btn} onPress={handleSignup} disabled={loading}>
                             {loading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>Create Account</Text>}

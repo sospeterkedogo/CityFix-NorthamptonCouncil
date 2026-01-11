@@ -184,13 +184,7 @@ export default function SocialScreen() {
             <View style={styles.webContainer}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
                     <Text style={styles.header}>Community</Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(citizen)/referrals')}
-                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 }}
-                    >
-                        <Ionicons name="gift-outline" size={18} color={COLORS.primary} style={{ marginRight: 5 }} />
-                        <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 12 }}>Get £10</Text>
-                    </TouchableOpacity>
+
                 </View>
 
                 {/* TABS */}

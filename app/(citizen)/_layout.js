@@ -118,7 +118,7 @@ function CitizenTabs() {
 
             {/* HIDE ALL OTHER ROUTES STRICTLY */}
             <Tabs.Screen name="report" options={{ href: null }} />
-            <Tabs.Screen name="referrals" options={{ href: null }} />
+
             <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
             <Tabs.Screen name="chat/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
             <Tabs.Screen name="call" options={{ href: null, tabBarStyle: { display: 'none' } }} />

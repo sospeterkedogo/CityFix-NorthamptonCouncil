@@ -231,13 +231,7 @@ export default function PublicProfile() {
                             </View>
                         ) : (
                             <View style={styles.actionRow}>
-                                <TouchableOpacity
-                                    onPress={() => router.push('/(citizen)/referrals')}
-                                    style={[styles.btnPrimary, { backgroundColor: COLORS.action }]}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={styles.btnTextPrimary}>Invite & Earn £10</Text>
-                                </TouchableOpacity>
+
                             </View>
                         )}
                     </>
