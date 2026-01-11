@@ -34,7 +34,7 @@ export default function AboutCityFix() {
                             resizeMode="contain"
                         />
                         <Text style={styles.appName}>CityFix</Text>
-                        <Text style={styles.version}>Version 1.0.0 (Build 204)</Text>
+
                     </View>
 
                     <View style={styles.section}>
