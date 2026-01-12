@@ -2,9 +2,6 @@ import { collection, query, where, getDocs, orderBy, limit, doc, updateDoc, dele
 import { db } from '../config/firebase';
 
 export const NotificationService = {
-    /**
-     * Send a notification to a specific user
-     */
     sendNotification: async (userId, title, body, type = 'alert', data = {}) => {
         try {
             await addDoc(collection(db, 'users', userId, 'notifications'), {
@@ -22,9 +19,6 @@ export const NotificationService = {
         }
     },
 
-    /**
-     * Fetch user notifications
-     */
     getNotifications: async (userId, limitCount = 50) => {
         try {
             const q = query(
@@ -44,9 +38,6 @@ export const NotificationService = {
         }
     },
 
-    /**
-     * Mark a notification as read
-     */
     markAsRead: async (userId, notificationId) => {
         try {
             const docRef = doc(db, 'users', userId, 'notifications', notificationId);
@@ -60,9 +51,6 @@ export const NotificationService = {
         }
     },
 
-    /**
-     * Delete a notification
-     */
     deleteNotification: async (userId, notificationId) => {
         try {
             const docRef = doc(db, 'users', userId, 'notifications', notificationId);

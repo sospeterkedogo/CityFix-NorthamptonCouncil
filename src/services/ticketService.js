@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, updateDoc, query, where, getDoc, writeBatch, runTransaction, increment } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, where, getDoc, writeBatch, runTransaction, increment, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createTicket, TICKET_STATUS } from '../constants/models';
 import { canAssign } from '../constants/workflow';
@@ -9,43 +9,17 @@ import { isPointInPolygon, getDistanceKm } from '../utils/geo';
 
 const TICKET_COLLECTION = 'tickets';
 
-// Helper to get a user's token
-const getUserToken = async (userId) => {
-  try {
-    if (!userId) return null;
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    return userSnap.exists() ? userSnap.data().pushToken : null;
-  } catch (e) {
-    console.error("Error fetching token:", e);
-    return null;
-  }
-};
 
 export const TicketService = {
-  /**
-   * Submits a new ticket to Firestore
-   */
+
   submitTicket: async (userId, title, description, category, lat, lng, photos = [], address = null) => {
     try {
-      // 1. Use the Factory Function to enforce structure
       const ticketData = createTicket(userId, title, description, category, lat, lng, address);
-
-      // 2. Set status to SUBMITTED
       ticketData.status = TICKET_STATUS.SUBMITTED;
-
-      // 3. Add photo URLs if any
       ticketData.photos = photos;
-
-      // 4. Write to Firestore
       const docRef = await addDoc(collection(db, TICKET_COLLECTION), ticketData);
-
-      // NOTIFICATION: Confirm to Citizen
       await notifyUser(userId, "Ticket Received", `We have received your report: "${title}".`);
-
-      // NOTIFICATION: Alert Dispatchers
       await notifyRole('dispatcher', "New Report", `New ticket submitted: ${title}`);
-
-
 
       return { success: true, id: docRef.id };
     } catch (error) {
@@ -55,9 +29,7 @@ export const TicketService = {
 
 
 
-  /**
-     * Fetches all tickets (Modified to hide Merged ones by default)
-     */
+
   getAllTickets: async (includeMerged = false) => {
     try {
       const querySnapshot = await getDocs(collection(db, TICKET_COLLECTION));
@@ -68,7 +40,7 @@ export const TicketService = {
 
       if (includeMerged) return allDocs;
 
-      // GRACEFUL HANDLING: Filter out merged tickets AND social posts
+
       return allDocs.filter(t => t.status !== 'merged' && t.type !== 'social');
     } catch (error) {
       console.error('Error fetching tickets:', error);
@@ -76,9 +48,28 @@ export const TicketService = {
     }
   },
 
-  /**
-   * Fetches engineer jobs (Modified to strictly hide Merged)
-   */
+  getResolvedTickets: async (limitCount = 20) => {
+    try {
+      const q = query(
+        collection(db, TICKET_COLLECTION),
+        where('status', 'in', ['resolved', 'verified']),
+        limit(limitCount)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const allDocs = querySnapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
+
+      return allDocs.filter(t => t.type !== 'social').sort((a, b) => b.createdAt - a.createdAt);
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      return [];
+    }
+  },
+
+
   getEngineerJobs: async (engineerId) => {
     try {
       const q = query(
@@ -93,7 +84,7 @@ export const TicketService = {
         id: doc.id,
       }));
 
-      // Engineer should NEVER see a merged ticket
+
       return jobs.filter(t => t.status !== 'merged');
 
     } catch (error) {
@@ -102,9 +93,7 @@ export const TicketService = {
     }
   },
 
-  /**
-   * Get tickets for a specific citizen (Includes merged so they can see history)
-   */
+
   getCitizenTickets: async (userId) => {
     try {
       const q = query(collection(db, TICKET_COLLECTION), where("userId", "==", userId));
@@ -116,36 +105,34 @@ export const TicketService = {
     }
   },
 
-  /**
-   * Assigns a ticket to an engineer and updates status
-   */
+
   assignTicket: async (ticketId, engineerId) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
 
-      // 1. FETCH CURRENT STATE FIRST (Security Check)
+
       const ticketSnap = await getDoc(ticketRef);
       if (!ticketSnap.exists()) throw new Error("Ticket not found");
 
       const ticketData = ticketSnap.data();
       const currentStatus = ticketData.status;
 
-      // 2. CHECK THE STATE MACHINE
+
       if (!canAssign(currentStatus)) {
         throw new Error(`Illegal Action: Cannot assign a ticket that is '${currentStatus}'.`);
       }
 
-      // 3. If passed, update the ticket
+
       await updateDoc(ticketRef, {
         assignedTo: engineerId,
-        status: TICKET_STATUS.ASSIGNED, // Move from SUBMITTED -> ASSIGNED
+        status: TICKET_STATUS.ASSIGNED,
         updatedAt: Date.now()
       });
 
-      // NOTIFICATION: To Engineer
+
       await notifyUser(engineerId, "New Job Assigned", `You are assigned to: ${ticketData.title}`);
 
-      // NOTIFICATION: To Citizen
+
       await notifyUser(ticketData.userId, "Update: Engineer Assigned", `An engineer is on the way to fix your issue.`);
 
       return { success: true };
@@ -154,14 +141,10 @@ export const TicketService = {
     }
   },
 
-  /**
-   * Automatically assign ticket to the best engineer
-   * 1. Check Zones (Polygon)
-   * 2. Fallback to Nearest Distance
-   */
+
   autoAssign: async (ticketId) => {
     try {
-      // 1. Get Ticket
+
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
       const ticketSnap = await getDoc(ticketRef);
       if (!ticketSnap.exists()) throw new Error("Ticket not found");
@@ -169,7 +152,7 @@ export const TicketService = {
 
       if (!canAssign(ticket.status)) throw new Error("Ticket cannot be assigned (already resolved/assigned).");
 
-      // 2. Get All Engineers
+
       const engineers = await UserService.getAllEngineers();
       const availableEngineers = engineers.filter(e => e.status === 'Available');
 
@@ -179,7 +162,7 @@ export const TicketService = {
       let minDist = Infinity;
       const { latitude, longitude } = ticket.location;
 
-      // 3. Find Best Match
+
       for (const eng of availableEngineers) {
         // Priority A: Inside Zone
         if (eng.zone && isPointInPolygon({ latitude, longitude }, eng.zone)) {
@@ -197,10 +180,10 @@ export const TicketService = {
         }
       }
 
-      // Fallback
+
       if (!bestEngineer) bestEngineer = availableEngineers[0];
 
-      // 4. Assign
+
       return await TicketService.assignTicket(ticket.id, bestEngineer.id);
 
     } catch (e) {
@@ -209,9 +192,7 @@ export const TicketService = {
   },
 
 
-  /**
-   * Get a single ticket by ID
-   */
+
   getTicketById: async (ticketId) => {
     try {
       const docRef = doc(db, TICKET_COLLECTION, ticketId);
@@ -225,9 +206,7 @@ export const TicketService = {
     }
   },
 
-  /**
-   * RESOLVE the ticket with evidence
-   */
+
   resolveTicket: async (ticketId, notes, afterPhotoUrl) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
@@ -238,11 +217,11 @@ export const TicketService = {
       await updateDoc(ticketRef, {
         status: TICKET_STATUS.RESOLVED,
         resolutionNotes: notes,
-        afterPhoto: afterPhotoUrl, // The proof!
+        afterPhoto: afterPhotoUrl,
         resolvedAt: Date.now()
       });
 
-      // CREATE NOTIFICATION (This is what triggers the Context listener)
+
       await addDoc(collection(db, 'users', ticketData.userId, 'notifications'), {
         title: "Issue Resolved",
         body: `Good news! "${ticketData.title}" has been fixed.`,
@@ -253,12 +232,12 @@ export const TicketService = {
       });
 
 
-      // NOTIFICATION: To Citizen
+
       if (ticketData.userId) {
         await notifyUser(ticketData.userId, "Issue Resolved!", `Good news! "${ticketData.title}" has been fixed.`);
       }
 
-      // NOTIFICATION: To QA
+
       await notifyRole('qa', "Verification Needed", `Ticket #${ticketId.slice(0, 4)} is resolved. Please verify.`);
 
       return { success: true };
@@ -267,9 +246,7 @@ export const TicketService = {
     }
   },
 
-  /**
-   * Final Step: QA Verification
-   */
+
   verifyTicket: async (ticketId) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
@@ -281,12 +258,12 @@ export const TicketService = {
         verifiedAt: Date.now()
       });
 
-      // NOTIFICATION: To Citizen
+
       if (ticketData.userId) {
         await notifyUser(ticketData.userId, "Case Closed", `Your report "${ticketData.title}" has been verified and closed.`);
       }
 
-      // NOTIFICATION: To Engineer
+
       if (ticketData.assignedTo) {
         await notifyUser(ticketData.assignedTo, "Work Verified", `Great job! Your fix for "${ticketData.title}" has been verified.`);
       }
@@ -297,32 +274,28 @@ export const TicketService = {
     }
   },
 
-  /**
-   * REJECT/REOPEN a resolved ticket
-   */
+
   reopenTicket: async (ticketId, reason) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
 
       await updateDoc(ticketRef, {
-        status: 'reopened', // This status will put it back in the Dispatcher's inbox!
+        status: 'reopened',
         rejectionReason: reason,
         reopenedAt: Date.now(),
-        // Optional: Clear the assignment so it can be re-assigned?
-        // Or keep it assigned to the same engineer?
-        // Let's keep it assigned but flagged.
+
       });
 
-      // Fetch ticket to get users
+
       const ticketSnap = await getDoc(ticketRef);
       const ticketData = ticketSnap.data();
 
-      // NOTIFICATION: To Engineer
+
       if (ticketData.assignedTo) {
         await notifyUser(ticketData.assignedTo, "Ticket Reopened", `Ticket "${ticketData.title}" was reopened. Reason: ${reason}`);
       }
 
-      // NOTIFICATION: To Citizen
+
       if (ticketData.userId) {
         await notifyUser(ticketData.userId, "Status Update: Reopened", `Your ticket "${ticketData.title}" was reopened for further work.`);
       }
@@ -332,9 +305,7 @@ export const TicketService = {
       return { success: false, error: error.message };
     }
   },
-  /**
-   * Mark ticket as Under Review (Dispatcher Action)
-   */
+
   markAsUnderReview: async (ticketId) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
@@ -346,7 +317,7 @@ export const TicketService = {
       const ticketSnap = await getDoc(ticketRef);
       const ticketData = ticketSnap.data();
 
-      // NOTIFICATION: To Citizen
+
       if (ticketData.userId) {
         await notifyUser(ticketData.userId, "Under Review", `We are reviewing your report: "${ticketData.title}".`);
       }
@@ -357,11 +328,7 @@ export const TicketService = {
     }
   },
 
-  /**
-   * Merges duplicate tickets into a parent ticket
-   * @param {string} parentId - The ID of the ticket to keep
-   * @param {string[]} duplicateIds - Array of IDs to close
-   */
+
   mergeTickets: async (parentId, duplicateIds) => {
     try {
       const batch = writeBatch(db);
@@ -369,7 +336,7 @@ export const TicketService = {
       duplicateIds.forEach(id => {
         const docRef = doc(db, TICKET_COLLECTION, id);
         batch.update(docRef, {
-          status: 'merged', // New status
+          status: 'merged',
           mergedInto: parentId,
           resolutionNotes: `Closed as duplicate of #${parentId.slice(0, 5)}`,
           updatedAt: Date.now()
@@ -378,8 +345,7 @@ export const TicketService = {
 
       await batch.commit();
 
-      // OPTIONAL: Notify duplicate owners (async loop)
-      // Since this is a batch, we might not want to await individually, but let's do it for completeness
+
       duplicateIds.forEach(async (id) => {
         const snap = await getDoc(doc(db, TICKET_COLLECTION, id));
         if (snap.exists()) {

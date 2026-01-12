@@ -3,13 +3,12 @@ import { Platform } from 'react-native';
 
 // Get API Key from app.json extra
 const getApiKey = () => {
-    // 1. Try Expo Config (Standard)
+    // Try Expo Config
     const extra = Constants.expoConfig?.extra || Constants.manifest?.extra || {};
     // Debug log removed
 
     if (extra.googleMapsApiKey) return extra.googleMapsApiKey;
 
-    // 2. Try process.env (Web/EAS)
     if (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY) return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
     return null; // No key found
@@ -22,7 +21,7 @@ export const hasGoogleMapsKey = () => {
     return !!API_KEY && API_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY';
 };
 
-// --- WEB SUPPORT: Dynamic Script Loading ---
+// Web Support: Dynamic Script Loading
 const loadGoogleMapsScript = () => {
     if (Platform.OS !== 'web') return Promise.resolve();
     if (window.google && window.google.maps && window.google.maps.places) return Promise.resolve();
@@ -38,11 +37,6 @@ const loadGoogleMapsScript = () => {
     });
 };
 
-/**
- * Fetches place predictions from Google Places Autocomplete API
- * @param {string} input - User input
- * @returns {Promise<Array>} Array of predictions
- */
 export const getPlacePredictions = async (input) => {
     if (!input || input.length < 3) return [];
     if (!hasGoogleMapsKey()) {
@@ -50,7 +44,7 @@ export const getPlacePredictions = async (input) => {
         return [];
     }
 
-    // --- WEB IMPLEMENTATION ---
+
     if (Platform.OS === 'web') {
         try {
             await loadGoogleMapsScript();
@@ -76,8 +70,7 @@ export const getPlacePredictions = async (input) => {
     }
 
     try {
-        // Restrict to GB for this specific app usage
-        // usage: types=geocode|establishment
+
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:gb&key=${API_KEY}`;
 
         const response = await fetch(url);
@@ -95,15 +88,10 @@ export const getPlacePredictions = async (input) => {
     }
 };
 
-/**
- * Fetches details (lat/lng) for a specific Place ID
- * @param {string} placeId 
- * @returns {Promise<Object|null>} { lat, lng, address_components, formatted_address }
- */
 export const getPlaceDetails = async (placeId) => {
     if (!hasGoogleMapsKey()) return null;
 
-    // --- WEB IMPLEMENTATION ---
+
     if (Platform.OS === 'web') {
         try {
             await loadGoogleMapsScript();
@@ -155,16 +143,10 @@ export const getPlaceDetails = async (placeId) => {
     }
 };
 
-/**
- * Reverse Geocoding using Google Geocoding API (More reliable than Expo for addresses)
- * @param {number} lat 
- * @param {number} lng 
- * @returns {Promise<Object>} { address, street, city, postalCode }
- */
 export const reverseGeocodeGoogle = async (lat, lng) => {
     if (!hasGoogleMapsKey()) return null;
 
-    // --- WEB IMPLEMENTATION ---
+
     if (Platform.OS === 'web') {
         try {
             await loadGoogleMapsScript();
@@ -197,7 +179,7 @@ export const reverseGeocodeGoogle = async (lat, lng) => {
 
         if (data.status === 'OK' && data.results.length > 0) {
             const first = data.results[0];
-            // Naive component extraction
+
             const findComp = (type) => first.address_components.find(c => c.types.includes(type))?.long_name;
 
             return {

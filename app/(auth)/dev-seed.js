@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput, ScrollView } from 'react-native';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../src/config/firebase'; // Direct access needed for seeding
 import { COLORS, STYLES } from '../../src/constants/theme';
 import { useRouter } from 'expo-router';
@@ -65,6 +65,57 @@ export default function DevSeedScreen() {
             setCustomPassword('');
             setCustomName('');
             // Keep role for convenience
+        }
+    };
+
+    const seedTickets = async () => {
+        setLoading(true);
+        addLog("Creating test tickets...");
+        try {
+            // 1. Create a Resolved Ticket
+            await addDoc(collection(db, 'tickets'), {
+                userId: 'system_seed',
+                userName: 'Council Bot',
+                status: 'resolved',
+                type: 'social', // Must be 'social' to appear? Wait, verifiedFeed filters by status, resolvedQ/verifiedQ don't filter by type in the query shown, but let's check.
+                // Re-checking SocialService.js:
+                // resolvedQ = query(collection(db, 'tickets'), where('status', '==', 'resolved'), limit(limitCount));
+                // It does NOT filter by type='social'. Good.
+                title: 'Pothole Fixed',
+                description: 'We fixed the pothole on Main St.',
+                createdAt: serverTimestamp(),
+                category: 'Highways',
+                location: { latitude: 52.2405, longitude: -0.9027 }, // Northampton center
+                address: 'Market Square, Northampton',
+                imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80',
+                likes: 5,
+                upvoteCount: 10
+            });
+            addLog("✅ Created 'Resolved' Ticket");
+
+            // 2. Create a Verified Ticket
+            await addDoc(collection(db, 'tickets'), {
+                userId: 'system_seed',
+                userName: 'Council Bot',
+                status: 'verified',
+                title: 'Fly Tipping Reported',
+                description: 'Report verified and scheduled for playing.',
+                createdAt: serverTimestamp(),
+                category: 'Environment',
+                location: { latitude: 52.235, longitude: -0.9 },
+                address: 'Abington Park',
+                imageUrl: 'https://images.unsplash.com/photo-1530587222861-b33c6c1d480a?auto=format&fit=crop&w=800&q=80',
+                likes: 2,
+                upvoteCount: 3
+            });
+            addLog("✅ Created 'Verified' Ticket");
+
+            Alert.alert("Success", "Test tickets created!");
+        } catch (e) {
+            console.error(e);
+            addLog(`❌ Error seeding tickets: ${e.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -137,6 +188,10 @@ export default function DevSeedScreen() {
 
                 <TouchableOpacity style={[styles.btn, { backgroundColor: '#555' }]} onPress={handleSeed} disabled={loading}>
                     {loading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>GENERATE DEFAULTS</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.btn, { backgroundColor: '#2E8B57', marginTop: 10 }]} onPress={seedTickets} disabled={loading}>
+                    <Text style={styles.btnText}>SEED RESOLVED/VERIFIED TICKETS</Text>
                 </TouchableOpacity>
             </View>
 

@@ -2,27 +2,27 @@ import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, addD
 import { db } from '../config/firebase';
 import { NotificationService } from './notificationService';
 
-const userCache = {}; // { userId: { data: {}, timestamp: 12345 } }
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const userCache = {};
+const CACHE_DURATION = 5 * 60 * 1000;
 
 export const UserService = {
 
-  // Get User (Cached) to prevent N+1 reads in Feed
+
   getUserCached: async (userId) => {
     const now = Date.now();
 
-    // Check Cache
+
     if (userCache[userId] && (now - userCache[userId].timestamp < CACHE_DURATION)) {
       return userCache[userId].data;
     }
 
-    // Fetch from Firestore
+
     try {
       const docRef = doc(db, 'users', userId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const userData = docSnap.data();
-        // Update Cache
+
         userCache[userId] = {
           data: userData,
           timestamp: now
@@ -35,9 +35,9 @@ export const UserService = {
     return null;
   },
 
+
   // Search Users by Username (Prefix Search)
   searchUsers: async (searchTerm) => {
-    // ... existing search logic ... //
     if (!searchTerm) return [];
 
     // 'searchTerm + \uf8ff' is a Firestore trick to simulate "Starts With"
@@ -56,9 +56,7 @@ export const UserService = {
     }
   },
 
-  // Send Neighbor Request
   sendRequest: async (fromUser, toUser) => {
-    // Check if request already exists
     const q = query(
       collection(db, 'friend_requests'),
       where('fromId', '==', fromUser.uid),
@@ -76,7 +74,7 @@ export const UserService = {
       createdAt: serverTimestamp()
     });
 
-    // Notify Recipient (Safe)
+
     const senderName = fromUser.name || fromUser.displayName || fromUser.email.split('@')[0] || 'Someone';
     try {
       await NotificationService.sendNotification(
@@ -90,7 +88,7 @@ export const UserService = {
       console.warn("Could not notify recipient (permissions?):", e);
     }
 
-    // Notify Sender (Confirmation)
+
     try {
       await NotificationService.sendNotification(
         fromUser.uid,
@@ -105,7 +103,7 @@ export const UserService = {
     return { success: true };
   },
 
-  // Listen for Incoming Requests (Real-time)
+
   listenToRequests: (userId, callback) => {
     const q = query(
       collection(db, 'friend_requests'),
@@ -118,26 +116,26 @@ export const UserService = {
     });
   },
 
-  // Accept Request
+
   acceptRequest: async (requestId, fromId, toId, accepterName = 'Someone') => {
-    // Create Friend Record for User 1 (Self)
+
     await setDoc(doc(db, 'users', toId, 'neighbors', fromId), {
       since: serverTimestamp()
     });
-    // Increment Count for Self
+
     await updateDoc(doc(db, 'users', toId), {
       neighborCount: increment(1)
     });
 
-    // Update the request status to 'accepted' then delete
+
     await deleteDoc(doc(db, 'friend_requests', requestId));
 
-    // Create Friend Record for User 2 (Sender)
+
     try {
       await setDoc(doc(db, 'users', fromId, 'neighbors', toId), {
         since: serverTimestamp()
       });
-      // Increment Count for Sender
+
       await updateDoc(doc(db, 'users', fromId), {
         neighborCount: increment(1)
       });
@@ -145,7 +143,7 @@ export const UserService = {
       console.warn("Could not add neighbor to sender's list (permissions?):", e);
     }
 
-    // Notify Original Sender (User 1)
+
     try {
       await NotificationService.sendNotification(
         fromId,
@@ -157,7 +155,7 @@ export const UserService = {
       console.warn("Could not notify sender (permissions?):", e);
     }
 
-    // Notify Accepter (User 2 - Self)
+
     try {
       await NotificationService.sendNotification(
         toId,
@@ -170,14 +168,14 @@ export const UserService = {
     }
   },
 
-  // Decline Request
+
   declineRequest: async (requestId) => {
     await updateDoc(doc(db, 'friend_requests', requestId), {
       status: 'declined'
     });
   },
 
-  // Listen for Sent Requests (monitoring outgoing)
+
   listenToSentRequests: (userId, callback) => {
     const q = query(
       collection(db, 'friend_requests'),
@@ -185,34 +183,34 @@ export const UserService = {
     );
     return onSnapshot(q, (snap) => {
       const requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Sort by status manually if needed, or createdAt descending
+
       requests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
       callback(requests);
     });
   },
 
-  // Clear (Delete) Request
+
   clearRequest: async (requestId) => {
     await deleteDoc(doc(db, 'friend_requests', requestId));
   },
 
-  // Remove Neighbor
+
   removeNeighbor: async (userId, neighborId, userName) => {
-    // Remove from My Neighbors
+
     await deleteDoc(doc(db, 'users', userId, 'neighbors', neighborId));
-    // Decrement My Count
+
     await updateDoc(doc(db, 'users', userId), { neighborCount: increment(-1) });
 
-    // Remove from Their Neighbors (Best Effort)
+
     try {
       await deleteDoc(doc(db, 'users', neighborId, 'neighbors', userId));
-      // Decrement Their Count
+
       await updateDoc(doc(db, 'users', neighborId), { neighborCount: increment(-1) });
     } catch (e) {
       console.warn("Could not remove from neighbor's list (permissions?):", e);
     }
 
-    // Notify them
+
     try {
       await NotificationService.sendNotification(
         neighborId,
@@ -225,13 +223,8 @@ export const UserService = {
     }
   },
 
-  // Get My Neighbors
   listenToNeighbors: (userId, callback) => {
-    // This is a subcollection listener
     return onSnapshot(collection(db, 'users', userId, 'neighbors'), async (snap) => {
-      // Fetch user details for each ID
-      // Note: In a real app, you'd duplicate the name/avatar into the 'neighbors' doc 
-      // to avoid these N+1 reads. For MVP, we fetch.
       const neighbors = [];
       for (const d of snap.docs) {
         const userSnap = await getDocs(query(collection(db, 'users'), where('__name__', '==', d.id)));
@@ -243,12 +236,10 @@ export const UserService = {
     });
   },
 
-  /**
-   * Check if a username is unique
-   */
+
   isUsernameUnique: async (username) => {
     try {
-      // Check the public 'usernames' collection
+
       const docRef = doc(db, 'usernames', username);
       const docSnap = await getDoc(docRef);
       return !docSnap.exists();
@@ -260,14 +251,12 @@ export const UserService = {
     }
   },
 
-  /**
-   * Updates the engineer's availability status
-   */
+
   updateStatus: async (userId, status, name = "Engineer") => {
     try {
       const userRef = doc(db, 'users', userId);
 
-      // We use setDoc with merge: true so if the user doesn't exist, it creates them
+
       await setDoc(userRef, {
         name: name,
         status: status,
@@ -281,9 +270,7 @@ export const UserService = {
     }
   },
 
-  /**
-   * Get current status
-   */
+
   getEngineerProfile: async (userId) => {
     try {
       const userRef = doc(db, 'users', userId);
@@ -298,9 +285,7 @@ export const UserService = {
     }
   },
 
-  /**
-   * Fetch all users with role 'engineer'
-   */
+
   getAllEngineers: async () => {
     try {
       const q = query(collection(db, 'users'), where('role', '==', 'engineer'));
@@ -312,9 +297,7 @@ export const UserService = {
     }
   },
 
-  /**
-   * Update generic user profile (name, photo)
-   */
+
   updateUserProfile: async (userId, data) => {
     try {
       const userRef = doc(db, 'users', userId);

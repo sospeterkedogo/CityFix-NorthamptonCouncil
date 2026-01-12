@@ -7,10 +7,11 @@ import * as Location from 'expo-location';
 import { COLORS, STYLES, SPACING } from '../../src/constants/theme';
 import { SocialService } from '../../src/services/socialService';
 import { ImageService } from '../../src/services/ImageService';
-import { UserService } from '../../src/services/userService'; // Import UserService
+import { UserService } from '../../src/services/userService';
+import { TicketService } from '../../src/services/ticketService';
 import FeedCard from '../../src/components/FeedCard';
 import Toast from '../../src/components/Toast';
-import LocationPickerModal from '../../src/components/LocationPickerModal'; // Import Picker
+import LocationPickerModal from '../../src/components/LocationPickerModal';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import TutorialOverlay from '../../src/components/TutorialOverlay';
@@ -32,8 +33,8 @@ export default function HomeScreen() {
 
     // Location State
     const [showLocationPicker, setShowLocationPicker] = useState(false);
-    const [selectedLocation, setSelectedLocation] = useState(null); // { latitude, longitude, address }
-    const [detectedAddress, setDetectedAddress] = useState(null); // Auto-detected for display
+    const [selectedLocation, setSelectedLocation] = useState(null);
+    const [detectedAddress, setDetectedAddress] = useState(null);
 
     const sectionListRef = useRef(null);
 
@@ -84,13 +85,6 @@ export default function HomeScreen() {
         // 2. Fallback to Profile Address
         if (user) {
             try {
-                // We need to fetch the fresh profile data since AuthContext doesn't have 'address' yet
-                // Importing UserService here dynamically or we can assume it's available in scope
-                // Using SocialService as a bridge or direct import if available. 
-                // Let's assume UserService.getEngineerProfile is importable.
-                // Wait, I need to make sure UserService is imported. I'll add the import in a separate tool call if needed or assume it.
-                // Actually, I'll fetch the doc directly to be safe or just use the imported UserService if I add it.
-                // I will add the import in the next step.
                 const profile = await UserService.getEngineerProfile(user.uid);
 
                 // 2a. Use specific City field if available (New Structured Input)
@@ -99,8 +93,7 @@ export default function HomeScreen() {
                     return;
                 }
 
-                // 2b. (Removed) Legacy fallback was unreliable (picking street names).
-                // If profile.city is missing, we fall through to the default below.
+
             } catch (e) {
                 console.log("Profile Tagline Error:", e);
             }
@@ -139,17 +132,18 @@ export default function HomeScreen() {
         setFeed([]);
         let result;
         if (activeTab === 'official') {
-            result = await SocialService.getVerifiedFeed();
+            const data = await TicketService.getResolvedTickets();
+            setFeed(data);
         } else {
             result = await SocialService.getNeighborhoodFeed();
+            setFeed(result.data);
         }
-        setFeed(result.data);
         setLoading(false);
     };
 
     const pickMedia = async (type) => {
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: type === 'video' ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: type === 'video' ? ['videos'] : ['images'],
             allowsEditing: true, quality: 0.5,
         });
         if (!result.canceled) {
@@ -162,7 +156,7 @@ export default function HomeScreen() {
         let { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') return alert('Camera permission needed');
         let result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true, quality: 0.5,
         });
         if (!result.canceled) {
