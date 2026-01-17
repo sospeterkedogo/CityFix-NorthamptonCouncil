@@ -14,7 +14,6 @@ export const ImageService = {
             const blob = await response.blob();
 
             // Create Storage Reference
-            // path example: `uploads/${userId}/${Date.now()}.jpg`
             const storageRef = ref(storage, path);
 
 

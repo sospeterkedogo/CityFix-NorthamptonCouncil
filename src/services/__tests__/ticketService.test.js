@@ -54,6 +54,24 @@ describe('TicketService Workflow Transitions', () => {
             }));
         });
 
+        test('should allow transition from ASSIGNED to RESOLVED (Shortcut)', async () => {
+            // Mock ticket as ASSIGNED
+            getDoc.mockResolvedValue({
+                exists: () => true,
+                data: () => ({
+                    status: TICKET_STATUS.ASSIGNED,
+                    userId: 'user1',
+                    title: 'Fix pothole'
+                })
+            });
+            updateDoc.mockResolvedValue({});
+
+            const result = await TicketService.resolveTicket('ticket1', 'Fixed', 'photo.jpg');
+
+            // This is what we WANT, but we expect it to fail currently
+            expect(result.success).toBe(true);
+        });
+
         test('should fail transition from DRAFT to RESOLVED', async () => {
             // Setup mock for a ticket currently DRAFT
             getDoc.mockResolvedValue({

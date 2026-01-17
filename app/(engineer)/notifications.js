@@ -14,7 +14,6 @@ export default function EngineerNotifications() {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Load Notifications on Focus
     useFocusEffect(
         useCallback(() => {
             loadNotifications();
@@ -165,7 +164,6 @@ const styles = StyleSheet.create({
 
     listContent: { paddingVertical: 10 },
 
-    // Card Styles aligned with Citizen UI
     card: {
         flexDirection: 'row',
         paddingVertical: 16,

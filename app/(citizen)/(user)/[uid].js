@@ -24,9 +24,8 @@ export default function PublicProfile() {
         fetchPosts();
         checkFriendStatus();
         return () => unsubscribe && unsubscribe();
-    }, [uid, user?.uid]); // Use user.uid for stability
+    }, [uid, user?.uid]);
 
-    // Re-fetch accurate count whenever profile updates (or on mount)
     useEffect(() => {
         if (user?.uid) {
             fetchNeighborCount();
@@ -40,7 +39,6 @@ export default function PublicProfile() {
             const count = snapshot.data().count;
             setRealNeighborCount(count);
 
-            // Self-healing: Update Firestore if desynced AND is owner
             if (profile && profile.neighborCount !== count && user?.uid === uid) {
                 await updateDoc(doc(db, 'users', uid), { neighborCount: count });
                 console.log("Self-healed neighbor count");
@@ -58,15 +56,12 @@ export default function PublicProfile() {
         }
 
         try {
-
-            // Check if already friends
             const friendSnap = await getDoc(doc(db, 'users', user.uid, 'neighbors', uid));
             if (friendSnap.exists()) {
                 setFriendStatus('friends');
                 return;
             }
 
-            // Check if request sent by ME
             const sentQ = query(collection(db, 'friend_requests'), where('fromId', '==', user.uid), where('toId', '==', uid), where('status', '==', 'pending'));
             const sentSnap = await getDocs(sentQ);
             if (!sentSnap.empty) {
@@ -74,7 +69,6 @@ export default function PublicProfile() {
                 return;
             }
 
-            // Check if request sent by THEM
             const rxQ = query(collection(db, 'friend_requests'), where('fromId', '==', uid), where('toId', '==', user.uid), where('status', '==', 'pending'));
             const rxSnap = await getDocs(rxQ);
             if (!rxSnap.empty) {
@@ -94,7 +88,6 @@ export default function PublicProfile() {
         const unsubscribe = onSnapshot(doc(db, 'users', uid), (doc) => {
             if (doc.exists()) {
                 setProfile(doc.data());
-                // Fallback to profile count initially or if fetch fails, but state will override
             }
             setLoading(false);
         }, (error) => {
@@ -189,7 +182,6 @@ export default function PublicProfile() {
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statItem}>
-                                {/* Use realNeighborCount if available (for self), else fallback to profile.neighborCount */}
                                 <Text style={styles.statNumber}>{Math.max(0, realNeighborCount !== null ? realNeighborCount : (profile.neighborCount || 0))}</Text>
                                 <Text style={styles.statLabel}>Neighbors</Text>
                             </View>
@@ -252,7 +244,6 @@ export default function PublicProfile() {
                             if (router.canGoBack()) {
                                 router.back();
                             } else {
-                                // Fallback if accessed directly (refresh) and no history
                                 router.replace('/(citizen)/dashboard');
                             }
                         }} style={styles.backBtn}>

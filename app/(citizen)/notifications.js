@@ -13,21 +13,14 @@ import { formatRelativeTime } from '../../src/utils/dateUtils';
 
 export default function NotificationsScreen() {
     const router = useRouter();
-    const { user } = useAuth(); // Need user for call query
+    const { user } = useAuth();
     const { notifications, loading: notifLoading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
 
     const [calls, setCalls] = React.useState([]);
     const [callsLoading, setCallsLoading] = React.useState(true);
 
-    // Fetch Call History
     React.useEffect(() => {
         if (!user) return;
-
-        // Query: Calls where I am caller OR receiver
-        // Firestore OR queries are separate, so we combine client-side or listen to both
-        // Simpler: Listen to one "unified" logic if possible, but here we'll listen to receiver queries primarily 
-        // as user asked for "Missed and Received" (Incoming). 
-        // We will add Outgoing for completeness if simple, but focus on Incoming.
 
         const q = query(
             collection(db, 'calls'),
@@ -40,13 +33,11 @@ export default function NotificationsScreen() {
             const list = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
-                isCall: true // Flag to distinguish
+                isCall: true
             }));
             setCalls(list);
             setCallsLoading(false);
         }, (err) => {
-            // Index might be missing for composite query, handle graceful fallbacks if needed? 
-            // "receiverId" + "createdAt" usually requires index
             console.error(err);
             setCallsLoading(false);
         });
@@ -54,10 +45,7 @@ export default function NotificationsScreen() {
         return () => unsub();
     }, [user]);
 
-    // Merge and Sort
     const feed = React.useMemo(() => {
-        // Filter out "Active" call invites from notifications array
-        // The user only wants HISTORY (the 'calls' collection), not the alerts
         const historyOnlyNotifs = notifications.filter(n => n.type !== 'call_invite');
 
         const combined = [...historyOnlyNotifs, ...calls];
@@ -97,13 +85,7 @@ export default function NotificationsScreen() {
     };
 
     const renderItem = ({ item }) => {
-        // CALL ITEM RENDERER
         if (item.isCall) {
-            // Priority Logic:
-            // 1. Rejected -> Declined
-            // 2. Accepted/Started -> Received
-            // 3. Else -> Missed
-
             let type = 'missed';
             if (item.status === 'rejected') type = 'declined';
             else if (item.status === 'accepted' || (item.status === 'ended' && item.startedAt)) type = 'received';
@@ -117,12 +99,12 @@ export default function NotificationsScreen() {
 
             if (type === 'declined') {
                 iconName = 'close-circle';
-                iconColor = '#FF4444'; // Red
+                iconColor = '#FF4444';
                 subText = 'Declined';
                 titleText = `Call from ${item.callerName || 'Unknown'}`;
             } else if (type === 'received') {
                 iconName = 'call';
-                iconColor = COLORS.success; // Green
+                iconColor = COLORS.success;
                 titleText = `Received call from ${item.callerName || 'Unknown'}`;
                 subText = duration ? `Duration: ${duration}` : 'Connected';
             } else { // Missed
@@ -150,7 +132,6 @@ export default function NotificationsScreen() {
             );
         }
 
-        // STANDARD NOTIFICATION RENDERER
         const isUnread = !item.read;
         const date = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || Date.now());
 
@@ -238,7 +219,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff', // Cleaner white background like Google apps
+        backgroundColor: '#fff',
     },
     center: {
         flex: 1,
@@ -268,14 +249,14 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#202124', // Google Dark Grey
+        color: '#202124',
         letterSpacing: -0.5,
     },
     markAllBtn: {
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 20,
-        backgroundColor: '#F1F3F4', // Google light grey pill
+        backgroundColor: '#F1F3F4',
     },
     markAllText: {
         fontSize: 12,
@@ -285,18 +266,17 @@ const styles = StyleSheet.create({
     listContent: {
         paddingVertical: 10,
     },
-    // Card Styling
     card: {
         flexDirection: 'row',
         paddingVertical: 16,
         paddingHorizontal: 20,
         backgroundColor: '#fff',
-        alignItems: 'center', // Align delete button vertically
+        alignItems: 'center',
         justifyContent: 'space-between'
     },
     cardMain: {
         flexDirection: 'row',
-        flex: 1, // Take up remaining space
+        flex: 1,
         alignItems: 'flex-start',
     },
     deleteBtn: {
@@ -304,7 +284,7 @@ const styles = StyleSheet.create({
         marginLeft: 10,
     },
     unreadCard: {
-        backgroundColor: '#E8F0FE', // Google Light Blue for unread
+        backgroundColor: '#E8F0FE',
     },
     readCard: {
         backgroundColor: '#fff',
@@ -344,7 +324,7 @@ const styles = StyleSheet.create({
     },
     time: {
         fontSize: 12,
-        color: '#5f6368', // Google Grey
+        color: '#5f6368',
     },
     body: {
         fontSize: 14,
@@ -352,11 +332,8 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     unreadBody: {
-        color: '#3c4043', // Darker grey for unread
+        color: '#3c4043',
     },
-    // Dot is redundant with background color, but can keep for clarity if needed
-    // Google uses bold text + bg color usually.
-
     emptyContainer: {
         alignItems: 'center',
         marginTop: 80,

@@ -245,8 +245,6 @@ export const UserService = {
       return !docSnap.exists();
     } catch (error) {
       console.error("Error checking username uniqueness:", error);
-      // Fail open (allow retry) or closed depending on preference. 
-      // For UX, fail open but backend will catch it if actually duplicate.
       return true;
     }
   },

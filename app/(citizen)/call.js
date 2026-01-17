@@ -3,7 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import {
     ZegoUIKitPrebuiltCall,
     ONE_ON_ONE_VIDEO_CALL_CONFIG,
-    ONE_ON_ONE_VOICE_CALL_CONFIG // <--- Add this import
+    ONE_ON_ONE_VOICE_CALL_CONFIG
 } from '@zegocloud/zego-uikit-prebuilt-call-rn';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -20,12 +20,10 @@ export default function CallPage() {
     // 1. Get the 'type' param (video or voice)
     const { callId, name, type } = useLocalSearchParams();
     const [callStatus, setCallStatus] = React.useState('ringing');
-    // Synced Ref for Cleanup Closure
     const callStatusRef = React.useRef(callStatus);
     React.useEffect(() => { callStatusRef.current = callStatus; }, [callStatus]);
-    const isEndingRef = React.useRef(false); // Track intentional end
+    const isEndingRef = React.useRef(false);
 
-    // Debug & Safeguard
     React.useEffect(() => {
         console.log("CallPage Mounted. CallID:", callId, "Type:", type, "User:", user?.uid);
         if (!callId || !user) {
@@ -33,11 +31,8 @@ export default function CallPage() {
             // setTimeout(() => router.back(), 3000); 
         }
 
-        // Cleanup on unmount (e.g. back gesture)
         return () => {
-            // Avoid double-update if we already pressed hangup OR if call is already ended remotely
             if (!isEndingRef.current && callStatusRef.current !== 'ended') {
-                // We can fire-and-forget this update
                 updateDoc(doc(db, 'calls', callId), { status: 'ended' }).catch(e => console.log("Cleanup error", e));
             }
         };
@@ -48,22 +43,19 @@ export default function CallPage() {
 
     const unsubRef = React.useRef(null);
 
-    // Listener for Call Status
     React.useEffect(() => {
         if (!callId) return;
         const unsub = onSnapshot(doc(db, 'calls', callId), (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setCallStatus(data.status);
-                callStatusRef.current = data.status; // Sync Ref
+                callStatusRef.current = data.status;
 
                 if (data.status === 'rejected' || data.status === 'ended' || data.status === 'canceled') {
-                    // If we are already ending the call ourselves, DO NOT trigger back() again
                     if (isEndingRef.current) return;
 
-                    // STOP LISTENING to prevent crash on remote termination
                     if (unsubRef.current) {
-                        unsubRef.current(); // Unsubscribe immediately
+                        unsubRef.current();
                         unsubRef.current = null;
                     }
 
@@ -76,7 +68,6 @@ export default function CallPage() {
         return () => unsub();
     }, [callId]);
 
-    // 2. Choose the right config
     const callConfig = type === 'voice'
         ? ONE_ON_ONE_VOICE_CALL_CONFIG
         : ONE_ON_ONE_VIDEO_CALL_CONFIG;
@@ -99,7 +90,6 @@ export default function CallPage() {
                     <Text style={{ color: '#aaa' }}>Waiting for response...</Text>
                 </View>
             ) : (
-                /* Force component remount on callId change using 'key' */
                 callId && (
                     <ZegoUIKitPrebuiltCall
                         key={callId}
@@ -111,29 +101,22 @@ export default function CallPage() {
 
                         config={{
                             ...callConfig,
-                            // UX: Skip device checks/toggles
                             turnOnCameraWhenJoining: type !== 'voice',
                             turnOnMicrophoneWhenJoining: true,
                             useSpeakerWhenJoining: true,
 
                             onHangUp: async () => {
-                                // Immediate Termination
                                 isEndingRef.current = true;
                                 try {
                                     await updateDoc(doc(db, 'calls', callId), { status: 'ended' });
                                 } catch (e) { console.warn("Error ending call", e); }
                                 router.back();
                             },
-                            showLeaveRoomConfirmDialog: true, // UX Improvement
+                            showLeaveRoomConfirmDialog: true,
                             topMenuBarConfig: {
                                 buttons: ['minimizing', 'leave'],
                             },
-                            // End call if the other person leaves (1-on-1)
                             onOnlySelfInRoom: () => {
-                                // Just leave without updating (or maybe update?) 
-                                // Usually auto-handled by 'ended' status elsewhere, but good to be safe.
-                                // But usually onOnlySelfInRoom means the OTHER left.
-                                // We will let the listener handle the 'ended' status for us, or we just back out.
                                 router.back();
                             },
                         }}

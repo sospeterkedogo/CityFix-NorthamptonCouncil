@@ -23,22 +23,21 @@ export const getSLAStatus = (createdAt) => {
     return {
       text: `OVERDUE by ${hoursOver}h`,
       isOverdue: true,
-      color: '#E74C3C' // Red
+      color: '#E74C3C'
     };
   }
 
-  // Warning zone: Less than 4 hours left
   if (hoursLeft < 4) {
     return {
       text: `${hoursLeft}h ${minutesLeft}m left`,
       isOverdue: false,
-      color: '#F39C12' // Orange
+      color: '#F39C12'
     };
   }
 
   return {
     text: `${hoursLeft}h left`,
     isOverdue: false,
-    color: '#27AE60' // Green
+    color: '#27AE60'
   };
 };

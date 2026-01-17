@@ -60,7 +60,6 @@ export default function HomeScreen() {
     }, [user]);
 
     const determineUserLocation = async () => {
-        // 1. Try GPS first
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
@@ -82,12 +81,10 @@ export default function HomeScreen() {
             console.log("GPS Tagline Error:", e);
         }
 
-        // 2. Fallback to Profile Address
         if (user) {
             try {
                 const profile = await UserService.getEngineerProfile(user.uid);
 
-                // 2a. Use specific City field if available (New Structured Input)
                 if (profile && profile.city) {
                     setTagline(`What's happening in ${profile.city}?`);
                     return;
@@ -99,7 +96,6 @@ export default function HomeScreen() {
             }
         }
 
-        // 3. Final Fallback (Default for this Council)
         setTagline("What's happening in Northampton?");
     };
 
@@ -400,7 +396,6 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F2F4F8' },
     contentContainer: { flex: 1, maxWidth: 600, width: '100%', alignSelf: 'center' },
 
-    // Header
     headerContainer: { padding: 20, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F2F4F8' },
     greeting: { fontSize: 24, fontWeight: 'bold', color: '#1A1A1A' },
     subGreeting: { fontSize: 14, color: '#666', marginTop: 2 },
@@ -408,7 +403,6 @@ const styles = StyleSheet.create({
     avatarPlaceholder: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
     avatarText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
 
-    // Tabs
     tabContainer: { paddingHorizontal: 20, paddingBottom: 15, backgroundColor: '#F2F4F8' },
     segmentControl: { flexDirection: 'row', backgroundColor: '#E0E4EB', borderRadius: 25, padding: 4 },
     segment: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 20 },
@@ -416,11 +410,9 @@ const styles = StyleSheet.create({
     segmentText: { color: '#666', fontWeight: '600' },
     activeSegmentText: { color: COLORS.primary, fontWeight: 'bold' },
 
-    // Empty State
     emptyState: { alignItems: 'center', marginTop: 50, opacity: 0.6 },
     emptyText: { marginTop: 10, fontSize: 16 },
 
-    // FAB
     fab: {
         position: 'absolute', bottom: 110, right: 20,
         backgroundColor: COLORS.primary, borderRadius: 30,
@@ -431,7 +423,6 @@ const styles = StyleSheet.create({
     },
     fabLabel: { color: 'white', fontWeight: 'bold', fontSize: 16, marginLeft: 8 },
 
-    // Modal
     modalContainer: {
         flex: 1,
         backgroundColor: 'white',
@@ -459,7 +450,6 @@ const styles = StyleSheet.create({
     smallAvatarText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
     userName: { fontWeight: 'bold', fontSize: 16, color: '#333' },
 
-    // Location Chip
     locationChip: {
         flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F2F5',
         paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginTop: 4, alignSelf: 'flex-start'
@@ -468,20 +458,17 @@ const styles = StyleSheet.create({
 
     input: { fontSize: 18, color: '#333', minHeight: 120, textAlignVertical: 'top' },
 
-    // Media Preview
     mediaPreview: { marginTop: 20, borderRadius: 12, overflow: 'hidden', height: 200, backgroundColor: '#000' },
     imagePreview: { width: '100%', height: '100%', resizeMode: 'cover' },
     videoPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     removeMediaBtn: { position: 'absolute', top: 10, right: 10 },
 
-    // Component Buttons
     modalFooter: { position: 'absolute', bottom: 30, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     mediaActions: { flexDirection: 'row', gap: 20 },
     postButton: { backgroundColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25 },
     disabledBtn: { opacity: 0.5 },
     postBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
 
-    // Caught Up
     caughtUpContainer: { alignItems: 'center', padding: 30, opacity: 0.7 },
     caughtUpText: { marginTop: 10, color: '#666', fontWeight: 'bold' }
 });

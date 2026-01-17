@@ -22,7 +22,6 @@ export default function EngineerDashboard() {
   const [myLocation, setMyLocation] = useState(null);
 
   const ENGINEER_ID = user?.uid;
-  // Fallback to minimal name until profile loads
   const [engineerName, setEngineerName] = useState(user?.displayName || 'Engineer');
 
   useFocusEffect(
@@ -34,26 +33,21 @@ export default function EngineerDashboard() {
   const loadDashboard = async () => {
     setLoading(true);
 
-    // Fetch Engineer Profile state
     if (!ENGINEER_ID) return;
     const profile = await UserService.getEngineerProfile(ENGINEER_ID);
     setIsAvailable(profile.status === 'Available');
     if (profile.name) setEngineerName(profile.name);
-
-    // Get current device location
     let loc = await Location.getCurrentPositionAsync({});
     const myLat = loc.coords.latitude;
     const myLng = loc.coords.longitude;
     setMyLocation({ lat: myLat, lng: myLng });
 
-    // Fetch assigned task list
     const data = await TicketService.getEngineerJobs(ENGINEER_ID);
 
     const activeJobs = data.filter(job =>
       ['assigned'].includes(job.status)
     );
 
-    // Calculate distance and sort by proximity
     const jobsWithDistance = activeJobs.map(job => {
       const dist = getDistanceKm(myLat, myLng, job.location.latitude, job.location.longitude);
       return { ...job, distanceKm: dist };

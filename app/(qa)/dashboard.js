@@ -17,15 +17,12 @@ import { useClientSearch } from '../../src/hooks/useClientSearch';
 import SearchBar from '../../src/components/SearchBar';
 
 export default function QADashboard() {
-  /* State for QA Queue and History */
-  // ... (existing state)
   const [tickets, setTickets] = useState([]);
   const [historyTickets, setHistoryTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuth();
-  // ... (rest of state)
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [galleryUrl, setGalleryUrl] = useState(null);
@@ -36,8 +33,6 @@ export default function QADashboard() {
     loadQAQueue();
     loadEngineers();
   }, []);
-
-  // ... (loader functions)
 
   const loadEngineers = async () => {
     const engs = await UserService.getAllEngineers();
@@ -68,7 +63,6 @@ export default function QADashboard() {
     }
   };
 
-  // Search Logic
   const currentDataset = React.useMemo(() => {
     if (activeTab === 'queue') return tickets;
     if (activeTab === 'history') return historyTickets;
@@ -81,8 +75,6 @@ export default function QADashboard() {
   }, [activeTab]);
 
   const { searchQuery, setSearchQuery, filteredData, performManualSearch } = useClientSearch(currentDataset, searchKeys);
-
-  // ... (handlers: handleVerify, etc.)
 
   const handleVerify = async () => {
     if (!selectedTicket) return;
@@ -108,8 +100,6 @@ export default function QADashboard() {
       loadQAQueue();
     }
   };
-
-  // ... (Rows: TicketRow, EngineerRow)
 
   const TicketRow = ({ item }) => (
     <TouchableOpacity
@@ -158,9 +148,7 @@ export default function QADashboard() {
     <View style={styles.container}>
       <TutorialOverlay role="qa" page="dashboard" />
 
-      {/* HEADER */}
       <View style={styles.headerContainer}>
-        {/* ... (header content kept same but using existing styles) */}
         <View>
           <Text style={styles.headerTitle}>Quality Assurance</Text>
           <Text style={styles.headerSub}>
@@ -182,7 +170,6 @@ export default function QADashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* TABS */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'queue' && styles.activeTab]}
@@ -204,7 +191,6 @@ export default function QADashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* SEARCH BAR (New) */}
       <View style={{ marginBottom: 10 }}>
         <SearchBar
           value={searchQuery}
@@ -214,10 +200,8 @@ export default function QADashboard() {
         />
       </View>
 
-      {/* CONTENT AREA */}
       {activeTab === 'queue' || activeTab === 'history' ? (
         <View style={styles.splitView}>
-          {/* LEFT: LIST */}
           {(!isMobile || (isMobile && !selectedTicket)) && (
             <View style={[styles.listColumn, isMobile && { flex: 1 }]}>
               <FlatList
@@ -231,10 +215,8 @@ export default function QADashboard() {
             </View>
           )}
 
-          {/* RIGHT: COMPARISON */}
           {(!isMobile || (isMobile && selectedTicket)) && (
             <View style={[styles.detailColumn, isMobile && { flex: 1 }]}>
-              {/* ... (detail view internals same) */}
               {isMobile && selectedTicket && (
                 <TouchableOpacity
                   style={{ marginBottom: 10, padding: 10, backgroundColor: '#eee', borderRadius: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' }}
@@ -247,7 +229,6 @@ export default function QADashboard() {
 
               {selectedTicket ? (
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
-                  {/* ... (render details) */}
                   <Text style={styles.detailTitle}>{selectedTicket.title}</Text>
 
                   <Text style={styles.sectionHeader}>Visual Verification</Text>
@@ -262,7 +243,6 @@ export default function QADashboard() {
                     <Text style={styles.noteText}>{selectedTicket.resolutionNotes || "No notes provided."}</Text>
                   </View>
 
-                  {/* Decisions */}
                   {activeTab === 'queue' && (
                     <View style={styles.decisionArea}>
                       {!showRejectInput ? (
@@ -279,7 +259,6 @@ export default function QADashboard() {
                         </>
                       ) : (
                         <View style={styles.rejectForm}>
-                          {/* ... (reject form) */}
                           <Text style={styles.rejectLabel}>Reason for Rejection:</Text>
                           <TextInput
                             style={styles.rejectInput}

@@ -135,11 +135,10 @@ export default function CitizenTicketDetail() {
     );
 }
 
-// Reuse your status color helper
 const getStatusColor = (status) => {
     if (status === 'resolved') return COLORS.success;
     if (status === 'verified') return COLORS.success;
-    if (status === 'under_review') return '#8e44ad'; // Purple
+    if (status === 'under_review') return '#8e44ad';
     if (status === 'merged') return '#95a5a6';
     return COLORS.warning;
 };
@@ -165,7 +164,7 @@ const styles = StyleSheet.create({
         borderColor: COLORS.success,
         marginBottom: 30,
     },
-    resTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.success }, // Removed MarginBottom as it's handled by wrapper
+    resTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.success },
     proofThumb: { width: 80, height: 80, borderRadius: 8, borderWidth: 2, borderColor: COLORS.success },
     resLabel: { fontSize: 12, fontWeight: 'bold', color: COLORS.success },
     resText: { fontSize: 14, color: '#333', marginTop: 2, fontStyle: 'italic' },

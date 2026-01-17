@@ -10,7 +10,6 @@ import { useAuth } from '../../src/context/AuthContext';
 import { db } from '../../src/config/firebase';
 import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
 
-// Custom "+" Button Component
 const CustomAddButton = ({ onPress }) => (
     <TouchableOpacity
         onPress={onPress}
@@ -21,11 +20,10 @@ const CustomAddButton = ({ onPress }) => (
     </TouchableOpacity>
 );
 
-// Inner component to access context
 function CitizenTabs() {
     const router = useRouter();
-    const { unreadCount } = useNotifications(); // Notifications badge
-    const { socialBadgeCount } = useSocialBadge(); // Social badge
+    const { unreadCount } = useNotifications();
+    const { socialBadgeCount } = useSocialBadge();
 
     return (
         <Tabs
@@ -148,9 +146,6 @@ function CallListener() {
     React.useEffect(() => {
         if (!user) return;
 
-        // Listen for "notifications" collection where type == 'call_invite'
-        // and read == false.
-        // NOTE: In a real app, you might delete the doc after handling.
         const q = query(
             collection(db, 'users', user.uid, 'notifications'),
             where('type', '==', 'call_invite'),
@@ -164,7 +159,6 @@ function CallListener() {
                 const docSnap = snapshot.docs[0];
                 const data = docSnap.data();
 
-                // Check if it's recent (e.g. within 60 seconds)
                 const isRecent = (Date.now() - data.createdAt) < 60000;
 
                 if (isRecent) {
@@ -179,7 +173,6 @@ function CallListener() {
         return () => unsubscribe();
     }, [user]);
 
-    // Listener for Active Call Status (Remote Cancellation)
     React.useEffect(() => {
         if (!incomingCall) return;
 
@@ -197,10 +190,8 @@ function CallListener() {
 
     const handleAccept = async () => {
         if (incomingCall) {
-            // Mark as read
             await updateDoc(doc(db, 'users', user.uid, 'notifications', incomingCall.id), { read: true });
 
-            // Update Call Status and Set Start Time
             await updateDoc(doc(db, 'calls', incomingCall.callId), {
                 status: 'accepted',
                 startedAt: Date.now()
@@ -209,7 +200,6 @@ function CallListener() {
             const { callId, callMode, fromId } = incomingCall;
             setIncomingCall(null);
 
-            // Navigate to Call Page
             router.push({
                 pathname: '/(citizen)/call',
                 params: { callId, name: 'Caller', type: callMode }
@@ -220,7 +210,6 @@ function CallListener() {
     const handleDecline = async () => {
         if (incomingCall) {
             await updateDoc(doc(db, 'users', user.uid, 'notifications', incomingCall.id), { read: true });
-            // Signal Rejection
             await updateDoc(doc(db, 'calls', incomingCall.callId), { status: 'rejected' });
             setIncomingCall(null);
         }
@@ -239,17 +228,17 @@ function CallListener() {
 
 const styles = StyleSheet.create({
     addButton: {
-        top: -20, // Float it upwards
+        top: -20,
         justifyContent: 'center',
         alignItems: 'center',
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: COLORS.action, // Bright color (e.g., Orange/Blue)
+        backgroundColor: COLORS.action,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
-        elevation: 5, // Android shadow
+        elevation: 5,
     },
 });

@@ -1,15 +1,12 @@
 export const formatRelativeTime = (date) => {
     if (!date) return '';
 
-    // Convert generic inputs to Date object
     const d = new Date(date);
-    // If invalid date, return generic string (or original if string)
     if (isNaN(d.getTime())) return typeof date === 'string' ? date : '';
 
     const seconds = Math.floor((new Date() - d) / 1000);
     const days = seconds / 86400;
 
-    // > 8 days logic: show Fixed Date and Time
     if (days > 8) {
         return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }

@@ -118,8 +118,7 @@ export default function Dashboard() {
     const sortedTickets = reportsOnly.sort((a, b) => b.createdAt - a.createdAt);
 
     setTickets(sortedTickets);
-    setSocialPosts([...postData, ...activityData]); // Merge posts and activity for now, or keep separate? 
-    // Actually, let's keep them in socialPosts so they get sorted together in 'allItems'
+    setSocialPosts([...postData, ...activityData]);
 
     setLoading(false);
     setRefreshing(false);
@@ -141,8 +140,6 @@ export default function Dashboard() {
     }
   };
 
-  // Stats Calculation
-  // Stats Calculation
   const stats = {
     total: tickets.length + socialPosts.length,
     active: tickets.filter(t => t.status === 'in_progress' || t.status === 'assigned').length,
@@ -150,7 +147,6 @@ export default function Dashboard() {
     posts: socialPosts.length
   };
 
-  // Date Grouping Logic
   const groupItemsByDate = (items) => {
     const today = new Date();
     const yesterday = new Date(today);
@@ -181,7 +177,6 @@ export default function Dashboard() {
       }
     });
 
-    // Create SectionList structure
     const sections = [];
     if (grouped['Today'].length > 0) sections.push({ title: 'Today', data: grouped['Today'] });
     if (grouped['Yesterday'].length > 0) sections.push({ title: 'Yesterday', data: grouped['Yesterday'] });
@@ -196,7 +191,6 @@ export default function Dashboard() {
   const sectionListRef = React.useRef(null);
 
   const handleEndReached = () => {
-    // Prevent multiple triggers if empty or loading
     if (loading || sections.length === 0) return;
     if (searchQuery.trim() && filteredData.length === 0) return; // Don't toast on empty search
     setToastVisible(true);
@@ -265,7 +259,6 @@ export default function Dashboard() {
               </View>
             )}
 
-            {/* --- STATS SUMMARY (Optional - kept for context but simplified) --- */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <Text style={styles.statNumber}>{stats.total}</Text>
@@ -416,7 +409,6 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary, marginBottom: 5 },
   statLabel: { fontSize: 12, color: '#666', fontWeight: '600', textTransform: 'uppercase' },
 
-  // Main Action
   mainAction: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.primary, padding: 20, borderRadius: 16, marginBottom: 20,
@@ -426,7 +418,6 @@ const styles = StyleSheet.create({
   mainActionTitle: { fontSize: 18, fontWeight: 'bold', color: 'white' },
   mainActionSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
 
-  // Drafts
   draftAlert: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 12, borderRadius: 8, marginBottom: 20,
     borderWidth: 1, borderColor: '#FFE0B2'
@@ -434,7 +425,6 @@ const styles = StyleSheet.create({
   draftText: { flex: 1, color: '#E65100', fontWeight: '600', marginLeft: 10 },
 
 
-  // Recent Activity
   sectionHeaderBox: {
     paddingVertical: 15,
     paddingHorizontal: 0,
@@ -450,7 +440,6 @@ const styles = StyleSheet.create({
     marginLeft: 10
   },
 
-  // kept SimpleRow styles if used elsewhere, otherwise they are replaced by SimpleExpandableRow
   simpleRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 10,
     borderBottomWidth: 1, borderColor: '#f0f0f0'
@@ -462,7 +451,6 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', padding: 30 },
   emptyText: { color: '#999', marginTop: 10 },
 
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 20, maxHeight: '80%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, color: COLORS.primary },

@@ -11,8 +11,7 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const [isDemoMode, setIsDemoMode] = useState(false); // Can be removed if not used elsewhere, but variable name was used in code. Assuming unused now.
-    // Actually, remove the whole block.
+    const [isDemoMode, setIsDemoMode] = useState(false);
 
     const handleLogin = async () => {
         if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
@@ -27,13 +26,11 @@ export default function LoginScreen() {
 
     return (
         <View style={styles.mainContainer}>
-            {/* Background Pattern or Color */}
             <View style={styles.bgHeader} />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={[styles.card, Platform.OS === 'web' && styles.webCard]}>
 
-                    {/* Header Section */}
                     <View style={styles.headerContainer}>
                         <Image
                             source={require('../../assets/splash.png')}
@@ -44,7 +41,6 @@ export default function LoginScreen() {
                         <Text style={styles.subText}>Sign in to continue to City Fix</Text>
                     </View>
 
-                    {/* Form Section */}
                     <View style={styles.formContainer}>
                         <View style={styles.inputWrapper}>
                             <Text style={styles.inputLabel}>Email Address</Text>
@@ -84,7 +80,6 @@ export default function LoginScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Divider */}
                     <View style={styles.dividerContainer}>
                         <View style={styles.dividerLine} />
                         <Text style={styles.dividerText}>OR</Text>
@@ -97,7 +92,6 @@ export default function LoginScreen() {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Developer / Demo Section */}
                     <View style={styles.devSection}>
                         <TouchableOpacity onPress={() => router.push('/(auth)/dev-seed')}>
                             <Text style={styles.devLink}>[Dev Seed]</Text>
@@ -112,7 +106,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,
-        backgroundColor: '#F8FAFC', // Very light blue-grey
+        backgroundColor: '#F8FAFC',
     },
     bgHeader: {
         position: 'absolute',
@@ -126,7 +120,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         justifyContent: 'center',
         padding: 20,
-        paddingTop: 60, // Push card down nicely
+        paddingTop: 60,
     },
     card: {
         backgroundColor: 'white',
@@ -135,7 +129,6 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 450,
         alignSelf: 'center',
-        // Modern soft shadow
         shadowColor: "#64748B",
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.1,
@@ -180,7 +173,7 @@ const styles = StyleSheet.create({
         marginLeft: 4,
     },
     input: {
-        backgroundColor: '#F1F5F9', // Slate 100
+        backgroundColor: '#F1F5F9',
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderRadius: 12,
@@ -242,9 +235,7 @@ const styles = StyleSheet.create({
         color: COLORS.action,
         fontWeight: '700',
     },
-    // Demo Section
     demoSection: {
-        // Keeping empty or basic style if needed, but renamed to devSection in usage above
         marginTop: 10,
         alignItems: 'center',
     },

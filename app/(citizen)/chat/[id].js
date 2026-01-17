@@ -18,40 +18,31 @@ export default function ChatScreen() {
     const [inputText, setInputText] = useState('');
     const [roomId, setRoomId] = useState(null);
 
-    // Generic Function to start either call type
     const startCall = async (callType) => {
-        // Use a unique ID for every call to ensure fresh state/listeners
         const callId = `${[user.uid, friendId].sort().join('_')}_${Date.now()}`;
-
-        // Generate a Stable Session ID for this specific call instance
-        // This persists across refreshes of the call page, preventing "New User" splitting
         const sessionUid = `${user.uid}_${Math.floor(Math.random() * 10000)}`;
 
-        // 1. Create Call Signal Document (Shared State)
         await setDoc(doc(db, 'calls', callId), {
             callerId: user.uid,
             callerName: userData?.username || userData?.name || user.email,
             receiverId: friendId,
-            status: 'ringing', // ringing, accepted, rejected, ended
+            status: 'ringing',
             callType: callType,
             createdAt: Date.now()
         });
 
-        // 2. Send Notification (Trigger Receiver)
         await addDoc(collection(db, 'users', friendId, 'notifications'), {
             title: callType === 'voice' ? "Incoming Voice Call" : "Incoming Video Call",
             body: `${userData?.username || userData?.name || user.displayName || user.email.split('@')[0]} is calling...`,
-            type: 'call_invite', // We can use one type and pass mode in data
+            type: 'call_invite',
             callId: callId,
-            callMode: callType, // 'voice' or 'video'
+            callMode: callType,
             fromId: user.uid,
             read: false,
             createdAt: Date.now()
         });
 
-        // 3. Join the room yourself
         if (Platform.OS === 'web') {
-            // HARD RESET ENTRY: Force full browser reload to clear memory/Zego state
             console.log("Hard Resetting into Call Screen...");
             const url = `/(citizen)/call?callId=${callId}&name=${encodeURIComponent(friendName || '')}&type=${callType}&sessionUid=${sessionUid}`;
             window.location.href = url;
@@ -77,12 +68,10 @@ export default function ChatScreen() {
         const rId = await ChatService.initializeRoom(user.uid, friendId);
         setRoomId(rId);
 
-        // Subscribe to Messages
         const unsubscribeMessages = ChatService.listenToMessages(rId, (msgs) => {
             setMessages(msgs);
         });
 
-        // Subscribe to Friend's Status & Profile
         const unsubscribeFriend = onSnapshot(doc(db, 'users', friendId), (doc) => {
             if (doc.exists()) {
                 const data = doc.data();
@@ -121,14 +110,10 @@ export default function ChatScreen() {
     return (
         <SafeAreaView style={[STYLES.container, { padding: 0 }]}>
             <View style={styles.webContainer}>
-                {/* Header */}
-                {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.push('/(citizen)/social')} style={{ marginRight: 10 }}>
                         <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
                     </TouchableOpacity>
-
-                    {/* User Info - Inline */}
                     <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                         <View>
                             <View style={[styles.avatarSmall, friendPhoto ? { backgroundColor: 'transparent' } : { backgroundColor: COLORS.primary }]}>
@@ -175,11 +160,10 @@ export default function ChatScreen() {
                     data={messages}
                     renderItem={renderMessage}
                     keyExtractor={item => item._id}
-                    inverted // Important: Sticks to bottom
+                    inverted
                     contentContainerStyle={{ padding: 15 }}
                 />
 
-                {/* Input Area */}
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
@@ -209,7 +193,7 @@ const styles = StyleSheet.create({
         maxWidth: 600,
         alignSelf: 'center',
         flex: 1,
-        backgroundColor: 'white', // Ensure background consistency
+        backgroundColor: 'white',
         ...Platform.select({
             web: {
                 boxShadow: '0 0 10px rgba(0,0,0,0.1)'

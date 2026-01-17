@@ -2,19 +2,13 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import LoginScreen from '../login';
 
-// 1. Mock the Router
 jest.mock('expo-router', () => ({
     useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
 }));
 
-// 2. Mock Firebase Config (used by AuthContext if we didn't mock AuthContext, but we will)
-// Keeping it just in case imports trigger side effects.
 jest.mock('../../../src/config/firebase', () => ({
     auth: {}
 }));
-
-// 3. Mock Auth Context
-// We mock the hook directly so we can spy on the login function
 const mockLogin = jest.fn();
 jest.mock('../../../src/context/AuthContext', () => ({
     useAuth: () => ({
@@ -45,11 +39,9 @@ describe('<LoginScreen />', () => {
         const passwordInput = getByPlaceholderText('Enter your password');
         const loginBtn = getByText('Log In');
 
-        // Enter credentials
         fireEvent.changeText(emailInput, 'test@example.com');
         fireEvent.changeText(passwordInput, 'password123');
 
-        // Press login
         fireEvent.press(loginBtn);
 
         await waitFor(() => {
@@ -58,8 +50,6 @@ describe('<LoginScreen />', () => {
     });
 
     test('shows alert if fields are empty', async () => {
-        // We can't easily check Alert.alert in jest-expo without mocking Alert
-        // But we can verify login is NOT called
         const { getByText } = render(<LoginScreen />);
         const loginBtn = getByText('Log In');
 

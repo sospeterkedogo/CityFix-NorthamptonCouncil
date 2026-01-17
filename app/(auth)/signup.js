@@ -48,7 +48,6 @@ export default function SignupScreen() {
     const [usernameAvailable, setUsernameAvailable] = useState(null); // null, true, false
     const [checkingUsername, setCheckingUsername] = useState(false);
 
-    // Debounced check
     React.useEffect(() => {
         const timeoutId = setTimeout(async () => {
             if (username.length >= 3) {
@@ -60,7 +59,7 @@ export default function SignupScreen() {
             } else {
                 setUsernameAvailable(null);
             }
-        }, 500); // 500ms debounce
+        }, 500);
         return () => clearTimeout(timeoutId);
     }, [username]);
 
@@ -69,7 +68,6 @@ export default function SignupScreen() {
             return Alert.alert("Missing Info", "Please fill in all fields.");
         }
 
-        // 1. Validate Username Format
         const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
         if (!usernameRegex.test(username)) {
             return Alert.alert("Invalid Username", "Username must be 3-20 characters long and can only contain letters, numbers, and underscores.");

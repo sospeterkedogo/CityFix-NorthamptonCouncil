@@ -232,19 +232,14 @@ export default function ReportIssueScreen() {
 
       if (media.length > 0) {
         setUploading(true);
-        // Log removed
 
         const uploadPromises = media.map(file =>
           MediaService.uploadFile(file.uri, `users/${user.uid}/reports`)
         );
 
         uploadedUrls = await Promise.all(uploadPromises);
-        // Log removed
         setUploading(false);
       }
-      // ---------------------------
-
-      // ---------------------------
 
       const finalCategory = category === 'other' ? customCategory : category;
 
@@ -252,7 +247,7 @@ export default function ReportIssueScreen() {
         user.uid, title, desc, finalCategory,
         location.latitude, location.longitude,
         uploadedUrls,
-        location.address // PASS ADDRESS
+        location.address
       );
 
       setLoading(false);
@@ -315,7 +310,6 @@ export default function ReportIssueScreen() {
         </TouchableOpacity>
         <Text style={styles.header}>Report an Issue</Text>
 
-        {/* ... Title, Category Inputs ... */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Issue Title <Text style={styles.required}>*</Text></Text>
           <Text style={styles.helperText}>Give a short, clear name to the problem.</Text>
@@ -343,7 +337,6 @@ export default function ReportIssueScreen() {
             ))}
           </View>
 
-          {/* Custom Category Input */}
           {category === 'other' && (
             <View style={{ marginTop: 10 }}>
               <TextInput
@@ -356,7 +349,6 @@ export default function ReportIssueScreen() {
           )}
         </View>
 
-        {/* ... Location Button (Map Widget) ... */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Location <Text style={styles.required}>*</Text></Text>
           <Text style={styles.helperText}>Tap the map to pin the exact location.</Text>
@@ -384,7 +376,6 @@ export default function ReportIssueScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* --- MEDIA PICKER UI --- */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Evidence (Photos/Video)</Text>
           <Text style={styles.helperText}>Max 3 files. Helping us see the issue speeds up fixes.</Text>
@@ -393,15 +384,12 @@ export default function ReportIssueScreen() {
             {media.map((item, index) => (
               <View key={index} style={styles.thumbnailWrapper}>
 
-                {/* --- FIX FOR THUMBNAILS --- */}
                 {item.type === 'video' ? (
-                  // Render a placeholder for videos
                   <View style={[styles.thumbnail, styles.videoPlaceholder]}>
                     <Ionicons name="videocam-outline" size={24} color={COLORS.text.secondary} />
                     <Text style={{ fontSize: 10, color: 'white', fontWeight: 'bold' }}>VIDEO</Text>
                   </View>
                 ) : (
-                  // Render the image for photos
                   Platform.OS === 'web' ? (
                     <img
                       src={item.uri}
@@ -430,7 +418,6 @@ export default function ReportIssueScreen() {
           </View>
         </View>
 
-        {/* Description */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Description <Text style={styles.required}>*</Text></Text>
           <Text style={styles.helperText}>Describe the issue in more detail (e.g. size, danger level).</Text>
@@ -440,7 +427,6 @@ export default function ReportIssueScreen() {
           />
         </View>
 
-        {/* ACTION BUTTONS */}
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.draftBtn}
@@ -509,7 +495,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)', // Slight tint
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   mapPrompt: {
     position: 'absolute',
@@ -572,7 +558,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   submitBtn: {
-    flex: 2, // Submit button is bigger
+    flex: 2,
     backgroundColor: COLORS.primary,
     padding: 15,
     borderRadius: 12,

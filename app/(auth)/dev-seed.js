@@ -12,11 +12,10 @@ export default function DevSeedScreen() {
     const [logs, setLogs] = useState([]);
     const router = useRouter();
 
-    // Custom User State
     const [customEmail, setCustomEmail] = useState('');
     const [customPassword, setCustomPassword] = useState('');
     const [customName, setCustomName] = useState('');
-    const [customRole, setCustomRole] = useState('citizen'); // Default to citizen
+    const [customRole, setCustomRole] = useState('citizen');
 
     const addLog = (msg) => setLogs(prev => [...prev, msg]);
 
@@ -37,13 +36,13 @@ export default function DevSeedScreen() {
                 ...(role === 'engineer' ? { status: 'Available' } : {})
             });
 
-            addLog(`✅ Success: ${email} (UID: ${uid.slice(0, 5)}...)`);
+            addLog(`Success: ${email} (UID: ${uid.slice(0, 5)}...)`);
             return true;
         } catch (error) {
             if (error.code === 'auth/email-already-in-use') {
-                addLog(`⚠️ User ${email} already exists. Skipping.`);
+                addLog(`User ${email} already exists. Skipping.`);
             } else {
-                addLog(`❌ Error creating ${email}: ${error.message}`);
+                addLog(`Error creating ${email}: ${error.message}`);
             }
             return false;
         }
@@ -64,7 +63,7 @@ export default function DevSeedScreen() {
             setCustomEmail('');
             setCustomPassword('');
             setCustomName('');
-            // Keep role for convenience
+            setCustomRole('');
         }
     };
 
@@ -77,21 +76,18 @@ export default function DevSeedScreen() {
                 userId: 'system_seed',
                 userName: 'Council Bot',
                 status: 'resolved',
-                type: 'social', // Must be 'social' to appear? Wait, verifiedFeed filters by status, resolvedQ/verifiedQ don't filter by type in the query shown, but let's check.
-                // Re-checking SocialService.js:
-                // resolvedQ = query(collection(db, 'tickets'), where('status', '==', 'resolved'), limit(limitCount));
-                // It does NOT filter by type='social'. Good.
+                type: 'social',
                 title: 'Pothole Fixed',
                 description: 'We fixed the pothole on Main St.',
                 createdAt: serverTimestamp(),
                 category: 'Highways',
-                location: { latitude: 52.2405, longitude: -0.9027 }, // Northampton center
+                location: { latitude: 52.2405, longitude: -0.9027 },
                 address: 'Market Square, Northampton',
                 imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80',
                 likes: 5,
                 upvoteCount: 10
             });
-            addLog("✅ Created 'Resolved' Ticket");
+            addLog("Created 'Resolved' Ticket");
 
             // 2. Create a Verified Ticket
             await addDoc(collection(db, 'tickets'), {
@@ -108,12 +104,12 @@ export default function DevSeedScreen() {
                 likes: 2,
                 upvoteCount: 3
             });
-            addLog("✅ Created 'Verified' Ticket");
+            addLog("Created 'Verified' Ticket");
 
             Alert.alert("Success", "Test tickets created!");
         } catch (e) {
             console.error(e);
-            addLog(`❌ Error seeding tickets: ${e.message}`);
+            addLog(`Error seeding tickets: ${e.message}`);
         } finally {
             setLoading(false);
         }
@@ -123,7 +119,6 @@ export default function DevSeedScreen() {
         setLoading(true);
         setLogs([]);
 
-        // --- CONFIGURATION: CHANGE PASSWORDS HERE IF NEEDED ---
         await createStaffAccount('dispatcher@cityfix.com', 'password123', 'Head Dispatcher', 'dispatcher');
         await createStaffAccount('eng@cityfix.com', 'password123', 'Bob The Builder', 'engineer');
         await createStaffAccount('qa@cityfix.com', 'password123', 'Karen Auditor', 'qa');
@@ -134,8 +129,6 @@ export default function DevSeedScreen() {
     };
 
     const handleExit = async () => {
-        // We sign out because the seed script leaves you logged in as the last user (QA)
-        // If we don't sign out, the app will auto-redirect you to the QA Dashboard immediately.
         await signOut(auth);
         router.replace('/(auth)/login');
     };

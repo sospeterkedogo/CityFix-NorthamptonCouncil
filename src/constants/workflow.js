@@ -13,8 +13,8 @@ export const ALLOWED_TRANSITIONS = {
   // From Under Review, can also Assign
   [TICKET_STATUS.UNDER_REVIEW]: [TICKET_STATUS.ASSIGNED],
 
-  // Engineer can start work
-  [TICKET_STATUS.ASSIGNED]: [TICKET_STATUS.IN_PROGRESS],
+  // Engineer can start work OR Resolve directly (shortcut)
+  [TICKET_STATUS.ASSIGNED]: [TICKET_STATUS.IN_PROGRESS, TICKET_STATUS.RESOLVED],
 
   // Engineer can Resolve (after evidence)
   [TICKET_STATUS.IN_PROGRESS]: [TICKET_STATUS.RESOLVED],

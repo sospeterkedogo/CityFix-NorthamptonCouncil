@@ -50,11 +50,8 @@ export default function DispatcherInbox() {
     loadTickets();
   }, []);
 
-  // ... (rest of methods: loadTickets, isVideo, galleries, openExternalMap)
-
   const loadTickets = async () => {
     const data = await TicketService.getAllTickets();
-    // Sort: Submitted first, then by date
     const sorted = data.sort((a, b) => b.createdAt - a.createdAt);
     setTickets(sorted);
     setLoading(false);
@@ -62,14 +59,12 @@ export default function DispatcherInbox() {
 
   const isVideo = (url) => url.includes('.mp4') || url.includes('.mov');
 
-  // Open Citizen Evidence Gallery
   const openCitizenGallery = (index) => {
     setGalleryItems(selectedTicket.photos || []);
     setGalleryIndex(index);
     setGalleryVisible(true);
   };
 
-  // Open Engineer Proof Gallery
   const openProofGallery = () => {
     if (selectedTicket.afterPhoto) {
       setGalleryItems([selectedTicket.afterPhoto]);
@@ -100,7 +95,6 @@ export default function DispatcherInbox() {
         <View style={{ flex: 1 }}>
           <Text style={styles.rowTitle}>{item.title}</Text>
 
-          {/* SLA / RESOLVED BADGE */}
           {isResolved ? (
             <View style={[styles.badgeContainer, { backgroundColor: '#27AE60' }]}>
               <Text style={styles.badgeText}>
@@ -154,7 +148,6 @@ export default function DispatcherInbox() {
     if (result.success) {
       alert("Ticket auto-assigned successfully!");
       loadTickets();
-      // Optimistically update
       setSelectedTicket(prev => ({ ...prev, status: 'assigned' }));
     } else {
       alert("Auto-assign failed: " + result.error);
@@ -212,7 +205,6 @@ export default function DispatcherInbox() {
 
         <Text style={styles.description}>{selectedTicket.description}</Text>
 
-        {/* Duplicate Warning Banner */}
         {potentialDuplicates.length > 0 && (
           <View style={styles.duplicateBanner}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
@@ -243,7 +235,6 @@ export default function DispatcherInbox() {
         )
         }
 
-        {/* Action Bar */}
         <View style={styles.actionBar}>
           <TouchableOpacity
             style={styles.actionBtn}
@@ -253,10 +244,9 @@ export default function DispatcherInbox() {
             <Text style={styles.btnText}>Open in Maps</Text>
           </TouchableOpacity>
 
-          {/* New: Mark Under Review */}
           {selectedTicket.status === 'submitted' && (
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#8e44ad' }]} // Purple for Review
+              style={[styles.actionBtn, { backgroundColor: '#8e44ad' }]}
               onPress={async () => {
                 const res = await TicketService.markAsUnderReview(selectedTicket.id);
                 if (res.success) {

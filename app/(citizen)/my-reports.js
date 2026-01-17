@@ -16,7 +16,6 @@ export default function MyReportsScreen() {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Reload data every time this tab is focused (e.g., after submitting a report)
     useFocusEffect(
         useCallback(() => {
             fetchMyTickets();
@@ -26,13 +25,11 @@ export default function MyReportsScreen() {
     const fetchMyTickets = async () => {
         setLoading(true);
         const data = await TicketService.getCitizenTickets(user.uid);
-        // Sort: Newest first
         const sorted = data.sort((a, b) => b.createdAt - a.createdAt);
         setTickets(sorted);
         setLoading(false);
     };
 
-    // Client-side search for My Reports
     const { searchQuery, setSearchQuery, filteredData, performManualSearch } = useClientSearch(tickets, [
         'title', 'description', 'category', 'status', 'locationName'
     ]);
@@ -43,7 +40,7 @@ export default function MyReportsScreen() {
             case 'verified': return COLORS.success;
             case 'in_progress': return COLORS.warning;
             case 'draft': return '#95a5a6';
-            default: return COLORS.error; // Open/Assigned
+            default: return COLORS.error;
         }
     };
 

@@ -15,7 +15,6 @@ export default function SocialScreen() {
 
     const isOnline = (timestamp) => {
         if (!timestamp) return false;
-        // Check if within last 5 minutes (300000ms)
         return Date.now() - timestamp < 300000;
     };
 
@@ -26,7 +25,6 @@ export default function SocialScreen() {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // 1. Listeners on Mount
     useEffect(() => {
         const unsubNeighbors = UserService.listenToNeighbors(user.uid, setNeighbors);
         const unsubRequests = UserService.listenToRequests(user.uid, setRequests);
@@ -38,7 +36,6 @@ export default function SocialScreen() {
         };
     }, []);
 
-    // 2. Search Logic (Auto + Manual)
     useEffect(() => {
         const delaySearch = setTimeout(async () => {
             if (searchTerm.length >= 2) {
@@ -47,7 +44,7 @@ export default function SocialScreen() {
             } else {
                 setSearchResults([]);
             }
-        }, 500); // 500ms debounce for auto-search
+        }, 500);     // 500ms
 
         return () => clearTimeout(delaySearch);
     }, [searchTerm]);
@@ -56,7 +53,6 @@ export default function SocialScreen() {
         if (searchTerm.length < 2) return;
         setLoading(true);
         const results = await UserService.searchUsers(searchTerm);
-        // Filter out self
         setSearchResults(results.filter(u => u.id !== user.uid));
         setLoading(false);
     };
@@ -64,7 +60,6 @@ export default function SocialScreen() {
     const sendRequest = async (targetUser) => {
         await UserService.sendRequest(user, targetUser);
         alert("Request Sent!");
-        // Reset and Switch to Sent Tab
         setSearchTerm('');
         setSearchResults([]);
         setTab('sent');
@@ -78,7 +73,6 @@ export default function SocialScreen() {
         await UserService.declineRequest(req.id);
     };
 
-    // 3. Render Items
     const renderNeighbor = ({ item }) => (
         <View style={styles.card}>
             <TouchableOpacity
@@ -264,7 +258,6 @@ const styles = StyleSheet.create({
     sub: { fontSize: 12, color: '#999' },
     empty: { textAlign: 'center', color: '#999', marginTop: 20 },
 
-    // Search Styles
     resultLabel: { fontSize: 12, fontWeight: 'bold', color: '#999', marginBottom: 10, textTransform: 'uppercase' },
 
     btnSmall: { backgroundColor: COLORS.primary, paddingVertical: 5, paddingHorizontal: 15, borderRadius: 5 },
