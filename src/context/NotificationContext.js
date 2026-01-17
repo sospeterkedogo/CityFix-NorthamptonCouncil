@@ -25,8 +25,6 @@ export function NotificationProvider({ children }) {
             return;
         }
 
-        // Subscribe to notifications collection
-        // Order by createdAt desc (newest first)
         const q = query(
             collection(db, 'users', user.uid, 'notifications'),
             orderBy('createdAt', 'desc')
@@ -46,18 +44,10 @@ export function NotificationProvider({ children }) {
             setUnreadCount(count);
             setLoading(false);
 
-            // Trigger Local Notification for NEW items (Optimistic check)
-            // In a real robust app, we'd diff 'msgs' vs 'previousMsgs' to find new ones.
-            // For now, relies on the separate listener in utils OR we can move it here.
-            // Since we are replacing the utils hook, let's process "Added" changes here for Alerting.
-
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
-                    // Only alert if it's reasonably new (to avoid alerting for old stuff on reload)
-                    // Here we just alert everything coming in as "added" on the stream if it's unread
                     const notif = change.doc.data();
                     if (!notif.read) {
-                        // A. MOBILE STRATEGY
                         if (Platform.OS !== 'web') {
                             Notifications.scheduleNotificationAsync({
                                 content: {
@@ -68,12 +58,11 @@ export function NotificationProvider({ children }) {
                                 trigger: null,
                             });
                         }
-                        // B. WEB STRATEGY (Native Browser API)
                         else {
                             if (Notification.permission === "granted") {
                                 new Notification(notif.title, {
                                     body: notif.body,
-                                    icon: '/icon.png' // Ensure you have an icon in your public folder
+                                    icon: '/icon.png'
                                 });
                             }
                         }

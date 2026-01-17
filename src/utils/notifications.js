@@ -4,7 +4,6 @@ import { db } from '../config/firebase';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useEffect } from 'react';
 
-// 1. Configure Notification Handler (Visuals)
 if (Platform.OS !== 'web') {
     Notifications.setNotificationHandler({
         handleNotification: async () => ({
@@ -15,9 +14,7 @@ if (Platform.OS !== 'web') {
     });
 }
 
-// 2. Register (kept for compatibility)
 export async function registerForPushNotificationsAsync() {
-    // Permission requests still needed for Local Notifications
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== 'granted') {
@@ -27,18 +24,16 @@ export async function registerForPushNotificationsAsync() {
         } catch (e) { /* silent catch */ }
     }
 
-    // Android Channel Setup for Sound
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#FF231F7C',
-            sound: true, // Plays default sound
+            sound: true,
         });
     }
 
-    // On Web, manually request browser permission so Alerts work
     if (Platform.OS === 'web' && 'Notification' in window) {
         if (Notification.permission !== 'granted') {
             await Notification.requestPermission();
@@ -48,12 +43,9 @@ export async function registerForPushNotificationsAsync() {
     return "virtual-token-active";
 }
 
-// 3. Save Token (No-op now)
 export const saveUserToken = async (userId, token) => {
-    // No-op
 };
 
-// 4. Send "Virtual Push" (Writes to Firestore)
 export const sendAppNotification = async (userId, title, body, data = {}) => {
     if (!userId) return;
     try {
@@ -71,17 +63,11 @@ export const sendAppNotification = async (userId, title, body, data = {}) => {
 }
 
 export const sendPushNotification = async (token, title, body, data) => {
-    // Deprecated for direct token send, but if used, we can't easily map token -> userId here.
-    // Ideally we use notifyUser/notifyRole instead.
-    // Log removed
 }
 
-// 5. Notify by ID
 export const notifyUser = async (userId, title, body) => {
     await sendAppNotification(userId, title, body);
 };
-
-// 6. Notify by Role
 export const notifyRole = async (role, title, body) => {
     try {
         const q = query(collection(db, 'users'), where('role', '==', role));
@@ -95,12 +81,9 @@ export const notifyRole = async (role, title, body) => {
     }
 };
 
-// 7. LISTEN HOOK (To be used in _layout.js)
 export const useNotificationListener = (user) => {
     useEffect(() => {
         if (!user?.uid) return;
-
-        // Log removed
         const q = query(
             collection(db, 'users', user.uid, 'notifications'),
             where('read', '==', false)
@@ -111,7 +94,6 @@ export const useNotificationListener = (user) => {
                 if (change.type === 'added') {
                     const notif = change.doc.data();
 
-                    // Trigger Local Notification
                     if (Platform.OS !== 'web') {
                         await Notifications.scheduleNotificationAsync({
                             content: {
@@ -119,11 +101,10 @@ export const useNotificationListener = (user) => {
                                 body: notif.body,
                                 data: notif.data,
                             },
-                            trigger: null, // Instant
+                            trigger: null,
                         });
                     }
 
-                    // Mark as read immediately
                     const docRef = doc(db, 'users', user.uid, 'notifications', change.doc.id);
                     await updateDoc(docRef, { read: true });
                 }

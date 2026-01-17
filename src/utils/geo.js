@@ -6,9 +6,9 @@ const toRad = (value) => (value * Math.PI) / 180;
  * Returns distance in Kilometers
  */
 export const getDistanceKm = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 9999; // Unknown distance
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 9999;
 
-  const R = 6371; // Earth radius in km
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
@@ -20,7 +20,6 @@ export const getDistanceKm = (lat1, lon1, lat2, lon2) => {
 };
 
 /**
- * Check if a point is inside a polygon using Ray Casting algorithm
  * @param {Object} point { latitude, longitude }
  * @param {Array} polygon [{ latitude, longitude }, ...]
  */

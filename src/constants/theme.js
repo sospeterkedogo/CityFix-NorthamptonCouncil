@@ -1,13 +1,13 @@
 import { Platform } from 'react-native';
 export const COLORS = {
-  primary: '#2C3E50',    // Deep Slate Blue (Trust)
-  action: '#3498DB',     // Electric Blue (Buttons)
-  success: '#27AE60',    // Emerald Green (Resolved)
-  warning: '#F1C40F',    // Amber (In Progress)
-  error: '#E74C3C',      // Rose Red (Critical)
-  pending: '#F39C12',    // Orange (Pending)
-  background: '#F8F9FA', // Off-white (Surface)
-  card: '#FFFFFF',       // Pure White (Cards)
+  primary: '#2C3E50',
+  action: '#3498DB',
+  success: '#27AE60',
+  warning: '#F1C40F',
+  error: '#E74C3C',
+  pending: '#F39C12',
+  background: '#F8F9FA',
+  card: '#FFFFFF',
   text: {
     primary: '#2C3E50',
     secondary: '#7F8C8D',
@@ -24,7 +24,6 @@ export const SPACING = {
 };
 
 export const STYLES = {
-  // Common shadow style for cards (iOS & Android)
   shadow: {
     ...Platform.select({
       ios: {

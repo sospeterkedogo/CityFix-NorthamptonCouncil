@@ -1,7 +1,6 @@
 import { SocialService } from '../socialService';
 import { getDocs } from 'firebase/firestore';
 
-// 1. Mock Firebase functions so we don't hit the real DB
 jest.mock('firebase/firestore', () => ({
     getFirestore: jest.fn(),
     collection: jest.fn(),
@@ -18,12 +17,10 @@ jest.mock('../../config/firebase', () => ({
 
 describe('SocialService', () => {
     beforeEach(() => {
-        // Clear mocks before each test
         jest.clearAllMocks();
     });
 
     test('getVerifiedFeed returns formatted data correctly', async () => {
-        // A. Setup the fake data we expect Firebase to return
         const mockSnapshot = {
             empty: false,
             docs: [
@@ -32,16 +29,13 @@ describe('SocialService', () => {
             ]
         };
 
-        // B. Tell the mock to return this data
         getDocs.mockResolvedValue(mockSnapshot);
 
-        // C. Run the function
         const result = await SocialService.getVerifiedFeed();
 
-        // D. Assertions (The Test)
         expect(result.data.length).toBe(2);
         expect(result.data[0].title).toBe('Fixed Pothole');
-        expect(result.data[0].id).toBe('ticket1'); // Ensure ID was merged correctly
+        expect(result.data[0].id).toBe('ticket1');
     });
 
     test('getVerifiedFeed handles empty results gracefully', async () => {

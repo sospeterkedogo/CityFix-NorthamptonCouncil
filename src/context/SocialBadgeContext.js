@@ -17,7 +17,6 @@ export const SocialBadgeProvider = ({ children }) => {
             return;
         }
 
-        // Listen for Pending Friend Requests
         const qRequests = query(
             collection(db, 'friend_requests'),
             where('toId', '==', user.uid),
@@ -25,8 +24,6 @@ export const SocialBadgeProvider = ({ children }) => {
         );
 
         const unsubscribe = onSnapshot(qRequests, (snapshot) => {
-            // For MVP, just counting pending requests. 
-            // If we want unread chats, we'd need another listener or a 'chats' field.
             setSocialBadgeCount(snapshot.size);
         });
 

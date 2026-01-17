@@ -39,7 +39,6 @@ export const canTransitionTo = (currentStatus, nextStatus) => {
 
 /**
  * Helper to check if Assigning is allowed
- * (This answers your specific request about blocking the dispatcher)
  */
 export const canAssign = (status) => {
   return [TICKET_STATUS.SUBMITTED, 'reopened', 'under_review', TICKET_STATUS.ASSIGNED].includes(status);

@@ -1,7 +1,7 @@
 import { collection, addDoc, getDocs, doc, updateDoc, query, where, getDoc, writeBatch, runTransaction, increment, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createTicket, TICKET_STATUS } from '../constants/models';
-import { canAssign } from '../constants/workflow';
+import { canAssign, canTransitionTo } from '../constants/workflow';
 import { notifyUser, notifyRole } from '../utils/notifications';
 import { UserService } from './userService';
 import { isPointInPolygon, getDistanceKm } from '../utils/geo';
@@ -9,15 +9,17 @@ import { isPointInPolygon, getDistanceKm } from '../utils/geo';
 
 const TICKET_COLLECTION = 'tickets';
 
-
 export const TicketService = {
-
+  // Submit a new ticket
   submitTicket: async (userId, title, description, category, lat, lng, photos = [], address = null) => {
     try {
+      // Create the ticket data
       const ticketData = createTicket(userId, title, description, category, lat, lng, address);
       ticketData.status = TICKET_STATUS.SUBMITTED;
       ticketData.photos = photos;
+      // Submit the ticket to the database
       const docRef = await addDoc(collection(db, TICKET_COLLECTION), ticketData);
+      // Notify the user and dispatcher
       await notifyUser(userId, "Ticket Received", `We have received your report: "${title}".`);
       await notifyRole('dispatcher', "New Report", `New ticket submitted: ${title}`);
 
@@ -212,7 +214,13 @@ export const TicketService = {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
 
       const ticketSnap = await getDoc(ticketRef);
-      const ticketData = ticketSnap.exists() ? ticketSnap.data() : {};
+      if (!ticketSnap.exists()) throw new Error("Ticket not found");
+      const ticketData = ticketSnap.data();
+
+      // Check workflow
+      if (!canTransitionTo(ticketData.status, TICKET_STATUS.RESOLVED)) {
+        throw new Error(`Illegal State Transition: Cannot move from '${ticketData.status}' to '${TICKET_STATUS.RESOLVED}'`);
+      }
 
       await updateDoc(ticketRef, {
         status: TICKET_STATUS.RESOLVED,
@@ -251,7 +259,13 @@ export const TicketService = {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
       const ticketSnap = await getDoc(ticketRef);
-      const ticketData = ticketSnap.exists() ? ticketSnap.data() : {};
+      if (!ticketSnap.exists()) throw new Error("Ticket not found");
+      const ticketData = ticketSnap.data();
+
+      // Check workflow
+      if (!canTransitionTo(ticketData.status, TICKET_STATUS.VERIFIED)) {
+        throw new Error(`Illegal State Transition: Cannot move from '${ticketData.status}' to '${TICKET_STATUS.VERIFIED}'`);
+      }
 
       await updateDoc(ticketRef, {
         status: TICKET_STATUS.VERIFIED,
@@ -278,6 +292,14 @@ export const TicketService = {
   reopenTicket: async (ticketId, reason) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
+      const ticketSnap = await getDoc(ticketRef);
+      if (!ticketSnap.exists()) throw new Error("Ticket not found");
+      const ticketData = ticketSnap.data();
+
+      // Check workflow (Note: 'reopened' is a valid status string in workflow.js)
+      if (!canTransitionTo(ticketData.status, 'reopened')) {
+        throw new Error(`Illegal State Transition: Cannot move from '${ticketData.status}' to 'reopened'`);
+      }
 
       await updateDoc(ticketRef, {
         status: 'reopened',
@@ -287,8 +309,7 @@ export const TicketService = {
       });
 
 
-      const ticketSnap = await getDoc(ticketRef);
-      const ticketData = ticketSnap.data();
+
 
 
       if (ticketData.assignedTo) {
@@ -309,13 +330,19 @@ export const TicketService = {
   markAsUnderReview: async (ticketId) => {
     try {
       const ticketRef = doc(db, TICKET_COLLECTION, ticketId);
+      // Fetch first to check workflow
+      const ticketSnap = await getDoc(ticketRef);
+      if (!ticketSnap.exists()) throw new Error("Ticket not found");
+      const ticketData = ticketSnap.data();
+
+      if (!canTransitionTo(ticketData.status, TICKET_STATUS.UNDER_REVIEW)) {
+        throw new Error(`Illegal State Transition: Cannot move from '${ticketData.status}' to '${TICKET_STATUS.UNDER_REVIEW}'`);
+      }
+
       await updateDoc(ticketRef, {
         status: TICKET_STATUS.UNDER_REVIEW,
         updatedAt: Date.now()
       });
-
-      const ticketSnap = await getDoc(ticketRef);
-      const ticketData = ticketSnap.data();
 
 
       if (ticketData.userId) {

@@ -5,7 +5,6 @@ import { auth, db } from '../config/firebase';
 import { registerForPushNotificationsAsync, saveUserToken, notifyUser } from '../utils/notifications';
 import * as Notifications from 'expo-notifications';
 
-// Notification Handler is configured in utils/notifications.js
 
 const AuthContext = createContext({});
 
@@ -105,14 +104,11 @@ export const AuthProvider = ({ children }) => {
             reportCount: 0
         });
 
-        // 4b. Claim Username (Public Registry)
-        // This allows the public check to work for future users
         if (username) {
             try {
                 await setDoc(doc(db, 'usernames', username), { uid });
             } catch (e) {
                 console.warn("Failed to claim username in registry:", e);
-                // Non-critical for signup success, but important for consistency.
             }
         }
 
@@ -148,7 +144,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             user,
-            userData, // Expose full Firestore profile
+            userData,
             userRole,
             loading,
             login,
